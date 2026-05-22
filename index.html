@@ -1,0 +1,1362 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Loans4B — Simuladores Financieros</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700&family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+<!-- PDF nativo via window.print() — sin librerías externas -->
+<style>
+  :root {
+    --teal-d:#062831; --teal:#0a3d4a; --teal-m:#14525f; --teal-l:#1b6b7a;
+    --green:#2aa07f; --green-l:#3dd9a7; --green-bg:#eaf6f2;
+    --white:#ffffff; --bg:#f3f6f8; --bg-card:#ffffff;
+    --border:#d8e0e4; --border-l:#e8eef1;
+    --text:#1a2730; --text-2:#3a4a55; --muted:#6a7a85;
+    --amber:#a05c10; --amber-bg:#fdf3e0;
+    --red:#b52a2a; --red-bg:#fdeaea;
+    --blue:#1a6aa0; --blue-bg:#e6f0fa;
+    --radius:12px;
+    --shadow:0 4px 18px rgba(10,61,74,0.08);
+    --shadow-lg:0 10px 36px rgba(10,61,74,0.14);
+  }
+  * { box-sizing:border-box; margin:0; padding:0; }
+  body { font-family:'Inter',sans-serif; background:var(--bg); color:var(--text); min-height:100vh; overflow-x:hidden; -webkit-font-smoothing:antialiased; }
+
+  .sidebar { position:fixed; top:0; left:0; width:244px; height:100vh; background:var(--teal-d); display:flex; flex-direction:column; z-index:100; border-right:1px solid rgba(255,255,255,0.06); }
+  .sidebar-logo { padding:26px 22px 20px; border-bottom:1px solid rgba(255,255,255,0.08); }
+  .sidebar-logo .brand { font-size:20px; color:var(--green-l); letter-spacing:-0.5px; font-weight:800; }
+  .sidebar-logo .brand .b { color:#fff; font-weight:800; }
+  .sidebar-logo .tagline { font-size:9px; color:rgba(255,255,255,0.40); letter-spacing:1.6px; text-transform:uppercase; margin-top:6px; font-weight:500; }
+  .sidebar-nav { flex:1; padding:18px 12px; display:flex; flex-direction:column; gap:3px; overflow-y:auto; }
+  .nav-label { font-size:9.5px; letter-spacing:1.8px; text-transform:uppercase; color:rgba(255,255,255,0.32); padding:10px 12px 4px; font-weight:600; }
+  .nav-item { display:flex; align-items:center; gap:11px; padding:10px 12px; border-radius:8px; cursor:pointer; font-size:13px; color:rgba(255,255,255,0.62); transition:all 0.18s; border:none; background:none; width:100%; text-align:left; font-family:inherit; font-weight:500; }
+  .nav-item:hover { background:rgba(255,255,255,0.06); color:rgba(255,255,255,0.92); }
+  .nav-item.active { background:rgba(42,160,127,0.18); color:var(--green-l); font-weight:600; }
+  .nav-item .icon { width:18px; text-align:center; font-size:15px; }
+  .sidebar-foot { padding:14px 18px; font-size:10.5px; color:rgba(255,255,255,0.35); border-top:1px solid rgba(255,255,255,0.06); display:flex; align-items:center; gap:6px; }
+  .dot-on { width:7px; height:7px; border-radius:50%; background:var(--green-l); box-shadow:0 0 6px var(--green-l); }
+
+  .main { margin-left:244px; min-height:100vh; }
+  .topbar { height:64px; background:#fff; border-bottom:1px solid var(--border-l); display:flex; align-items:center; justify-content:space-between; padding:0 36px; position:sticky; top:0; z-index:50; }
+  .topbar-title { font-size:14px; color:var(--muted); font-weight:500; }
+  .topbar-right { display:flex; gap:10px; align-items:center; }
+  .uf-chip { background:var(--green-bg); border:1px solid #c9ebde; color:var(--teal); padding:6px 13px; border-radius:24px; font-size:12px; font-weight:600; display:flex; gap:8px; align-items:center; cursor:pointer; transition:all 0.18s; }
+  .uf-chip:hover { background:#d9f0e6; }
+  .uf-chip .uf-dot { width:7px; height:7px; border-radius:50%; background:var(--green); }
+  .date-chip { background:var(--bg); border:1px solid var(--border-l); color:var(--text-2); padding:6px 13px; border-radius:24px; font-size:11.5px; font-weight:500; }
+
+  .view { display:none; padding:30px 40px 60px; max-width:1240px; }
+  .view.active { display:block; }
+  .section-title { font-family:'Playfair Display',serif; font-size:30px; font-weight:700; color:var(--teal); margin-bottom:6px; letter-spacing:-0.3px; }
+  .section-sub { color:var(--muted); font-size:13.5px; margin-bottom:28px; max-width:760px; line-height:1.55; }
+
+  .form-card { background:var(--bg-card); border:1px solid var(--border-l); border-radius:var(--radius); box-shadow:var(--shadow); overflow:hidden; }
+  .form-card-header { display:flex; align-items:center; gap:10px; padding:16px 22px; background:linear-gradient(180deg,#fafdfb,#fff); border-bottom:1px solid var(--border-l); }
+  .form-card-header h3 { font-size:13.5px; font-weight:600; color:var(--teal); flex:1; text-transform:uppercase; letter-spacing:0.5px; }
+  .form-card-header .h-icon { font-size:17px; }
+  .green-dot { width:8px; height:8px; border-radius:50%; background:var(--green); }
+  .form-body { padding:22px; }
+
+  .form-grid { display:grid; grid-template-columns:1fr 1fr; gap:16px 18px; }
+  .form-grid-3 { display:grid; grid-template-columns:1fr 1fr 1fr; gap:16px 18px; }
+  .form-group { display:flex; flex-direction:column; }
+  .form-group label { font-size:11px; font-weight:600; color:var(--text-2); text-transform:uppercase; letter-spacing:0.6px; margin-bottom:7px; }
+  .form-group label .req { color:var(--red); }
+  .form-group label .opt { color:var(--muted); font-weight:400; text-transform:none; letter-spacing:0; }
+  .form-group input, .form-group select, .form-group textarea { background:#fafcfd; border:1px solid var(--border); border-radius:8px; padding:10px 13px; font-size:13px; color:var(--text); font-family:inherit; transition:all 0.18s; outline:none; width:100%; }
+  .form-group input:focus, .form-group select:focus, .form-group textarea:focus { border-color:var(--green); box-shadow:0 0 0 3px rgba(42,160,127,0.12); background:#fff; }
+  .form-group .hint { font-size:11px; color:var(--muted); margin-top:5px; }
+  .form-group .hint strong { color:var(--teal); }
+
+  .btn { background:var(--teal); color:#fff; border:none; padding:12px 22px; border-radius:8px; font-size:13px; font-weight:600; cursor:pointer; font-family:inherit; transition:all 0.18s; display:inline-flex; align-items:center; gap:8px; }
+  .btn:hover { background:var(--teal-m); transform:translateY(-1px); box-shadow:var(--shadow); }
+  .btn.green { background:var(--green); }
+  .btn.green:hover { background:#239278; }
+  .btn.ghost { background:#fff; color:var(--teal); border:1px solid var(--border); }
+  .btn.ghost:hover { background:var(--bg); }
+  .btn-row { display:flex; gap:10px; flex-wrap:wrap; }
+  .btn-calc { background:var(--teal); color:#fff; border:none; width:100%; padding:16px; border-radius:10px; font-size:14px; font-weight:600; cursor:pointer; font-family:inherit; transition:all 0.18s; letter-spacing:0.3px; }
+  .btn-calc:hover { background:var(--teal-m); }
+  .btn-pdf { background:var(--green); color:#fff; border:none; padding:13px 26px; border-radius:8px; font-size:13.5px; font-weight:600; cursor:pointer; font-family:inherit; display:inline-flex; align-items:center; gap:8px; transition:all 0.18s; }
+  .btn-pdf:hover { background:#239278; transform:translateY(-1px); box-shadow:var(--shadow); }
+
+  .sim-grid { display:grid; grid-template-columns:1fr 1.05fr; gap:24px; }
+  .sim-result { background:var(--teal-d); border-radius:var(--radius); padding:8px 0; box-shadow:var(--shadow-lg); height:fit-content; }
+  .sr-row { display:flex; align-items:baseline; justify-content:space-between; padding:14px 22px; border-bottom:1px solid rgba(255,255,255,0.05); gap:16px; }
+  .sr-row:last-child { border-bottom:none; }
+  .sr-row.sep { border-top:1px solid rgba(255,255,255,0.12); margin-top:4px; }
+  .sr-label { color:rgba(255,255,255,0.55); font-size:11.5px; text-transform:uppercase; letter-spacing:0.5px; font-weight:500; flex:1; }
+  .sr-value { color:var(--green-l); font-size:16px; font-weight:600; text-align:right; font-family:'Inter',sans-serif; font-variant-numeric:tabular-nums; letter-spacing:-0.1px; }
+  .sr-value.big { color:#fff; font-size:26px; font-weight:700; font-family:'Inter',sans-serif; font-variant-numeric:tabular-nums; }
+  .sr-value.small { color:rgba(255,255,255,0.75); font-size:13px; font-weight:500; }
+
+  .alert { display:flex; gap:12px; background:var(--blue-bg); border-left:3px solid var(--blue); color:var(--blue); padding:12px 16px; border-radius:6px; font-size:12.5px; line-height:1.5; margin-top:14px; }
+  .alert.green { background:var(--green-bg); border-left-color:var(--green); color:#1d7a5f; }
+  .alert.amber { background:var(--amber-bg); border-left-color:var(--amber); color:var(--amber); }
+  .alert strong { font-weight:600; }
+
+  .result-hero { background:linear-gradient(135deg,var(--teal),var(--teal-m)); color:#fff; padding:28px 32px; border-radius:14px; margin-bottom:22px; box-shadow:var(--shadow-lg); }
+  .result-hero .label { font-size:11.5px; color:rgba(255,255,255,0.65); text-transform:uppercase; letter-spacing:1.2px; font-weight:500; }
+  .result-hero .main-value { font-size:38px; font-weight:700; margin-top:4px; letter-spacing:-0.5px; }
+  .result-hero .sub-value { font-size:14px; color:rgba(255,255,255,0.75); margin-top:4px; }
+  .result-hero .meta-row { display:flex; gap:28px; margin-top:18px; padding-top:18px; border-top:1px solid rgba(255,255,255,0.12); }
+  .result-hero .meta-item { flex:1; }
+  .result-hero .meta-item .l { font-size:10.5px; color:rgba(255,255,255,0.55); text-transform:uppercase; letter-spacing:0.8px; font-weight:500; }
+  .result-hero .meta-item .v { font-size:18px; font-weight:600; margin-top:3px; }
+
+  table.t-result { width:100%; border-collapse:collapse; background:#fff; border-radius:var(--radius); overflow:hidden; box-shadow:var(--shadow); margin-top:18px; }
+  table.t-result th, table.t-result td { padding:12px 18px; text-align:left; font-size:13px; border-bottom:1px solid var(--border-l); }
+  table.t-result th { background:var(--bg); font-weight:600; color:var(--teal); text-transform:uppercase; font-size:11px; letter-spacing:0.5px; }
+  table.t-result td.num { text-align:right; font-family:'Inter',sans-serif; font-variant-numeric:tabular-nums; font-weight:500; letter-spacing:-0.1px; }
+  table.t-result tr:last-child td { border-bottom:none; }
+  table.t-result tr.total td { background:var(--green-bg); font-weight:700; color:var(--teal); }
+
+  .radio-group { display:flex; gap:10px; flex-wrap:wrap; }
+  .radio-pill { flex:1; min-width:130px; padding:10px 14px; border:1.5px solid var(--border); border-radius:8px; cursor:pointer; text-align:center; font-size:12.5px; font-weight:500; color:var(--text-2); background:#fafcfd; transition:all 0.18s; }
+  .radio-pill:hover { border-color:var(--green); }
+  .radio-pill.active { background:var(--green-bg); border-color:var(--green); color:var(--teal); font-weight:600; }
+  .radio-pill input { display:none; }
+
+  @media (max-width:980px) {
+    .sidebar { width:64px; }
+    .sidebar-logo .tagline, .nav-item span:not(.icon), .nav-label, .sidebar-foot span { display:none; }
+    .main { margin-left:64px; }
+    .sim-grid, .form-grid, .form-grid-3 { grid-template-columns:1fr; }
+  }
+</style>
+</head>
+<body>
+
+<aside class="sidebar">
+  <div class="sidebar-logo">
+    <div class="brand">loans<span class="b">4B</span></div>
+    <div class="tagline">Just loans for business</div>
+  </div>
+  <nav class="sidebar-nav">
+    <div class="nav-label">Simuladores</div>
+    <button class="nav-item active" onclick="showView('sim-rapido-leaseback')"><span class="icon">⚡</span><span>Sim. rápida Leaseback</span></button>
+    <button class="nav-item" onclick="showView('sim-rapido-hipotecario')"><span class="icon">⚡</span><span>Sim. rápida Hipotecario</span></button>
+    <button class="nav-item" onclick="showView('sim-leaseback')"><span class="icon">📋</span><span>Simulación Leaseback</span></button>
+    <button class="nav-item" onclick="showView('sim-hipotecario')"><span class="icon">📋</span><span>Simulación Hipotecario</span></button>
+    <div class="nav-label" style="margin-top:14px">Comercial</div>
+    <button class="nav-item" onclick="showView('nota-venta')"><span class="icon">📝</span><span>Nota de Venta</span></button>
+    <div class="nav-label" style="margin-top:14px">Herramientas</div>
+    <button class="nav-item" onclick="showView('conversor')"><span class="icon">💱</span><span>Conversor UF / CLP</span></button>
+    <div class="nav-label" style="margin-top:14px">Sistema</div>
+    <button class="nav-item" onclick="showView('config')"><span class="icon">⚙️</span><span>Configuración</span></button>
+  </nav>
+  <div class="sidebar-foot">
+    <span class="dot-on"></span><span>Sistema activo · v1.1</span>
+  </div>
+</aside>
+
+<main class="main">
+  <div class="topbar">
+    <div class="topbar-title" id="topbar-title">Simulación rápida de Leaseback</div>
+    <div class="topbar-right">
+      <div class="uf-chip" onclick="fetchUF(true)" title="Click para actualizar UF desde mindicador.cl">
+        <span class="uf-dot"></span>
+        <span id="uf-chip-text">UF —</span>
+      </div>
+      <div class="date-chip" id="date-chip">—</div>
+    </div>
+  </div>
+
+  <!-- SIM RÁPIDA LEASEBACK -->
+  <div class="view active" id="view-sim-rapido-leaseback">
+    <h1 class="section-title">Simulación rápida de Leaseback</h1>
+    <p class="section-sub">Cálculo referencial para conversaciones iniciales. Los parámetros se ajustan automáticamente con la política comercial de Loans4B.</p>
+    <div class="sim-grid">
+      <div class="form-card">
+        <div class="form-card-header"><span class="h-icon">🏦</span><h3>Parámetros del cliente</h3><div class="green-dot"></div></div>
+        <div class="form-body">
+          <div class="form-group" style="margin-bottom:14px"><label>Valor comercial del inmueble (UF) <span class="req">*</span></label><input type="number" id="qlb-valor" placeholder="Ej: 10.000" step="1" oninput="runSimLeasebackRapido()"><span class="hint">Valor de mercado de la propiedad.</span></div>
+          <div class="form-group" style="margin-bottom:14px"><label>Deuda actual sobre el inmueble (UF) <span class="opt">(opcional)</span></label><input type="number" id="qlb-deuda" placeholder="0 si no tiene" step="1" value="0" oninput="runSimLeasebackRapido()"><span class="hint">Se descuenta del capital entregado.</span></div>
+          <div class="form-grid">
+            <div class="form-group"><label>% Compraventa</label><input type="number" id="qlb-pct-cv" step="0.5" value="55" oninput="runSimLeasebackRapido()"><span class="hint">LTV 50%–60%.</span></div>
+            <div class="form-group"><label>Tasa mensual (%)</label><input type="number" id="qlb-tasa" step="0.05" value="1.1" oninput="runSimLeasebackRapido()"><span class="hint">~13,2% anual.</span></div>
+          </div>
+          <div class="form-grid" style="margin-top:14px">
+            <div class="form-group"><label>Plazo (meses)</label><select id="qlb-plazo" onchange="runSimLeasebackRapido()"><option value="12">12 meses</option><option value="24">24 meses</option></select></div>
+            <div class="form-group"><label>Fee L4B (%)</label><input type="number" id="qlb-fee-l4b" step="0.1" value="3" oninput="runSimLeasebackRapido()"><span class="hint">1,5% pre + 1,5% otorgam.</span></div>
+          </div>
+          <div class="form-grid" style="margin-top:14px">
+            <div class="form-group"><label>Fee fondo (%)</label><input type="number" id="qlb-fee-fondo" step="0.1" value="3" oninput="runSimLeasebackRapido()"></div>
+            <div class="form-group"><label>Gastos operacionales (%)</label><input type="number" id="qlb-gastos-op" step="0.1" value="2" oninput="runSimLeasebackRapido()"></div>
+          </div>
+          <div class="form-group" style="margin-top:14px"><label>Gastos notariales y CBR (CLP)</label><input type="number" id="qlb-notaria" step="10000" value="2690000" oninput="runSimLeasebackRapido()"><span class="hint">Cargo único: notaría, conservador, impuesto al mutuo.</span></div>
+        </div>
+      </div>
+
+      <div class="sim-result">
+        <div class="sr-row"><span class="sr-label">Valor compraventa (LTV)</span><span class="sr-value" id="qlb-r-compraventa">—</span></div>
+        <div class="sr-row sep"><span class="sr-label">Dinero neto al cliente</span><span class="sr-value big" id="qlb-r-liquidez">UF —</span></div>
+        <div class="sr-row"><span class="sr-label">Equivalente en CLP</span><span class="sr-value small" id="qlb-r-liquidez-clp">—</span></div>
+        <div class="sr-row sep"><span class="sr-label">Cuota mensual</span><span class="sr-value" id="qlb-r-cuota">—</span></div>
+        <div class="sr-row"><span class="sr-label">Equivalente CLP</span><span class="sr-value small" id="qlb-r-cuota-clp">—</span></div>
+        <div class="sr-row sep"><span class="sr-label">Fee Loans4B</span><span class="sr-value small" id="qlb-r-fee-l4b">—</span></div>
+        <div class="sr-row"><span class="sr-label">Fee fondo</span><span class="sr-value small" id="qlb-r-fee-fondo">—</span></div>
+        <div class="sr-row"><span class="sr-label">Gastos operacionales</span><span class="sr-value small" id="qlb-r-gastos-op">—</span></div>
+        <div class="sr-row"><span class="sr-label">Gastos notariales y CBR</span><span class="sr-value small" id="qlb-r-notaria">—</span></div>
+        <div class="sr-row"><span class="sr-label">Deuda actual liquidada</span><span class="sr-value small" id="qlb-r-deuda">—</span></div>
+        <div class="sr-row sep"><span class="sr-label">Total a pagar al fondo</span><span class="sr-value small" id="qlb-r-total-pago">—</span></div>
+      </div>
+    </div>
+    <div class="alert"><span>ℹ️</span><div><strong>Cómo se calcula:</strong> el valor de compraventa es un % del valor comercial (LTV). Sobre ese valor se descuentan los fees, gastos operacionales y notariales, más la deuda actual del cliente, para llegar al <strong>dinero neto en mano</strong>.</div></div>
+  </div>
+
+  <!-- SIM RÁPIDA HIPOTECARIO -->
+  <div class="view" id="view-sim-rapido-hipotecario">
+    <h1 class="section-title">Simulación rápida de Hipotecario</h1>
+    <p class="section-sub">Cálculo referencial de cuota hipotecaria (sistema francés). El CAE se calcula automáticamente a partir de la tasa nominal y los seguros aplicables.</p>
+    <div class="sim-grid">
+      <div class="form-card">
+        <div class="form-card-header"><span class="h-icon">🏠</span><h3>Parámetros</h3><div class="green-dot"></div></div>
+        <div class="form-body">
+          <div class="form-group" style="margin-bottom:14px">
+            <label>Tipo de persona</label>
+            <div class="radio-group">
+              <label class="radio-pill active" id="qh-pn-pill"><input type="radio" name="qh-tipo" value="natural" checked onchange="updateQHTipo()">Persona natural</label>
+              <label class="radio-pill" id="qh-pj-pill"><input type="radio" name="qh-tipo" value="juridica" onchange="updateQHTipo()">Persona jurídica</label>
+            </div>
+            <span class="hint" id="qh-tipo-hint">En persona natural se incluyen seguros de desgravamen, incendio/sismo y cesantía.</span>
+          </div>
+          <div class="form-group" style="margin-bottom:14px"><label>Valor de la propiedad (UF) <span class="req">*</span></label><input type="number" id="qh-valor" placeholder="Ej: 5.000" step="1" oninput="runSimHipotecarioRapido()"></div>
+          <div class="form-group" style="margin-bottom:14px"><label>Pie disponible (UF)</label><input type="number" id="qh-pie" placeholder="Ej: 1.000 (0 si financia el 100%)" step="1" oninput="runSimHipotecarioRapido()"><span class="hint">Si lo dejas en blanco se asume 20%. Acepta <strong>0</strong> si la operación es sin pie.</span></div>
+          <div class="form-grid">
+            <div class="form-group"><label>Plazo (años)</label><select id="qh-plazo" onchange="runSimHipotecarioRapido()"><option value="30">30</option><option value="25">25</option><option value="20" selected>20</option><option value="15">15</option><option value="10">10</option><option value="8">8</option><option value="5">5</option></select></div>
+            <div class="form-group"><label>Tasa nominal anual (%)</label><input type="number" id="qh-tasa" step="0.05" value="4.9" oninput="runSimHipotecarioRapido()"></div>
+          </div>
+        </div>
+      </div>
+      <div class="sim-result">
+        <div class="sr-row"><span class="sr-label">Financiamiento</span><span class="sr-value" id="qh-r-fin">—</span></div>
+        <div class="sr-row sep"><span class="sr-label">Cuota mensual total <span style="opacity:0.6">(con seguros)</span></span><span class="sr-value big" id="qh-r-cuota-total">—</span></div>
+        <div class="sr-row"><span class="sr-label">Equivalente en CLP</span><span class="sr-value small" id="qh-r-cuota-total-clp">—</span></div>
+        <div class="sr-row sep"><span class="sr-label">Cuota capital + interés</span><span class="sr-value small" id="qh-r-cuota">—</span></div>
+        <div class="sr-row"><span class="sr-label">Seguros estimados</span><span class="sr-value small" id="qh-r-seguros">—</span></div>
+        <div class="sr-row sep"><span class="sr-label">CAE estimado <span style="opacity:0.6">(derivado)</span></span><span class="sr-value" id="qh-r-cae" style="color:#3dd9a7">—</span></div>
+        <div class="sr-row sep"><span class="sr-label">Total a pagar (capital + interés)</span><span class="sr-value small" id="qh-r-total">—</span></div>
+        <div class="sr-row"><span class="sr-label">Costo financiero (intereses)</span><span class="sr-value small" id="qh-r-interes">—</span></div>
+        <div class="sr-row sep"><span class="sr-label">Ingreso líquido mínimo recomendado</span><span class="sr-value small" id="qh-r-ingreso-min">—</span></div>
+      </div>
+    </div>
+    <div class="alert"><span>ℹ️</span><div><strong>Cómo se calcula el CAE:</strong> es la tasa anual <em>derivada</em> que sintetiza el costo total del crédito (tasa nominal + seguros) en un solo número, según regulación CMF. Aquí <strong>NO se cobra dos veces</strong>: la cuota base ya incluye los seguros sumados aparte, y el CAE solo muestra cuánto representa todo eso anualizado.</div></div>
+  </div>
+
+  <!-- SIM LEASEBACK COMPLETO -->
+  <div class="view" id="view-sim-leaseback">
+    <h1 class="section-title">Simulación de Leaseback</h1>
+    <p class="section-sub">Simulación formal para enviar al cliente. Genera un PDF profesional con todos los costos desglosados y el dinero neto a recibir.</p>
+    <form id="form-leaseback" onsubmit="event.preventDefault(); calcularLeasebackCompleto();">
+      <div class="form-card">
+        <div class="form-card-header"><span class="h-icon">👤</span><h3>Datos del cliente</h3><div class="green-dot"></div></div>
+        <div class="form-body">
+          <div class="form-group" style="margin-bottom:14px"><label>Tipo de persona <span class="req">*</span></label>
+            <div class="radio-group">
+              <label class="radio-pill active" id="lb-pn-pill"><input type="radio" name="lb-tipo" value="natural" checked onchange="updateLBTipo()">Persona natural</label>
+              <label class="radio-pill" id="lb-pj-pill"><input type="radio" name="lb-tipo" value="juridica" onchange="updateLBTipo()">Persona jurídica</label>
+            </div>
+          </div>
+          <div class="form-grid">
+            <div class="form-group"><label id="lb-nombre-label">Nombre completo <span class="req">*</span></label><input type="text" id="lb-nombre" placeholder="Ej: María González Pérez" required></div>
+            <div class="form-group"><label>RUT <span class="req">*</span></label><input type="text" id="lb-rut" placeholder="Ej: 12.345.678-9" oninput="formatRUT(this)" required></div>
+          </div>
+          <div class="form-grid" style="margin-top:14px">
+            <div class="form-group"><label>Correo del cliente</label><input type="email" id="lb-email" placeholder="cliente@ejemplo.cl"></div>
+            <div class="form-group"><label>Teléfono</label><input type="text" id="lb-telefono" placeholder="+56 9 1234 5678"></div>
+          </div>
+          <div class="form-group" style="margin-top:14px"><label>Asesor responsable</label><input type="text" id="lb-asesor" readonly style="background:var(--green-bg); color:var(--teal); font-weight:600;"><span class="hint">Se completa con tus datos guardados en <strong>Configuración</strong>.</span></div>
+        </div>
+      </div>
+      <div class="form-card" style="margin-top:18px">
+        <div class="form-card-header"><span class="h-icon">🏠</span><h3>Datos del inmueble y operación</h3><div class="green-dot"></div></div>
+        <div class="form-body">
+          <div class="form-grid">
+            <div class="form-group"><label>Tipo de propiedad</label><select id="lb-tipo-propiedad"><option value="urbana">Inmueble urbano</option><option value="parcela">Parcela / rural</option><option value="comercial">Local comercial</option><option value="industrial">Bodega / industrial</option></select></div>
+            <div class="form-group"><label>Comuna</label><input type="text" id="lb-comuna" placeholder="Ej: Las Condes"></div>
+          </div>
+          <div class="form-group" style="margin-top:14px"><label>Dirección del inmueble</label><input type="text" id="lb-direccion" placeholder="Ej: Av. Apoquindo 4500, Of. 1201"></div>
+          <div class="form-grid-3" style="margin-top:14px">
+            <div class="form-group"><label>Valor comercial (UF) <span class="req">*</span></label><input type="number" id="lb-valor-uf" placeholder="Ej: 10.000" step="1" required></div>
+            <div class="form-group"><label>Deuda actual (UF)</label><input type="number" id="lb-deuda" placeholder="0 si no tiene" step="1" value="0"></div>
+            <div class="form-group"><label>Plazo</label><select id="lb-plazo"><option value="12">12 meses</option><option value="24">24 meses</option></select></div>
+          </div>
+        </div>
+      </div>
+      <div class="form-card" style="margin-top:18px">
+        <div class="form-card-header"><span class="h-icon">⚙️</span><h3>Parámetros comerciales <span style="font-weight:400; text-transform:none; letter-spacing:0; color:var(--muted); font-size:11px; margin-left:8px;">(editables — política Loans4B por defecto)</span></h3><div class="green-dot"></div></div>
+        <div class="form-body">
+          <div class="form-grid-3">
+            <div class="form-group"><label>% Compraventa (LTV)</label><input type="number" id="lb-pct-cv" step="0.5" value="55"><span class="hint">Rango: 50%–60%.</span></div>
+            <div class="form-group"><label>Tasa mensual (%)</label><input type="number" id="lb-tasa" step="0.05" value="1.1"><span class="hint">~13,2% anual.</span></div>
+            <div class="form-group"><label>Fee Loans4B (%)</label><input type="number" id="lb-fee-l4b" step="0.1" value="3"><span class="hint">1,5% pre + 1,5% otorgam.</span></div>
+            <div class="form-group"><label>Fee fondo (%)</label><input type="number" id="lb-fee-fondo" step="0.1" value="3"></div>
+            <div class="form-group"><label>Gastos operacionales (%)</label><input type="number" id="lb-gastos-op" step="0.1" value="2"></div>
+            <div class="form-group"><label>Notaría y CBR (CLP)</label><input type="number" id="lb-notaria" step="10000" value="2690000"></div>
+          </div>
+        </div>
+      </div>
+      <div style="margin-top:22px"><button type="submit" class="btn-calc">Generar simulación →</button></div>
+    </form>
+    <div id="lb-resultado" style="display:none; margin-top:30px;">
+      <div class="result-hero">
+        <div class="label">Dinero neto a recibir por el cliente</div>
+        <div class="main-value" id="lb-res-liquidez-uf">UF —</div>
+        <div class="sub-value" id="lb-res-liquidez-clp">≈ $—</div>
+        <div class="meta-row">
+          <div class="meta-item"><div class="l">Capital compraventa</div><div class="v" id="lb-res-compraventa">UF —</div></div>
+          <div class="meta-item"><div class="l">Cuota mensual</div><div class="v" id="lb-res-cuota">UF —</div></div>
+          <div class="meta-item"><div class="l">Plazo</div><div class="v" id="lb-res-plazo">— meses</div></div>
+        </div>
+      </div>
+      <table class="t-result">
+        <thead><tr><th style="width:60%">Concepto</th><th style="width:20%;text-align:right">UF</th><th style="width:20%;text-align:right">CLP</th></tr></thead>
+        <tbody id="lb-tabla-desglose"></tbody>
+      </table>
+      <div style="margin-top:22px; display:flex; gap:10px; flex-wrap:wrap;">
+        <button class="btn-pdf" onclick="descargarPDFLeaseback()"><span>📥</span> Descargar simulación en PDF</button>
+        <button class="btn green" onclick="abrirNotaVenta('leaseback')"><span>📝</span> Generar Nota de Venta con estos datos</button>
+        <button class="btn ghost" onclick="document.getElementById('lb-resultado').style.display='none'">Editar parámetros</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- SIM HIPOTECARIO COMPLETO -->
+  <div class="view" id="view-sim-hipotecario">
+    <h1 class="section-title">Simulación de Crédito Hipotecario</h1>
+    <p class="section-sub">Simulación formal para enviar al cliente. Calcula cuota, seguros, honorarios y genera el PDF profesional con la firma del asesor.</p>
+    <form id="form-hipotecario" onsubmit="event.preventDefault(); calcularHipotecarioCompleto();">
+      <div class="form-card">
+        <div class="form-card-header"><span class="h-icon">👤</span><h3>Datos del cliente</h3><div class="green-dot"></div></div>
+        <div class="form-body">
+          <div class="form-group" style="margin-bottom:14px"><label>Tipo de persona <span class="req">*</span></label>
+            <div class="radio-group">
+              <label class="radio-pill active" id="h-pn-pill"><input type="radio" name="h-tipo" value="natural" checked onchange="updateHTipo()">Persona natural</label>
+              <label class="radio-pill" id="h-pj-pill"><input type="radio" name="h-tipo" value="juridica" onchange="updateHTipo()">Persona jurídica</label>
+            </div>
+            <span class="hint" id="h-tipo-hint">En persona jurídica el seguro de cesantía y desgravamen quedan en 0 automáticamente.</span>
+          </div>
+          <div class="form-grid">
+            <div class="form-group"><label id="h-nombre-label">Nombre completo <span class="req">*</span></label><input type="text" id="h-nombre" placeholder="Ej: María González Pérez" required></div>
+            <div class="form-group"><label>RUT <span class="req">*</span></label><input type="text" id="h-rut" placeholder="Ej: 12.345.678-9" oninput="formatRUT(this)" required></div>
+          </div>
+          <div class="form-grid" style="margin-top:14px">
+            <div class="form-group"><label>Correo del cliente</label><input type="email" id="h-email" placeholder="cliente@ejemplo.cl"></div>
+            <div class="form-group"><label>Teléfono</label><input type="text" id="h-telefono" placeholder="+56 9 1234 5678"></div>
+          </div>
+          <div class="form-group" style="margin-top:14px"><label>Asesor responsable</label><input type="text" id="h-asesor" readonly style="background:var(--green-bg); color:var(--teal); font-weight:600;"><span class="hint">Se completa con tus datos guardados en <strong>Configuración</strong>.</span></div>
+        </div>
+      </div>
+      <div class="form-card" style="margin-top:18px">
+        <div class="form-card-header"><span class="h-icon">🏠</span><h3>Datos del crédito</h3><div class="green-dot"></div></div>
+        <div class="form-body">
+          <div class="form-group" style="margin-bottom:14px"><label>Valor del inmueble (UF) <span class="req">*</span></label><input type="number" id="h-valor-uf" placeholder="Ej: 10.000" step="1" required><span class="hint">Valor comercial declarado del inmueble (referencial).</span></div>
+          <div class="form-grid" style="margin-bottom:14px">
+            <div class="form-group"><label>Pie (UF)</label><input type="number" id="h-pie" placeholder="0 si no aporta pie" step="1" value="0"><span class="hint">Aporte inicial del cliente. Acepta <strong>0</strong>.</span></div>
+            <div class="form-group"><label>Valor a financiar (UF) <span class="req">*</span></label><input type="number" id="h-financiar" placeholder="Ej: 8.500" step="1" required><span class="hint">Monto que el cliente solicita al banco. <strong>Independiente del pie.</strong></span></div>
+          </div>
+          <div class="alert" style="margin-top:0; margin-bottom:14px; font-size:11.5px"><span>💡</span><div>El <strong>valor del inmueble</strong> es referencial. El cliente puede pedir un financiamiento <strong>menor</strong> al valor del inmueble sin aportar pie; el resto simplemente no se financia.</div></div>
+          <div class="form-grid-3">
+            <div class="form-group"><label>Plazo (años) <span class="req">*</span></label><select id="h-plazo"><option value="30">30</option><option value="25">25</option><option value="20" selected>20</option><option value="15">15</option><option value="10">10</option><option value="8">8</option><option value="5">5</option></select></div>
+            <div class="form-group"><label>Tasa nominal anual (%) <span class="req">*</span></label><input type="number" id="h-tasa" step="0.05" value="4.9" required><span class="hint">El CAE se calcula automáticamente.</span></div>
+            <div class="form-group"><label>Tipo de tasa</label><select id="h-tipo-tasa"><option value="fija">Fija</option><option value="variable">Variable</option><option value="mixta">Mixta</option></select></div>
+          </div>
+        </div>
+      </div>
+      <div class="form-card" style="margin-top:18px">
+        <div class="form-card-header"><span class="h-icon">🛡️</span><h3>Seguros incluidos en la cuota <span style="font-weight:400; text-transform:none; letter-spacing:0; color:var(--muted); font-size:11px; margin-left:8px;">(según tipo de persona)</span></h3><div class="green-dot"></div></div>
+        <div class="form-body">
+          <div class="alert" style="margin-top:0; margin-bottom:16px"><span>ℹ️</span><div>En <strong>persona natural</strong> aplican desgravamen + incendio/sismo + cesantía (opcional). En <strong>persona jurídica</strong> sólo aplica incendio/sismo: la empresa no fallece ni queda cesante.</div></div>
+          <div class="form-grid-3">
+            <div class="form-group"><label>Seguro desgravamen (UF/mes)</label><input type="number" id="h-seg-desg" step="0.01" value="0.90" oninput="actualizarSegTotalDisplay()"><span class="hint" id="h-seg-desg-hint">Aplica a persona natural.</span></div>
+            <div class="form-group"><label>Seguro incendio y sismo (UF/mes)</label><input type="number" id="h-seg-incendio" step="0.01" value="0.52" oninput="actualizarSegTotalDisplay()"><span class="hint">Obligatorio siempre.</span></div>
+            <div class="form-group"><label>Seguro cesantía (UF/mes)</label><input type="number" id="h-seg-cesantia" step="0.01" value="0.18" oninput="actualizarSegTotalDisplay()"><span class="hint" id="h-cesantia-hint">Opcional. No aplica a persona jurídica.</span></div>
+          </div>
+          <div style="margin-top:14px; padding:12px 16px; background:var(--green-bg); border-radius:8px; font-size:12px; color:var(--teal);">
+            <strong>Total seguros estimados:</strong> <span id="h-seg-total-display" style="font-variant-numeric:tabular-nums; font-weight:600;">UF 1,60/mes</span>
+          </div>
+        </div>
+      </div>
+      <div class="form-card" style="margin-top:18px">
+        <div class="form-card-header"><span class="h-icon">💼</span><h3>Honorarios y pre-evaluación Loans4B</h3><div class="green-dot"></div></div>
+        <div class="form-body">
+          <div class="form-grid">
+            <div class="form-group"><label>Honorarios Loans4B (% del monto financiado)</label><input type="number" id="h-honorarios" step="0.1" value="3"><span class="hint">3% presentación bancaria / 5% estructuración.</span></div>
+            <div class="form-group"><label>Pre-evaluación crediticia (UF)</label><input type="number" id="h-preeval" step="1" min="0" max="20" value="10"><span class="hint">Rango <strong>0 a 20 UF</strong>. Por defecto: <strong>UF 10</strong> persona natural · <strong>UF 20</strong> persona jurídica. Cobro al inicio.</span></div>
+          </div>
+        </div>
+      </div>
+      <div style="margin-top:22px"><button type="submit" class="btn-calc">Generar simulación →</button></div>
+    </form>
+    <div id="h-resultado" style="display:none; margin-top:30px;">
+      <div class="result-hero">
+        <div class="label">Cuota mensual estimada (con seguros)</div>
+        <div class="main-value" id="h-res-cuota-uf">UF —</div>
+        <div class="sub-value" id="h-res-cuota-clp">≈ $—</div>
+        <div class="meta-row">
+          <div class="meta-item"><div class="l">Financiamiento</div><div class="v" id="h-res-financiamiento">UF —</div></div>
+          <div class="meta-item"><div class="l">Plazo</div><div class="v" id="h-res-plazo">— años</div></div>
+          <div class="meta-item"><div class="l">Tasa</div><div class="v" id="h-res-tasa">—%</div></div>
+        </div>
+      </div>
+      <table class="t-result">
+        <thead><tr><th style="width:60%">Concepto</th><th style="width:20%;text-align:right">UF</th><th style="width:20%;text-align:right">CLP</th></tr></thead>
+        <tbody id="h-tabla-desglose"></tbody>
+      </table>
+      <div style="margin-top:22px; display:flex; gap:10px; flex-wrap:wrap;">
+        <button class="btn-pdf" onclick="descargarPDFHipotecario()"><span>📥</span> Descargar simulación en PDF</button>
+        <button class="btn green" onclick="abrirNotaVenta('hipotecario')"><span>📝</span> Generar Nota de Venta con estos datos</button>
+        <button class="btn ghost" onclick="document.getElementById('h-resultado').style.display='none'">Editar parámetros</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- NOTA DE VENTA INTERNA (F-003) -->
+  <div class="view" id="view-nota-venta">
+    <h1 class="section-title">Nota de Venta · Interna</h1>
+    <p class="section-sub">Documento interno para el vendedor. Auto-rellena con los datos de la última simulación. Complete los campos restantes (rol, propiedad, contrato a enviar) y descargue el PDF para registro y disparo de comisión.</p>
+
+    <div id="nv-aviso-vacio" class="alert amber" style="margin-bottom:18px"><span>ℹ️</span><div>Aún no hay simulación cargada. Genere primero una simulación hipotecaria o de leaseback y pulse <strong>"Generar Nota de Venta con estos datos"</strong> para pre-llenar este formulario. También puede llenar la nota manualmente desde cero.</div></div>
+
+    <div id="nv-fuente" class="alert green" style="display:none; margin-bottom:18px"><span>✅</span><div>Datos cargados desde simulación <strong id="nv-fuente-tipo">—</strong>. Puede editar cualquier campo antes de descargar el PDF.</div></div>
+
+    <form id="form-nv" onsubmit="event.preventDefault();">
+      <div class="form-card">
+        <div class="form-card-header"><span class="h-icon">👤</span><h3>1. Información del cliente</h3><div class="green-dot"></div></div>
+        <div class="form-body">
+          <div class="form-grid">
+            <div class="form-group"><label>Nombre / Razón social <span class="req">*</span></label><input type="text" id="nv-nombre" required></div>
+            <div class="form-group"><label>RUT <span class="req">*</span></label><input type="text" id="nv-rut" oninput="formatRUT(this)" required></div>
+          </div>
+          <div class="form-grid" style="margin-top:14px">
+            <div class="form-group"><label>Tipo de persona</label><select id="nv-tipo-persona"><option value="natural">Persona Natural</option><option value="juridica">Persona Jurídica</option></select></div>
+            <div class="form-group"><label>Giro / Actividad</label><input type="text" id="nv-giro" placeholder="Solo para persona jurídica"></div>
+          </div>
+          <div class="form-grid" style="margin-top:14px">
+            <div class="form-group"><label>Correo <span class="req">*</span></label><input type="email" id="nv-email" required></div>
+            <div class="form-group"><label>Teléfono / WhatsApp <span class="req">*</span></label><input type="text" id="nv-telefono" required></div>
+          </div>
+          <div class="form-grid" style="margin-top:14px">
+            <div class="form-group"><label>Dirección particular</label><input type="text" id="nv-direccion"></div>
+            <div class="form-group"><label>Comuna / Ciudad</label><input type="text" id="nv-comuna"></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="form-card" style="margin-top:18px">
+        <div class="form-card-header"><span class="h-icon">🏠</span><h3>2. Datos de la propiedad</h3><div class="green-dot"></div></div>
+        <div class="form-body">
+          <div class="form-grid">
+            <div class="form-group"><label>Rol de avalúo <span class="req">*</span></label><input type="text" id="nv-rol" placeholder="Ej: 1234-567"><span class="hint">Número de rol del SII de la propiedad.</span></div>
+            <div class="form-group"><label>Tipo de propiedad</label><select id="nv-tipo-propiedad"><option value="casa">Casa habitación</option><option value="departamento">Departamento</option><option value="parcela">Parcela / rural</option><option value="comercial">Local comercial</option><option value="bodega">Bodega / industrial</option><option value="oficina">Oficina</option><option value="terreno">Terreno</option><option value="otro">Otro</option></select></div>
+          </div>
+          <div class="form-group" style="margin-top:14px"><label>Dirección de la propiedad <span class="req">*</span></label><input type="text" id="nv-prop-direccion" placeholder="Calle, número, depto"></div>
+          <div class="form-grid" style="margin-top:14px">
+            <div class="form-group"><label>Comuna propiedad</label><input type="text" id="nv-prop-comuna"></div>
+            <div class="form-group"><label>Región</label><input type="text" id="nv-prop-region" placeholder="Ej: Región Metropolitana"></div>
+          </div>
+          <div class="form-grid" style="margin-top:14px">
+            <div class="form-group"><label>Valor propiedad (UF) <span class="req">*</span></label><input type="number" id="nv-valor-uf" step="1" oninput="nvOnInputUF()"></div>
+            <div class="form-group"><label>Equivalente en CLP</label><input type="text" id="nv-valor-clp" readonly style="background:var(--green-bg); color:var(--teal); font-weight:600;"></div>
+          </div>
+          <div class="form-group" style="margin-top:14px"><label>Observaciones de la propiedad</label><textarea id="nv-prop-obs" rows="2" placeholder="Estado, gravámenes, situación jurídica, etc."></textarea></div>
+        </div>
+      </div>
+
+      <div class="form-card" style="margin-top:18px">
+        <div class="form-card-header"><span class="h-icon">💼</span><h3>3. Producto contratado</h3><div class="green-dot"></div></div>
+        <div class="form-body">
+          <div class="form-grid">
+            <div class="form-group"><label>Producto <span class="req">*</span></label><select id="nv-producto"><option value="hipotecario">Crédito Hipotecario</option><option value="leaseback">Leaseback Inmobiliario</option><option value="estructuracion">Estructuración hipotecaria</option><option value="levantamiento">Levantamiento de capital</option><option value="factoring">Factoring internacional</option><option value="bridge">Bridge loan internacional</option><option value="otro">Otro</option></select></div>
+            <div class="form-group"><label>Monto operación (UF) <span class="req">*</span></label><input type="number" id="nv-monto-uf" step="1"></div>
+          </div>
+          <div class="form-grid" style="margin-top:14px">
+            <div class="form-group"><label>Plazo</label><input type="text" id="nv-plazo" placeholder="Ej: 20 años / 18 meses"></div>
+            <div class="form-group"><label>Tasa pactada</label><input type="text" id="nv-tasa" placeholder="Ej: 4,9% anual"></div>
+          </div>
+          <div class="form-grid" style="margin-top:14px">
+            <div class="form-group"><label>Entidad financiera / Fondo</label><input type="text" id="nv-entidad" placeholder="Ej: Banco de Chile / Fondo XYZ"></div>
+            <div class="form-group"><label>Fecha estimada otorgamiento</label><input type="date" id="nv-fecha-otorga"></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="form-card" style="margin-top:18px">
+        <div class="form-card-header"><span class="h-icon">💰</span><h3>4. Honorarios y facturación</h3><div class="green-dot"></div></div>
+        <div class="form-body">
+          <div class="form-grid">
+            <div class="form-group"><label>Fee Loans4B (UF) <span class="req">*</span></label><input type="number" id="nv-fee-uf" step="0.01" oninput="nvOnInputUF()"></div>
+            <div class="form-group"><label>Fee Loans4B (CLP)</label><input type="text" id="nv-fee-clp" readonly style="background:var(--green-bg); color:var(--teal); font-weight:600;"></div>
+          </div>
+          <div class="form-grid" style="margin-top:14px">
+            <div class="form-group"><label>% honorarios sobre operación</label><input type="text" id="nv-fee-pct" placeholder="Ej: 3,0% / 5,0%"></div>
+            <div class="form-group"><label>Momento de cobro</label><select id="nv-momento-cobro"><option value="otorgamiento">Al otorgamiento / desembolso</option><option value="parcial">Parcial al inicio · saldo al otorgamiento</option><option value="contado">Contado al cierre</option><option value="otro">Otro (especificar)</option></select></div>
+          </div>
+          <div class="form-grid" style="margin-top:14px">
+            <div class="form-group"><label>Documento a emitir</label><select id="nv-doc"><option value="factura">Factura electrónica afecta a IVA</option><option value="boleta">Boleta de honorarios</option><option value="exenta">Factura exenta</option><option value="otro">Otro</option></select></div>
+            <div class="form-group"><label>Razón social facturación</label><input type="text" id="nv-razon-facturacion" placeholder="Si distinta al cliente"></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="form-card" style="margin-top:18px">
+        <div class="form-card-header"><span class="h-icon">📄</span><h3>5. Contrato a enviar</h3><div class="green-dot"></div></div>
+        <div class="form-body">
+          <div class="form-grid">
+            <div class="form-group"><label>Contrato que se enviará al cliente</label><input type="text" id="nv-contrato" placeholder="Ej: Mandato de gestión · Contrato leaseback · Promesa CV"><span class="hint">Texto libre. Indique el nombre exacto del documento contractual.</span></div>
+            <div class="form-group"><label>Estado del contrato</label><select id="nv-contrato-estado"><option value="pendiente">Pendiente de envío</option><option value="enviado">Enviado al cliente</option><option value="firmado">Firmado por el cliente</option><option value="protocolizado">Protocolizado en notaría</option></select></div>
+          </div>
+          <div class="form-grid" style="margin-top:14px">
+            <div class="form-group"><label>Fecha de envío del contrato</label><input type="date" id="nv-contrato-fecha"></div>
+            <div class="form-group"><label>Anexos / documentos adjuntos</label><input type="text" id="nv-anexos" placeholder="Ej: Pre-evaluación, simulación, mandato"></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="form-card" style="margin-top:18px">
+        <div class="form-card-header"><span class="h-icon">👨‍💼</span><h3>6. Asesor responsable</h3><div class="green-dot"></div></div>
+        <div class="form-body">
+          <div class="form-grid">
+            <div class="form-group"><label>Nombre asesor <span class="req">*</span></label><input type="text" id="nv-asesor-nombre"></div>
+            <div class="form-group"><label>Correo / Teléfono</label><input type="text" id="nv-asesor-contacto"></div>
+          </div>
+          <div class="form-grid" style="margin-top:14px">
+            <div class="form-group"><label>Origen del lead</label><select id="nv-origen-lead"><option value="referido">Referido</option><option value="web">Sitio web</option><option value="cartera">Cartera propia</option><option value="campaña">Campaña</option><option value="otro">Otro</option></select></div>
+            <div class="form-group"><label>% comisión aplicable</label><input type="text" id="nv-comision" placeholder="Según POL-001"></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="form-card" style="margin-top:18px">
+        <div class="form-card-header"><span class="h-icon">📝</span><h3>7. Observaciones</h3><div class="green-dot"></div></div>
+        <div class="form-body">
+          <div class="form-group"><label>Observaciones internas para jefatura</label><textarea id="nv-observaciones" rows="3" placeholder="Hitos relevantes, condiciones especiales, riesgos detectados, etc."></textarea></div>
+        </div>
+      </div>
+
+      <div style="margin-top:22px; display:flex; gap:10px; flex-wrap:wrap;">
+        <button type="button" class="btn-pdf" onclick="descargarNotaVenta()"><span>📥</span> Descargar Nota de Venta en PDF</button>
+        <button type="button" class="btn" onclick="precargarUltimaSimulacion()"><span>↻</span> Cargar última simulación</button>
+        <button type="button" class="btn ghost" onclick="limpiarNotaVenta()">Limpiar formulario</button>
+      </div>
+    </form>
+  </div>
+
+  <!-- CONVERSOR UF/CLP -->
+  <div class="view" id="view-conversor">
+    <h1 class="section-title">Conversor UF / CLP</h1>
+    <p class="section-sub">Conversión instantánea bidireccional, usando el valor UF de mindicador.cl.</p>
+    <div class="form-card" style="max-width:680px">
+      <div class="form-card-header"><span class="h-icon">💱</span><h3>Conversión bidireccional</h3><div class="green-dot"></div></div>
+      <div class="form-body">
+        <div class="form-grid">
+          <div class="form-group"><label>Monto en UF</label><input type="number" id="conv-uf" placeholder="Ej: 2500" step="0.01" oninput="convDeUF()"></div>
+          <div class="form-group"><label>Monto en CLP</label><input type="text" id="conv-clp" placeholder="Ej: 100.200.000" oninput="convDeCLP()"></div>
+        </div>
+        <div class="hint" style="margin-top:18px; font-size:12.5px">Valor UF utilizado: <strong id="conv-uf-display">—</strong> · Actualizado <span id="conv-uf-fecha">—</span></div>
+        <div style="margin-top:14px"><button class="btn green" onclick="fetchUF(true)"><span>🔄</span> Actualizar UF</button></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- CONFIGURACIÓN -->
+  <div class="view" id="view-config">
+    <h1 class="section-title">Configuración</h1>
+    <p class="section-sub">Datos del asesor que aparecerán en cada simulación y PDF enviado al cliente. Se guardan en este navegador.</p>
+    <div class="form-card" style="max-width:760px">
+      <div class="form-card-header"><span class="h-icon">👨‍💼</span><h3>Datos del asesor</h3><div class="green-dot"></div></div>
+      <div class="form-body">
+        <div class="form-grid">
+          <div class="form-group"><label>Nombre completo <span class="req">*</span></label><input type="text" id="cfg-nombre" placeholder="Ej: Lukas Álvarez"></div>
+          <div class="form-group"><label>Cargo</label><input type="text" id="cfg-cargo" placeholder="Ej: Asesor de Crédito Hipotecario" value="Asesor de Crédito Hipotecario"></div>
+        </div>
+        <div class="form-grid" style="margin-top:14px">
+          <div class="form-group"><label>Correo electrónico <span class="req">*</span></label><input type="email" id="cfg-email" placeholder="lukas@loans4b.com"></div>
+          <div class="form-group"><label>Teléfono / WhatsApp <span class="req">*</span></label><input type="text" id="cfg-telefono" placeholder="+56 9 1234 5678"></div>
+        </div>
+        <div class="btn-row" style="margin-top:18px">
+          <button class="btn" onclick="guardarConfig()"><span>💾</span> Guardar datos</button>
+          <button class="btn ghost" onclick="limpiarConfig()">Limpiar</button>
+        </div>
+        <div id="cfg-status" class="alert green" style="display:none; margin-top:14px"><span>✅</span><div>Datos del asesor guardados correctamente.</div></div>
+      </div>
+    </div>
+    <div class="form-card" style="max-width:760px; margin-top:18px">
+      <div class="form-card-header"><span class="h-icon">🏢</span><h3>Datos de la empresa</h3><div class="green-dot"></div></div>
+      <div class="form-body">
+        <div class="form-grid">
+          <div class="form-group"><label>Razón social</label><input type="text" id="cfg-empresa" value="Asesorías Loans4B SpA"></div>
+          <div class="form-group"><label>RUT</label><input type="text" id="cfg-empresa-rut" value="78.302.775-5"></div>
+        </div>
+        <div class="form-group" style="margin-top:14px"><label>Domicilio</label><input type="text" id="cfg-empresa-dir" value="Av. Raúl Labbé 12613, Of. 231, Lo Barnechea, Santiago"></div>
+        <div class="form-group" style="margin-top:14px"><label>Sitio web</label><input type="text" id="cfg-empresa-web" value="www.loans4b.com"></div>
+        <div style="margin-top:14px"><button class="btn" onclick="guardarConfig()"><span>💾</span> Guardar empresa</button></div>
+      </div>
+    </div>
+  </div>
+</main>
+
+<script>
+let UF_VALOR = 40441.84;
+let UF_FECHA = '21-05-2026';
+const VIEW_TITLES = {
+  'sim-rapido-leaseback': 'Simulación rápida de Leaseback',
+  'sim-rapido-hipotecario': 'Simulación rápida de Hipotecario',
+  'sim-leaseback': 'Simulación de Leaseback',
+  'sim-hipotecario': 'Simulación de Crédito Hipotecario',
+  'conversor': 'Conversor UF / CLP',
+  'config': 'Configuración'
+};
+const SEGUROS_REF = {
+  natural:  { desg: 0.90, incendio: 0.52, cesantia: 0.18 },
+  juridica: { desg: 0,    incendio: 0.52, cesantia: 0    }
+};
+
+/* === FORMATO === */
+function fmtCLP(n){ if (n==null||isNaN(n)) return '$0'; return '$'+Math.round(n).toLocaleString('es-CL').replace(/,/g,'.'); }
+function fmtUF(n,dec=2){ if (n==null||isNaN(n)) return 'UF 0'; return 'UF '+Number(n).toLocaleString('es-CL',{minimumFractionDigits:dec,maximumFractionDigits:dec}); }
+function fmtNum(n,dec=2){ if (n==null||isNaN(n)) return '—'; return Number(n).toLocaleString('es-CL',{minimumFractionDigits:dec,maximumFractionDigits:dec}); }
+function fmtPct(n,dec=2){ if (n==null||isNaN(n)) return '0%'; return Number(n).toLocaleString('es-CL',{minimumFractionDigits:dec,maximumFractionDigits:dec})+'%'; }
+function fmtFecha(d=new Date()){ return d.toLocaleDateString('es-CL',{day:'2-digit',month:'2-digit',year:'numeric'}); }
+function addDias(dias){ const d=new Date(); d.setDate(d.getDate()+dias); return fmtFecha(d); }
+function formatRUT(input){ let v=input.value.replace(/[^\dkK]/g,'').toUpperCase(); if(v.length<2){input.value=v; return;} const dv=v.slice(-1); const num=v.slice(0,-1); input.value=num.replace(/\B(?=(\d{3})+(?!\d))/g,'.')+'-'+dv; }
+
+/* === NAVEGACIÓN === */
+function showView(name){
+  document.querySelectorAll('.view').forEach(v=>v.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('active'));
+  const v=document.getElementById('view-'+name); if(v) v.classList.add('active');
+  document.querySelectorAll('.nav-item').forEach(n=>{ if(n.getAttribute('onclick')&&n.getAttribute('onclick').includes("'"+name+"'")) n.classList.add('active'); });
+  document.getElementById('topbar-title').textContent=VIEW_TITLES[name]||'';
+  aplicarAsesorEnFormularios();
+  window.scrollTo(0,0);
+}
+
+/* === UF FETCH === */
+async function fetchUF(force=false){
+  const chip=document.getElementById('uf-chip-text');
+  if(force) chip.textContent='UF actualizando…';
+  try{
+    const r=await fetch('https://mindicador.cl/api/uf');
+    if(!r.ok) throw new Error('No disponible');
+    const j=await r.json();
+    UF_VALOR=j.serie[0].valor;
+    UF_FECHA=fmtFecha(new Date(j.serie[0].fecha));
+    actualizarChipUF();
+    if(document.getElementById('conv-uf').value) convDeUF();
+    runSimLeasebackRapido();
+    runSimHipotecarioRapido();
+  }catch(e){ actualizarChipUF(); }
+}
+function actualizarChipUF(){
+  document.getElementById('uf-chip-text').textContent='UF '+fmtCLP(UF_VALOR).replace('$','');
+  document.getElementById('date-chip').textContent=UF_FECHA;
+  if(document.getElementById('conv-uf-display')){
+    document.getElementById('conv-uf-display').textContent=fmtCLP(UF_VALOR);
+    document.getElementById('conv-uf-fecha').textContent=UF_FECHA;
+  }
+}
+
+/* === CONFIG === */
+const CFG_KEY='l4b_config';
+function cargarConfig(){ const raw=localStorage.getItem(CFG_KEY); if(!raw) return null; try{return JSON.parse(raw);}catch(e){return null;} }
+function guardarConfig(){
+  const data={
+    nombre:document.getElementById('cfg-nombre').value.trim(),
+    cargo:document.getElementById('cfg-cargo').value.trim()||'Asesor de Crédito Hipotecario',
+    email:document.getElementById('cfg-email').value.trim(),
+    telefono:document.getElementById('cfg-telefono').value.trim(),
+    empresa:document.getElementById('cfg-empresa').value.trim()||'Asesorías Loans4B SpA',
+    empresaRUT:document.getElementById('cfg-empresa-rut').value.trim()||'78.302.775-5',
+    empresaDir:document.getElementById('cfg-empresa-dir').value.trim(),
+    empresaWeb:document.getElementById('cfg-empresa-web').value.trim()||'www.loans4b.com'
+  };
+  localStorage.setItem(CFG_KEY,JSON.stringify(data));
+  document.getElementById('cfg-status').style.display='flex';
+  setTimeout(()=>{document.getElementById('cfg-status').style.display='none';},3500);
+  aplicarAsesorEnFormularios();
+}
+function limpiarConfig(){
+  if(!confirm('¿Eliminar los datos del asesor?')) return;
+  localStorage.removeItem(CFG_KEY);
+  ['cfg-nombre','cfg-email','cfg-telefono'].forEach(id=>document.getElementById(id).value='');
+  aplicarAsesorEnFormularios();
+}
+function aplicarConfigEnUI(){
+  const c=cargarConfig(); if(!c) return;
+  const map={nombre:'cfg-nombre',cargo:'cfg-cargo',email:'cfg-email',telefono:'cfg-telefono',empresa:'cfg-empresa',empresaRUT:'cfg-empresa-rut',empresaDir:'cfg-empresa-dir',empresaWeb:'cfg-empresa-web'};
+  Object.keys(map).forEach(k=>{ const el=document.getElementById(map[k]); if(el&&c[k]) el.value=c[k]; });
+}
+function aplicarAsesorEnFormularios(){
+  const c=cargarConfig();
+  const txt=c&&c.nombre? c.nombre+(c.cargo? ' — '+c.cargo : '') : '(configurar en sección Configuración)';
+  const lb=document.getElementById('lb-asesor'); const h=document.getElementById('h-asesor');
+  if(lb) lb.value=txt; if(h) h.value=txt;
+}
+
+/* === CONVERSOR === */
+function convDeUF(){
+  const uf=parseFloat(document.getElementById('conv-uf').value)||0;
+  document.getElementById('conv-clp').value=Math.round(uf*UF_VALOR).toLocaleString('es-CL').replace(/,/g,'.');
+}
+function convDeCLP(){
+  const raw=document.getElementById('conv-clp').value.replace(/\./g,'').replace(/,/g,'');
+  const clp=parseFloat(raw)||0;
+  document.getElementById('conv-uf').value=(clp/UF_VALOR).toFixed(2);
+}
+
+/* === CAE DERIVADO (Newton-Raphson) === */
+function calcularCAE(fin,cuotaTotal,n){
+  if(fin<=0||cuotaTotal<=0||n<=0) return 0;
+  let i=0.005;
+  for(let iter=0;iter<80;iter++){
+    const f=fin*(i*Math.pow(1+i,n))/(Math.pow(1+i,n)-1)-cuotaTotal;
+    const di=1e-7;
+    const f2=fin*((i+di)*Math.pow(1+i+di,n))/(Math.pow(1+i+di,n)-1)-cuotaTotal;
+    const deriv=(f2-f)/di;
+    if(Math.abs(deriv)<1e-12) break;
+    const iNext=i-f/deriv;
+    if(Math.abs(iNext-i)<1e-10){i=iNext; break;}
+    if(iNext<=0){i=i/2; continue;}
+    i=iNext;
+  }
+  return i*12*100;
+}
+
+/* === SIM RÁPIDO LEASEBACK === */
+function runSimLeasebackRapido(){
+  const valor=parseFloat(document.getElementById('qlb-valor').value)||0;
+  const deuda=parseFloat(document.getElementById('qlb-deuda').value)||0;
+  const pctCV=parseFloat(document.getElementById('qlb-pct-cv').value)||55;
+  const tasaMensual=parseFloat(document.getElementById('qlb-tasa').value)||1.1;
+  const plazo=parseInt(document.getElementById('qlb-plazo').value)||12;
+  const feeL4B=parseFloat(document.getElementById('qlb-fee-l4b').value)||3;
+  const feeFondo=parseFloat(document.getElementById('qlb-fee-fondo').value)||3;
+  const gastosOp=parseFloat(document.getElementById('qlb-gastos-op').value)||2;
+  const notariaCLP=parseFloat(document.getElementById('qlb-notaria').value)||2690000;
+  if(!valor){ resetLBRapido(); return; }
+  const compraventa=valor*(pctCV/100);
+  const feeL4BUF=compraventa*(feeL4B/100);
+  const feeFondoUF=compraventa*(feeFondo/100);
+  const gastosOpUF=compraventa*(gastosOp/100);
+  const notariaUF=notariaCLP/UF_VALOR;
+  const dineroNeto=compraventa-feeL4BUF-feeFondoUF-gastosOpUF-notariaUF-deuda;
+  const i=tasaMensual/100;
+  const cuota=compraventa*(i*Math.pow(1+i,plazo))/(Math.pow(1+i,plazo)-1);
+  const totalPago=cuota*plazo;
+  document.getElementById('qlb-r-compraventa').textContent=fmtUF(compraventa);
+  document.getElementById('qlb-r-liquidez').textContent=fmtUF(dineroNeto);
+  document.getElementById('qlb-r-liquidez-clp').textContent='≈ '+fmtCLP(dineroNeto*UF_VALOR);
+  document.getElementById('qlb-r-cuota').textContent=fmtUF(cuota);
+  document.getElementById('qlb-r-cuota-clp').textContent='≈ '+fmtCLP(cuota*UF_VALOR);
+  document.getElementById('qlb-r-fee-l4b').textContent=fmtUF(feeL4BUF);
+  document.getElementById('qlb-r-fee-fondo').textContent=fmtUF(feeFondoUF);
+  document.getElementById('qlb-r-gastos-op').textContent=fmtUF(gastosOpUF);
+  document.getElementById('qlb-r-notaria').textContent=fmtCLP(notariaCLP);
+  document.getElementById('qlb-r-deuda').textContent=deuda>0?fmtUF(deuda):'—';
+  document.getElementById('qlb-r-total-pago').textContent=fmtUF(totalPago);
+}
+function resetLBRapido(){
+  ['qlb-r-compraventa','qlb-r-liquidez','qlb-r-liquidez-clp','qlb-r-cuota','qlb-r-cuota-clp','qlb-r-fee-l4b','qlb-r-fee-fondo','qlb-r-gastos-op','qlb-r-notaria','qlb-r-deuda','qlb-r-total-pago'].forEach(id=>{ const el=document.getElementById(id); if(el) el.textContent=id==='qlb-r-liquidez'?'UF —':'—'; });
+}
+
+/* === SIM RÁPIDO HIPOTECARIO === */
+function updateQHTipo(){
+  const tipo=document.querySelector('input[name="qh-tipo"]:checked').value;
+  document.getElementById('qh-pn-pill').classList.toggle('active',tipo==='natural');
+  document.getElementById('qh-pj-pill').classList.toggle('active',tipo==='juridica');
+  document.getElementById('qh-tipo-hint').innerHTML = tipo==='juridica'
+    ? 'En persona jurídica sólo aplica seguro de incendio y sismo (no hay desgravamen ni cesantía).'
+    : 'En persona natural se incluyen seguros de desgravamen, incendio/sismo y cesantía.';
+  runSimHipotecarioRapido();
+}
+function runSimHipotecarioRapido(){
+  const valor=parseFloat(document.getElementById('qh-valor').value)||0;
+  const pieRaw=document.getElementById('qh-pie').value;
+  const pie=pieRaw===''||pieRaw==null? valor*0.20 : (parseFloat(pieRaw)||0);
+  const plazo=parseInt(document.getElementById('qh-plazo').value)||20;
+  const tasa=parseFloat(document.getElementById('qh-tasa').value)||4.9;
+  const tipo=(document.querySelector('input[name="qh-tipo"]:checked')||{value:'natural'}).value;
+  if(!valor){ resetHRapido(); return; }
+  const fin=valor-pie;
+  if(fin<=0){ resetHRapido(); return; }
+  const n=plazo*12;
+  const iN=(tasa/100)/12;
+  const cuotaBase=fin*(iN*Math.pow(1+iN,n))/(Math.pow(1+iN,n)-1);
+  const ref=SEGUROS_REF[tipo];
+  const seguros=ref.desg+ref.incendio+ref.cesantia;
+  const cuotaTotal=cuotaBase+seguros;
+  const cae=calcularCAE(fin,cuotaTotal,n);
+  const total=cuotaBase*n;
+  const interes=total-fin;
+  const ingresoMin=cuotaTotal*UF_VALOR/0.25;
+  document.getElementById('qh-r-fin').textContent=fmtUF(fin);
+  document.getElementById('qh-r-cuota-total').textContent=fmtUF(cuotaTotal);
+  document.getElementById('qh-r-cuota-total-clp').textContent='≈ '+fmtCLP(cuotaTotal*UF_VALOR);
+  document.getElementById('qh-r-cuota').textContent=fmtUF(cuotaBase);
+  document.getElementById('qh-r-seguros').textContent=fmtUF(seguros)+'/mes';
+  document.getElementById('qh-r-cae').textContent=fmtPct(cae,2);
+  document.getElementById('qh-r-total').textContent=fmtUF(total);
+  document.getElementById('qh-r-interes').textContent=fmtUF(interes);
+  document.getElementById('qh-r-ingreso-min').textContent=fmtCLP(ingresoMin);
+}
+function resetHRapido(){
+  ['qh-r-fin','qh-r-cuota','qh-r-cuota-total','qh-r-cuota-total-clp','qh-r-seguros','qh-r-cae','qh-r-total','qh-r-interes','qh-r-ingreso-min'].forEach(id=>{ const el=document.getElementById(id); if(el) el.textContent='—'; });
+}
+
+/* === RADIO PILLS === */
+function updateLBTipo(){
+  const tipo=document.querySelector('input[name="lb-tipo"]:checked').value;
+  document.getElementById('lb-pn-pill').classList.toggle('active',tipo==='natural');
+  document.getElementById('lb-pj-pill').classList.toggle('active',tipo==='juridica');
+  document.getElementById('lb-nombre-label').innerHTML=(tipo==='juridica'?'Razón social':'Nombre completo')+' <span class="req">*</span>';
+}
+function updateHTipo(){
+  const tipo=document.querySelector('input[name="h-tipo"]:checked').value;
+  document.getElementById('h-pn-pill').classList.toggle('active',tipo==='natural');
+  document.getElementById('h-pj-pill').classList.toggle('active',tipo==='juridica');
+  document.getElementById('h-nombre-label').innerHTML=(tipo==='juridica'?'Razón social':'Nombre completo')+' <span class="req">*</span>';
+  const ref=SEGUROS_REF[tipo];
+  document.getElementById('h-seg-desg').value=ref.desg;
+  document.getElementById('h-seg-incendio').value=ref.incendio;
+  document.getElementById('h-seg-cesantia').value=ref.cesantia;
+  document.getElementById('h-preeval').value=tipo==='juridica'?20:10;
+  document.getElementById('h-seg-desg-hint').textContent=tipo==='juridica'?'No aplica a persona jurídica (la empresa no fallece).':'Aplica a persona natural — vincula el saldo al deudor.';
+  document.getElementById('h-cesantia-hint').textContent=tipo==='juridica'?'No aplica a persona jurídica (la empresa no queda cesante).':'Opcional. Recomendado para trabajadores dependientes.';
+  document.getElementById('h-seg-desg').style.opacity=tipo==='juridica'?'0.5':'1';
+  document.getElementById('h-seg-cesantia').style.opacity=tipo==='juridica'?'0.5':'1';
+  actualizarSegTotalDisplay();
+}
+function actualizarSegTotalDisplay(){
+  const d=parseFloat(document.getElementById('h-seg-desg').value)||0;
+  const i=parseFloat(document.getElementById('h-seg-incendio').value)||0;
+  const c=parseFloat(document.getElementById('h-seg-cesantia').value)||0;
+  const el=document.getElementById('h-seg-total-display');
+  if(el) el.textContent=fmtUF(d+i+c)+'/mes';
+}
+
+/* === LEASEBACK COMPLETO === */
+let LB_DATA=null;
+function calcularLeasebackCompleto(){
+  const tipo=document.querySelector('input[name="lb-tipo"]:checked').value;
+  const valor=parseFloat(document.getElementById('lb-valor-uf').value)||0;
+  const deuda=parseFloat(document.getElementById('lb-deuda').value)||0;
+  const plazo=parseInt(document.getElementById('lb-plazo').value)||12;
+  const pctCV=parseFloat(document.getElementById('lb-pct-cv').value)||55;
+  const tasaMensual=parseFloat(document.getElementById('lb-tasa').value)||1.1;
+  const feeL4B=parseFloat(document.getElementById('lb-fee-l4b').value)||3;
+  const feeFondo=parseFloat(document.getElementById('lb-fee-fondo').value)||3;
+  const gastosOp=parseFloat(document.getElementById('lb-gastos-op').value)||2;
+  const notariaCLP=parseFloat(document.getElementById('lb-notaria').value)||2690000;
+  const compraventa=valor*(pctCV/100);
+  const feeL4BUF=compraventa*(feeL4B/100);
+  const feeFondoUF=compraventa*(feeFondo/100);
+  const gastosOpUF=compraventa*(gastosOp/100);
+  const notariaUF=notariaCLP/UF_VALOR;
+  const dineroNeto=compraventa-feeL4BUF-feeFondoUF-gastosOpUF-notariaUF-deuda;
+  const i=tasaMensual/100;
+  const cuota=compraventa*(i*Math.pow(1+i,plazo))/(Math.pow(1+i,plazo)-1);
+  const totalPago=cuota*plazo;
+  LB_DATA={tipo, nombre:document.getElementById('lb-nombre').value.trim(), rut:document.getElementById('lb-rut').value.trim(), email:document.getElementById('lb-email').value.trim(), telefono:document.getElementById('lb-telefono').value.trim(), tipoPropiedad:document.getElementById('lb-tipo-propiedad').value, comuna:document.getElementById('lb-comuna').value.trim(), direccion:document.getElementById('lb-direccion').value.trim(), valor, deuda, plazo, pctCV, tasaMensual, feeL4B, feeFondo, gastosOp, notariaCLP, compraventa, feeL4BUF, feeFondoUF, gastosOpUF, notariaUF, dineroNeto, cuota, totalPago};
+  document.getElementById('lb-res-liquidez-uf').textContent=fmtUF(dineroNeto);
+  document.getElementById('lb-res-liquidez-clp').textContent='≈ '+fmtCLP(dineroNeto*UF_VALOR);
+  document.getElementById('lb-res-compraventa').textContent=fmtUF(compraventa);
+  document.getElementById('lb-res-cuota').textContent=fmtUF(cuota);
+  document.getElementById('lb-res-plazo').textContent=plazo+' meses';
+  const tbody=document.getElementById('lb-tabla-desglose');
+  const rows=[
+    ['Valor comercial del inmueble', valor, valor*UF_VALOR],
+    ['Valor de compraventa ('+fmtPct(pctCV,1)+' del valor comercial)', compraventa, compraventa*UF_VALOR],
+    ['(–) Honorarios Loans4B ('+fmtPct(feeL4B,1)+')', -feeL4BUF, -feeL4BUF*UF_VALOR],
+    ['(–) Fee fondo de financiamiento ('+fmtPct(feeFondo,1)+')', -feeFondoUF, -feeFondoUF*UF_VALOR],
+    ['(–) Gastos operacionales ('+fmtPct(gastosOp,1)+')', -gastosOpUF, -gastosOpUF*UF_VALOR],
+    ['(–) Gastos notariales y CBR', -notariaUF, -notariaCLP],
+    ['(–) Deuda actual liquidada', -deuda, -deuda*UF_VALOR],
+  ];
+  let html='';
+  rows.forEach(r=>{ html+=`<tr><td>${r[0]}</td><td class="num">${r[1]===0?'—':fmtNum(r[1])}</td><td class="num">${r[2]===0?'—':fmtCLP(r[2])}</td></tr>`; });
+  html+=`<tr class="total"><td>Dinero neto al cliente</td><td class="num">${fmtNum(dineroNeto)}</td><td class="num">${fmtCLP(dineroNeto*UF_VALOR)}</td></tr>`;
+  html+=`<tr><td style="padding-top:18px"><strong>Cuota mensual</strong> (${plazo} meses · tasa ${fmtPct(tasaMensual,2)} mensual)</td><td class="num"><strong>${fmtNum(cuota)}</strong></td><td class="num"><strong>${fmtCLP(cuota*UF_VALOR)}</strong></td></tr>`;
+  html+=`<tr><td>Total a pagar al fondo (capital + intereses)</td><td class="num">${fmtNum(totalPago)}</td><td class="num">${fmtCLP(totalPago*UF_VALOR)}</td></tr>`;
+  tbody.innerHTML=html;
+  document.getElementById('lb-resultado').style.display='block';
+  document.getElementById('lb-resultado').scrollIntoView({behavior:'smooth',block:'start'});
+}
+
+/* === HIPOTECARIO COMPLETO === */
+let H_DATA=null;
+
+function calcularHipotecarioCompleto(){
+  const tipo=document.querySelector('input[name="h-tipo"]:checked').value;
+  const valor=parseFloat(document.getElementById('h-valor-uf').value)||0;
+  /* Los 3 campos son INDEPENDIENTES. El cliente puede tener un inmueble de 10.033 UF,
+     pie=0 y pedir financiar=8.518 UF. El "saldo no requerido" (1.515 UF) simplemente
+     no se financia ni se aporta como pie. */
+  const pieRaw=document.getElementById('h-pie').value;
+  const finRaw=document.getElementById('h-financiar').value;
+  let pie=pieRaw===''||pieRaw==null?0:(parseFloat(pieRaw)||0);
+  let fin=finRaw===''||finRaw==null?0:(parseFloat(finRaw)||0);
+  if(pie<0) pie=0;
+  if(fin<0) fin=0;
+  /* Saldo no requerido = valor inmueble − pie − financiar (puede ser 0 o positivo).
+     Si pie+fin > valor, lo dejamos pasar pero se muestra como saldo negativo informativo. */
+  const saldoLibre=valor-pie-fin;
+  /* Sincronizar los inputs por si el usuario tipeó con coma o vacío. */
+  document.getElementById('h-pie').value=Number.isInteger(pie)?pie:pie.toFixed(2);
+  document.getElementById('h-financiar').value=Number.isInteger(fin)?fin:fin.toFixed(2);
+  const plazo=parseInt(document.getElementById('h-plazo').value)||20;
+  const tasa=parseFloat(document.getElementById('h-tasa').value)||4.9;
+  const tipoTasa=document.getElementById('h-tipo-tasa').value;
+  let segDesg=parseFloat(document.getElementById('h-seg-desg').value)||0;
+  const segIncendio=parseFloat(document.getElementById('h-seg-incendio').value)||0;
+  let segCesantia=parseFloat(document.getElementById('h-seg-cesantia').value)||0;
+  if(tipo==='juridica'){ segDesg=0; segCesantia=0; }
+  const honorariosPct=parseFloat(document.getElementById('h-honorarios').value)||3;
+  /* pre-evaluación: input rango 0-20 UF. Default 10 natural / 20 jurídica. */
+  const preevalRaw=document.getElementById('h-preeval').value;
+  let preeval=preevalRaw===''||preevalRaw==null?(tipo==='juridica'?20:10):(parseFloat(preevalRaw)||0);
+  if(preeval<0) preeval=0; if(preeval>20) preeval=20;
+  const n=plazo*12;
+  const iN=(tasa/100)/12;
+  const cuotaBase=fin*(iN*Math.pow(1+iN,n))/(Math.pow(1+iN,n)-1);
+  const segTotal=segDesg+segIncendio+segCesantia;
+  const cuotaTotal=cuotaBase+segTotal;
+  const cae=calcularCAE(fin,cuotaTotal,n);
+  const totalPago=cuotaBase*n;
+  const totalConSeguros=cuotaTotal*n;
+  const interes=totalPago-fin;
+  const honorariosUF=fin*(honorariosPct/100);
+  const ingresoMin=cuotaTotal*UF_VALOR/0.25;
+  const pctPie=valor>0?(pie/valor)*100:0;
+  const pctFin=valor>0?(fin/valor)*100:0;
+  const pctSaldo=valor>0?(saldoLibre/valor)*100:0;
+  H_DATA={tipo, nombre:document.getElementById('h-nombre').value.trim(), rut:document.getElementById('h-rut').value.trim(), email:document.getElementById('h-email').value.trim(), telefono:document.getElementById('h-telefono').value.trim(), valor, pie, plazo, tasa, tipoTasa, cae, segDesg, segIncendio, segCesantia, segTotal, honorariosPct, honorariosUF, preeval, fin, cuotaBase, cuotaTotal, totalPago, totalConSeguros, interes, ingresoMin, pctPie, pctFin, saldoLibre, pctSaldo};
+  document.getElementById('h-res-cuota-uf').textContent=fmtUF(cuotaTotal);
+  document.getElementById('h-res-cuota-clp').textContent='≈ '+fmtCLP(cuotaTotal*UF_VALOR);
+  document.getElementById('h-res-financiamiento').textContent=fmtUF(fin);
+  document.getElementById('h-res-plazo').textContent=plazo+' años';
+  document.getElementById('h-res-tasa').textContent=fmtPct(tasa,2)+' nominal · CAE '+fmtPct(cae,2);
+  const tbody=document.getElementById('h-tabla-desglose');
+  const tipoLabel=tipoTasa.charAt(0).toUpperCase()+tipoTasa.slice(1);
+  const rows=[
+    ['Valor del inmueble (referencial)', valor, valor*UF_VALOR],
+    ['Pie aportado ('+fmtPct(pctPie,1)+' del valor)', pie, pie*UF_VALOR],
+    ['Monto financiado ('+fmtPct(pctFin,1)+' del valor)', fin, fin*UF_VALOR],
+  ];
+  if(saldoLibre>0.01){
+    rows.push(['Saldo no requerido ('+fmtPct(pctSaldo,1)+' — no se financia)', saldoLibre, saldoLibre*UF_VALOR]);
+  }
+  rows.push(['', null, null]);
+  rows.push(['Cuota capital + interés (tasa '+tipoLabel.toLowerCase()+' '+fmtPct(tasa,2)+')', cuotaBase, cuotaBase*UF_VALOR]);
+  rows.push(['(+) Seguro desgravamen'+(tipo==='juridica'?' — no aplica':''), segDesg, segDesg*UF_VALOR]);
+  rows.push(['(+) Seguro incendio y sismo', segIncendio, segIncendio*UF_VALOR]);
+  rows.push(['(+) Seguro cesantía'+(tipo==='juridica'?' — no aplica':''), segCesantia, segCesantia*UF_VALOR]);
+  let html='';
+  rows.forEach(r=>{ if(r[1]===null){ html+=`<tr><td colspan="3" style="background:var(--bg); padding:6px 18px"></td></tr>`; return; } html+=`<tr><td>${r[0]}</td><td class="num">${fmtNum(r[1])}</td><td class="num">${fmtCLP(r[2])}</td></tr>`; });
+  html+=`<tr class="total"><td>Cuota mensual total al cliente</td><td class="num">${fmtNum(cuotaTotal)}</td><td class="num">${fmtCLP(cuotaTotal*UF_VALOR)}</td></tr>`;
+  html+=`<tr><td style="padding-top:14px; color:var(--teal); font-weight:600">CAE estimado <span style="color:var(--muted); font-weight:400">(tasa anual derivada — incluye intereses + seguros)</span></td><td class="num" colspan="2" style="color:var(--teal); font-weight:700">${fmtPct(cae,2)}</td></tr>`;
+  html+=`<tr><td style="padding-top:14px">Total a pagar en ${plazo} años (sin seguros)</td><td class="num">${fmtNum(totalPago)}</td><td class="num">${fmtCLP(totalPago*UF_VALOR)}</td></tr>`;
+  html+=`<tr><td>Costo financiero (intereses)</td><td class="num">${fmtNum(interes)}</td><td class="num">${fmtCLP(interes*UF_VALOR)}</td></tr>`;
+  html+=`<tr><td style="padding-top:14px"><strong>Honorarios Loans4B</strong> (${fmtPct(honorariosPct,1)} del financiamiento, al otorgamiento)</td><td class="num"><strong>${fmtNum(honorariosUF)}</strong></td><td class="num"><strong>${fmtCLP(honorariosUF*UF_VALOR)}</strong></td></tr>`;
+  html+=`<tr><td>Pre-evaluación crediticia (al inicio)</td><td class="num">${fmtNum(preeval)}</td><td class="num">${fmtCLP(preeval*UF_VALOR)}</td></tr>`;
+  html+=`<tr><td style="padding-top:14px; color:var(--muted)">Ingreso líquido mínimo sugerido (cuota ≤ 25%)</td><td class="num" colspan="2" style="color:var(--muted)">${fmtCLP(ingresoMin)}</td></tr>`;
+  tbody.innerHTML=html;
+  document.getElementById('h-resultado').style.display='block';
+  document.getElementById('h-resultado').scrollIntoView({behavior:'smooth',block:'start'});
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   GENERACIÓN DE PDF — Estrategia confiable: abre una ventana nueva
+   con el contenido formateado y dispara window.print(). El usuario
+   elige "Guardar como PDF" desde el diálogo nativo del navegador.
+   Funciona en cualquier navegador, incluido file://, sin librerías.
+═══════════════════════════════════════════════════════════════════ */
+function generarPDF(htmlContent, titulo){
+  const ventana = window.open('', '_blank', 'width=950,height=1200');
+  if (!ventana) {
+    alert('Tu navegador bloqueó la apertura de la ventana. Por favor permite ventanas emergentes para este sitio e inténtalo de nuevo.');
+    return;
+  }
+  const fullHtml = '<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8"><title>' + titulo + '</title>' +
+    '<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700&family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">' +
+    '<style>' +
+    '@page { size: A4; margin: 12mm 14mm; }' +
+    '* { box-sizing:border-box; margin:0; padding:0; }' +
+    'body { font-family:"Inter",-apple-system,sans-serif; color:#1a2730; background:#fff; -webkit-print-color-adjust:exact; print-color-adjust:exact; }' +
+    'table { border-collapse:collapse; }' +
+    '.toolbar { position:fixed; top:0; left:0; right:0; background:#0a3d4a; color:#fff; padding:14px 28px; display:flex; justify-content:space-between; align-items:center; font-family:"Inter",sans-serif; font-size:13px; z-index:9999; box-shadow:0 2px 10px rgba(0,0,0,0.2); }' +
+    '.toolbar .info { font-size:12px; opacity:0.92; flex:1; padding-right:18px; }' +
+    '.toolbar .info strong { color:#3dd9a7; }' +
+    '.toolbar button { background:#2aa07f; color:#fff; border:none; padding:10px 18px; border-radius:6px; font-family:inherit; font-size:13px; font-weight:600; cursor:pointer; white-space:nowrap; }' +
+    '.toolbar button:hover { background:#239278; }' +
+    '.toolbar button.ghost { background:transparent; border:1px solid rgba(255,255,255,0.3); margin-right:8px; }' +
+    '.toolbar button.ghost:hover { background:rgba(255,255,255,0.1); }' +
+    '.doc-wrapper { padding:80px 26px 40px; max-width:794px; margin:0 auto; }' +
+    '@media print { .toolbar { display:none !important; } .doc-wrapper { padding:0 !important; max-width:none !important; } }' +
+    '</style></head><body>' +
+    '<div class="toolbar">' +
+    '<div class="info">📄 <strong>' + titulo + '</strong> · Haz clic en <strong>Imprimir / Guardar PDF</strong> y selecciona <strong>Guardar como PDF</strong> como destino.</div>' +
+    '<div><button class="ghost" onclick="window.close()">Cerrar</button> <button onclick="window.print()">🖨️ Imprimir / Guardar PDF</button></div>' +
+    '</div>' +
+    '<div class="doc-wrapper">' + htmlContent + '</div>' +
+    '<script>window.addEventListener("load",function(){setTimeout(function(){window.print();},700);});<\/script>' +
+    '</body></html>';
+  ventana.document.open();
+  ventana.document.write(fullHtml);
+  ventana.document.close();
+}
+
+/* === PDF HEADERS COMUNES === */
+function pdfHeader(cfg, titulo, idCot){
+  return '<div style="display:flex; justify-content:space-between; align-items:flex-end; padding:0 0 14px 0; border-bottom:2px solid #0a3d4a;">' +
+    '<div><div style="font-size:22px; font-weight:800; color:#0a3d4a; letter-spacing:-0.5px;">loans<span style="color:#2aa07f">4B</span></div>' +
+    '<div style="font-size:9px; color:#6a7a85; letter-spacing:1.6px; text-transform:uppercase; margin-top:4px; font-weight:500;">Just loans for business</div></div>' +
+    '<div style="text-align:right; font-size:10px; color:#3a4a55;">' +
+    '<div style="font-weight:600; color:#0a3d4a; font-size:11px;">' + titulo + '</div>' +
+    '<div style="margin-top:4px;">ID COT: <strong>' + idCot + '</strong></div>' +
+    '<div>Fecha: ' + fmtFecha() + ' · Vigente hasta: ' + addDias(5) + '</div>' +
+    '<div>Valor UF referencial: ' + fmtCLP(UF_VALOR) + '</div></div></div>';
+}
+function pdfFooter(cfg){
+  const empresa=cfg.empresa||'Asesorías Loans4B SpA';
+  const web=cfg.empresaWeb||'www.loans4b.com';
+  return '<div style="margin-top:30px; padding-top:14px; border-top:1px solid #d8e0e4;">' +
+    '<p style="font-size:8.5px; color:#6a7a85; line-height:1.5; text-align:justify;">' +
+    '<strong>Cláusula de responsabilidad y transparencia:</strong> La presente simulación tiene carácter informativo y no representa una oferta formal ni vinculante. ' +
+    empresa + ' actúa como intermediario en la gestión de créditos hipotecarios y operaciones de leaseback, sin representar a ninguna entidad financiera ni comprometer la aprobación del crédito. La tasa de interés, cuota y condiciones definitivas están sujetas a la evaluación crediticia del banco o fondo correspondiente. Las simulaciones están sujetas a la evaluación de entidades financieras debidamente autorizadas por la CMF, así como a modelos de financiamiento de fondos privados que operan conforme a la legislación civil y comercial vigente en Chile.</p>' +
+    '<div style="margin-top:12px; font-size:9px; color:#6a7a85; text-align:center;">' + empresa + ' · ' + web + ' · Simulación con carácter referencial</div></div>';
+}
+function pdfFirma(cfg){
+  if (!cfg.nombre) {
+    return '<div style="margin-top:24px; font-size:11px; color:#1a2730; line-height:1.6;">' +
+      '<p>No dude en contactarnos para aclarar cualquier consulta o avanzar con la solicitud formal.</p>' +
+      '<p style="margin-top:14px;"><strong>Atentamente,</strong></p>' +
+      '<p style="color:#a05c10; font-style:italic; font-size:10px;">(Configurar datos del asesor en la pantalla de Configuración)</p></div>';
+  }
+  return '<div style="margin-top:24px; font-size:11px; color:#1a2730; line-height:1.6;">' +
+    '<p style="margin-top:14px;"><strong>Atentamente,</strong></p>' +
+    '<div style="margin-top:6px; padding:12px 16px; background:#eaf6f2; border-left:3px solid #2aa07f; border-radius:4px;">' +
+    '<div style="font-size:13px; font-weight:700; color:#0a3d4a;">' + cfg.nombre + '</div>' +
+    '<div style="font-size:11px; color:#14525f; margin-top:2px;">' + (cfg.cargo||'Asesor de Crédito Hipotecario') + '</div>' +
+    '<div style="font-size:10.5px; color:#3a4a55; margin-top:6px;">' + (cfg.email||'') + ' · ' + (cfg.telefono||'') + '</div></div></div>';
+}
+function generarIdCot(){ return Math.floor(1000+Math.random()*9000); }
+
+/* === PDF HIPOTECARIO === */
+function descargarPDFHipotecario(){
+  if (!H_DATA) { alert('Primero genera la simulación antes de descargar el PDF.'); return; }
+  const cfg = cargarConfig() || {};
+  const d = H_DATA;
+  const idCot = generarIdCot();
+  const tipoTxt = d.tipo === 'juridica' ? 'Persona Jurídica' : 'Persona Natural';
+  const tipoTasaTxt = d.tipoTasa.charAt(0).toUpperCase() + d.tipoTasa.slice(1);
+
+  // === TABLA NUMÉRICA (mismo desglose que la vista web, sin pre-evaluación) ===
+  const tdN = 'padding:7px 12px; border-bottom:1px solid #e8eef1; text-align:right; font-variant-numeric:tabular-nums;';
+  const tdL = 'padding:7px 12px; border-bottom:1px solid #e8eef1;';
+  const segDesgTxt = d.tipo==='juridica' ? 'Seguro desgravamen — no aplica' : 'Seguro desgravamen';
+  const segCesTxt  = d.tipo==='juridica' ? 'Seguro cesantía — no aplica'    : 'Seguro cesantía';
+  const tablaNumeros =
+    '<table style="width:100%; border-collapse:collapse; font-size:10.5px; margin-top:8px;">' +
+      '<thead><tr style="background:#f3f6f8;">' +
+        '<th style="' + tdL + ' font-weight:600; color:#0a3d4a; text-transform:uppercase; font-size:9.5px; letter-spacing:0.4px;">Concepto</th>' +
+        '<th style="' + tdN + ' font-weight:600; color:#0a3d4a; text-transform:uppercase; font-size:9.5px; letter-spacing:0.4px; width:90px;">UF</th>' +
+        '<th style="' + tdN + ' font-weight:600; color:#0a3d4a; text-transform:uppercase; font-size:9.5px; letter-spacing:0.4px; width:120px;">CLP</th>' +
+      '</tr></thead><tbody>' +
+      '<tr><td style="' + tdL + '">Valor del inmueble (referencial)</td><td style="' + tdN + '">' + fmtNum(d.valor) + '</td><td style="' + tdN + '">' + fmtCLP(d.valor*UF_VALOR) + '</td></tr>' +
+      '<tr><td style="' + tdL + '">Pie aportado (' + fmtPct(d.pctPie,1) + ' del valor)</td><td style="' + tdN + '">' + fmtNum(d.pie) + '</td><td style="' + tdN + '">' + fmtCLP(d.pie*UF_VALOR) + '</td></tr>' +
+      '<tr><td style="' + tdL + '">Monto financiado (' + fmtPct(d.pctFin,1) + ' del valor)</td><td style="' + tdN + '">' + fmtNum(d.fin) + '</td><td style="' + tdN + '">' + fmtCLP(d.fin*UF_VALOR) + '</td></tr>' +
+      (d.saldoLibre>0.01 ? '<tr><td style="' + tdL + ' color:#6a7a85; font-style:italic;">Saldo no requerido (' + fmtPct(d.pctSaldo,1) + ' — no se financia)</td><td style="' + tdN + ' color:#6a7a85;">' + fmtNum(d.saldoLibre) + '</td><td style="' + tdN + ' color:#6a7a85;">' + fmtCLP(d.saldoLibre*UF_VALOR) + '</td></tr>' : '') +
+      '<tr><td colspan="3" style="padding:4px 0; background:#f3f6f8;"></td></tr>' +
+      '<tr><td style="' + tdL + '">Cuota capital + interés (tasa ' + d.tipoTasa + ' ' + fmtPct(d.tasa,2) + ')</td><td style="' + tdN + '">' + fmtNum(d.cuotaBase) + '</td><td style="' + tdN + '">' + fmtCLP(d.cuotaBase*UF_VALOR) + '</td></tr>' +
+      '<tr><td style="' + tdL + '">(+) ' + segDesgTxt + '</td><td style="' + tdN + '">' + fmtNum(d.segDesg) + '</td><td style="' + tdN + '">' + fmtCLP(d.segDesg*UF_VALOR) + '</td></tr>' +
+      '<tr><td style="' + tdL + '">(+) Seguro incendio y sismo</td><td style="' + tdN + '">' + fmtNum(d.segIncendio) + '</td><td style="' + tdN + '">' + fmtCLP(d.segIncendio*UF_VALOR) + '</td></tr>' +
+      '<tr><td style="' + tdL + '">(+) ' + segCesTxt + '</td><td style="' + tdN + '">' + fmtNum(d.segCesantia) + '</td><td style="' + tdN + '">' + fmtCLP(d.segCesantia*UF_VALOR) + '</td></tr>' +
+      '<tr style="background:#eaf6f2;"><td style="padding:9px 12px; font-weight:700; color:#0a3d4a;">Cuota mensual total al cliente</td><td style="padding:9px 12px; text-align:right; font-weight:700; color:#0a3d4a; font-variant-numeric:tabular-nums;">' + fmtNum(d.cuotaTotal) + '</td><td style="padding:9px 12px; text-align:right; font-weight:700; color:#0a3d4a; font-variant-numeric:tabular-nums;">' + fmtCLP(d.cuotaTotal*UF_VALOR) + '</td></tr>' +
+      '<tr><td style="' + tdL + ' font-weight:600; color:#0a3d4a;">CAE estimado <span style="color:#6a7a85; font-weight:400;">(incluye intereses + seguros)</span></td><td colspan="2" style="' + tdN + ' font-weight:700; color:#0a3d4a;">' + fmtPct(d.cae,2) + '</td></tr>' +
+      '<tr><td style="' + tdL + '">Total a pagar en ' + d.plazo + ' años (sin seguros)</td><td style="' + tdN + '">' + fmtNum(d.totalPago) + '</td><td style="' + tdN + '">' + fmtCLP(d.totalPago*UF_VALOR) + '</td></tr>' +
+      '<tr><td style="' + tdL + '">Costo financiero (intereses)</td><td style="' + tdN + '">' + fmtNum(d.interes) + '</td><td style="' + tdN + '">' + fmtCLP(d.interes*UF_VALOR) + '</td></tr>' +
+      '<tr><td style="' + tdL + '"><strong>Honorarios Loans4B</strong> (' + fmtPct(d.honorariosPct,1) + ' del financiamiento, al otorgamiento)</td><td style="' + tdN + '"><strong>' + fmtNum(d.honorariosUF) + '</strong></td><td style="' + tdN + '"><strong>' + fmtCLP(d.honorariosUF*UF_VALOR) + '</strong></td></tr>' +
+      '<tr><td style="' + tdL + '">Pre-evaluación crediticia (al inicio)</td><td style="' + tdN + '">' + fmtNum(d.preeval) + '</td><td style="' + tdN + '">' + fmtCLP(d.preeval*UF_VALOR) + '</td></tr>' +
+      '<tr><td style="padding:7px 12px; color:#6a7a85;">Ingreso líquido mínimo sugerido (cuota ≤ 25%)</td><td colspan="2" style="padding:7px 12px; text-align:right; color:#6a7a85; font-variant-numeric:tabular-nums;">' + fmtCLP(d.ingresoMin) + '</td></tr>' +
+      '</tbody></table>';
+
+  const html =
+    pdfHeader(cfg, 'Simulación de Crédito Hipotecario', idCot) +
+    '<h1 style="font-family:\'Playfair Display\',serif; font-size:22px; color:#0a3d4a; margin:20px 0 6px;">Simulación de Crédito Hipotecario</h1>' +
+    '<div style="font-size:11px; color:#6a7a85; margin-bottom:16px; font-style:italic;">Financiamiento simple, rápido y confiable.</div>' +
+    '<p style="font-size:11.5px; line-height:1.6; text-align:justify; margin-bottom:14px;">' +
+    'Estimado/a <strong>' + d.nombre + '</strong>' + (d.rut ? ' / RUT ' + d.rut : '') + ', le presentamos la simulación referencial gestionada por <strong>' + (cfg.empresa||'Asesorías Loans4B SpA') + '</strong> sobre un inmueble valorado en <strong>' + fmtUF(d.valor) + '</strong> (' + fmtCLP(d.valor*UF_VALOR) + '). Como <strong>' + tipoTxt + '</strong>, solicita un financiamiento de <strong>' + fmtUF(d.fin) + '</strong> (' + fmtCLP(d.fin*UF_VALOR) + ', equivalente al ' + fmtPct(d.pctFin,1) + ' del valor del inmueble)' + (d.pie>0 ? ', con un pie de <strong>' + fmtUF(d.pie) + '</strong> (' + fmtPct(d.pctPie,1) + ')' : ', sin pie') + (d.saldoLibre>0.01 ? '. El saldo de <strong>' + fmtUF(d.saldoLibre) + '</strong> (' + fmtPct(d.pctSaldo,1) + ') no se financia ni se aporta como pie' : '') + '. El financiamiento se estructura a <strong>' + d.plazo + ' años</strong> con tasa ' + tipoTasaTxt.toLowerCase() + ' del <strong>' + fmtPct(d.tasa,2) + '</strong> (CAE ' + fmtPct(d.cae,2) + ').</p>' +
+    '<div style="display:flex; gap:14px; margin:14px 0 18px;">' +
+      '<div style="flex:1; background:linear-gradient(135deg,#0a3d4a,#14525f); color:#fff; padding:16px 20px; border-radius:10px;">' +
+        '<div style="font-size:10px; opacity:0.7; text-transform:uppercase; letter-spacing:1px; font-weight:500;">Cuota mensual estimada</div>' +
+        '<div style="font-size:24px; font-weight:700; margin-top:4px; font-variant-numeric:tabular-nums;">' + fmtUF(d.cuotaTotal) + '</div>' +
+        '<div style="font-size:10px; opacity:0.7; margin-top:2px;">Capital + interés + seguros</div>' +
+      '</div>' +
+      '<div style="flex:1; background:#eaf6f2; color:#0a3d4a; padding:16px 20px; border-radius:10px;">' +
+        '<div style="font-size:10px; color:#14525f; text-transform:uppercase; letter-spacing:1px; font-weight:600;">Equivalente en CLP</div>' +
+        '<div style="font-size:24px; font-weight:700; margin-top:4px; font-variant-numeric:tabular-nums;">' + fmtCLP(d.cuotaTotal*UF_VALOR) + '</div>' +
+        '<div style="font-size:10px; color:#6a7a85; margin-top:2px;">al valor UF vigente</div>' +
+      '</div>' +
+    '</div>' +
+    '<h2 style="font-size:11px; font-weight:700; color:#0a3d4a; text-transform:uppercase; letter-spacing:0.8px; margin:14px 0 4px;">Desglose numérico de la operación</h2>' +
+    tablaNumeros +
+    '<p style="font-size:10px; color:#6a7a85; margin-top:8px; font-style:italic;">La cuota incluye los seguros aplicables a su tipo de persona. La <strong>pre-evaluación crediticia</strong> se paga al inicio del proceso, antes de la tramitación formal. Los <strong>honorarios Loans4B</strong> se pagan al otorgamiento del crédito.</p>' +
+    '<p style="font-size:11px; line-height:1.6; text-align:justify; margin-top:14px;">Esta propuesta es válida hasta el <strong>' + addDias(5) + '</strong>. Quedamos atentos para avanzar con la solicitud formal o aclarar cualquier consulta.</p>' +
+    pdfFirma(cfg) + pdfFooter(cfg);
+
+  generarPDF(html, 'Simulación de Crédito Hipotecario · ' + (d.nombre || 'cliente'));
+}
+
+/* === PDF LEASEBACK === */
+function descargarPDFLeaseback(){
+  if (!LB_DATA) { alert('Primero genera la simulación antes de descargar el PDF.'); return; }
+  const cfg = cargarConfig() || {};
+  const d = LB_DATA;
+  const idCot = generarIdCot();
+  const tipoTxt = d.tipo === 'juridica' ? 'Persona Jurídica' : 'Persona Natural';
+  const tipoPropTxt = {urbana:'inmueble urbano',parcela:'parcela / propiedad rural',comercial:'local comercial',industrial:'bodega / propiedad industrial'}[d.tipoPropiedad] || 'inmueble';
+
+  const html =
+    pdfHeader(cfg, 'Simulación de Leaseback Inmobiliario', idCot) +
+    '<h1 style="font-family:\'Playfair Display\',serif; font-size:22px; color:#0a3d4a; margin:20px 0 6px;">Simulación de Leaseback Inmobiliario</h1>' +
+    '<div style="font-size:11px; color:#6a7a85; margin-bottom:18px; font-style:italic;">Liquidez inmediata sobre propiedad libre de gravamen · Recompra al final del plazo.</div>' +
+    '<p style="font-size:11.5px; line-height:1.6; text-align:justify; margin-bottom:14px;">' +
+    'Estimado/a <strong>' + d.nombre + '</strong>' + (d.rut ? ' / RUT ' + d.rut : '') + ': ' +
+    'Nos complace presentarle esta simulación referencial de operación de leaseback inmobiliario gestionada por <strong>' + (cfg.empresa||'Asesorías Loans4B SpA') + '</strong>. ' +
+    'Tras evaluar preliminarmente las características de su ' + tipoPropTxt + (d.comuna?' ubicado en '+d.comuna:'') + ' como <strong>' + tipoTxt + '</strong>, el fondo de financiamiento podrá ejecutar una compraventa equivalente al <strong>' + fmtPct(d.pctCV,1) + '</strong> del valor comercial declarado, es decir <strong>' + fmtUF(d.compraventa) + '</strong> (' + fmtCLP(d.compraventa*UF_VALOR) + ').</p>' +
+    '<div style="display:flex; gap:14px; margin:18px 0;">' +
+    '<div style="flex:1.4; background:linear-gradient(135deg,#0a3d4a,#14525f); color:#fff; padding:18px 20px; border-radius:10px;">' +
+    '<div style="font-size:10px; opacity:0.7; text-transform:uppercase; letter-spacing:1px; font-weight:500;">Dinero neto a recibir</div>' +
+    '<div style="font-size:26px; font-weight:700; margin-top:4px;">' + fmtUF(d.dineroNeto) + '</div>' +
+    '<div style="font-size:11px; opacity:0.85; margin-top:2px;">' + fmtCLP(d.dineroNeto*UF_VALOR) + '</div></div>' +
+    '<div style="flex:1; background:#eaf6f2; color:#0a3d4a; padding:18px 20px; border-radius:10px;">' +
+    '<div style="font-size:10px; color:#14525f; text-transform:uppercase; letter-spacing:1px; font-weight:600;">Cuota mensual</div>' +
+    '<div style="font-size:22px; font-weight:700; margin-top:4px;">' + fmtUF(d.cuota) + '</div>' +
+    '<div style="font-size:10.5px; color:#3a4a55; margin-top:2px;">' + fmtCLP(d.cuota*UF_VALOR) + ' · ' + d.plazo + ' meses</div></div></div>' +
+    '<h2 style="font-size:11px; font-weight:700; color:#0a3d4a; text-transform:uppercase; letter-spacing:0.8px; margin:18px 0 8px;">Estructura de la operación</h2>' +
+    '<table style="width:100%; border-collapse:collapse; font-size:11px; margin-top:6px;">' +
+    '<thead><tr style="background:#0a3d4a; color:#fff;"><th style="padding:9px 12px; text-align:left; font-weight:600; font-size:10px;">CONCEPTO</th><th style="padding:9px 12px; text-align:right; font-weight:600; font-size:10px; width:90px;">UF</th><th style="padding:9px 12px; text-align:right; font-weight:600; font-size:10px; width:130px;">CLP</th></tr></thead>' +
+    '<tbody>' +
+    '<tr><td style="padding:8px 12px; border-bottom:1px solid #e8eef1;">Valor comercial del inmueble</td><td style="padding:8px 12px; border-bottom:1px solid #e8eef1; text-align:right;">' + fmtNum(d.valor) + '</td><td style="padding:8px 12px; border-bottom:1px solid #e8eef1; text-align:right;">' + fmtCLP(d.valor*UF_VALOR) + '</td></tr>' +
+    '<tr style="background:#fafcfd;"><td style="padding:8px 12px; border-bottom:1px solid #e8eef1;">Valor de compraventa (' + fmtPct(d.pctCV,1) + ')</td><td style="padding:8px 12px; border-bottom:1px solid #e8eef1; text-align:right; font-weight:600; color:#0a3d4a;">' + fmtNum(d.compraventa) + '</td><td style="padding:8px 12px; border-bottom:1px solid #e8eef1; text-align:right; font-weight:600; color:#0a3d4a;">' + fmtCLP(d.compraventa*UF_VALOR) + '</td></tr>' +
+    '<tr><td style="padding:8px 12px; border-bottom:1px solid #e8eef1;">(–) Honorarios Loans4B (' + fmtPct(d.feeL4B,1) + ')</td><td style="padding:8px 12px; border-bottom:1px solid #e8eef1; text-align:right;">' + fmtNum(d.feeL4BUF) + '</td><td style="padding:8px 12px; border-bottom:1px solid #e8eef1; text-align:right;">' + fmtCLP(d.feeL4BUF*UF_VALOR) + '</td></tr>' +
+    '<tr><td style="padding:8px 12px; border-bottom:1px solid #e8eef1;">(–) Fee fondo de financiamiento (' + fmtPct(d.feeFondo,1) + ')</td><td style="padding:8px 12px; border-bottom:1px solid #e8eef1; text-align:right;">' + fmtNum(d.feeFondoUF) + '</td><td style="padding:8px 12px; border-bottom:1px solid #e8eef1; text-align:right;">' + fmtCLP(d.feeFondoUF*UF_VALOR) + '</td></tr>' +
+    '<tr><td style="padding:8px 12px; border-bottom:1px solid #e8eef1;">(–) Gastos operacionales (' + fmtPct(d.gastosOp,1) + ')</td><td style="padding:8px 12px; border-bottom:1px solid #e8eef1; text-align:right;">' + fmtNum(d.gastosOpUF) + '</td><td style="padding:8px 12px; border-bottom:1px solid #e8eef1; text-align:right;">' + fmtCLP(d.gastosOpUF*UF_VALOR) + '</td></tr>' +
+    '<tr><td style="padding:8px 12px; border-bottom:1px solid #e8eef1;">(–) Gastos notariales y CBR</td><td style="padding:8px 12px; border-bottom:1px solid #e8eef1; text-align:right;">' + fmtNum(d.notariaUF) + '</td><td style="padding:8px 12px; border-bottom:1px solid #e8eef1; text-align:right;">' + fmtCLP(d.notariaCLP) + '</td></tr>' +
+    '<tr style="background:#eaf6f2;"><td style="padding:11px 12px; font-weight:700; color:#0a3d4a;">DINERO NETO AL CLIENTE</td><td style="padding:11px 12px; text-align:right; font-weight:700; color:#0a3d4a;">' + fmtNum(d.dineroNeto) + '</td><td style="padding:11px 12px; text-align:right; font-weight:700; color:#0a3d4a;">' + fmtCLP(d.dineroNeto*UF_VALOR) + '</td></tr>' +
+    '</tbody></table>' +
+    '<h2 style="font-size:11px; font-weight:700; color:#0a3d4a; text-transform:uppercase; letter-spacing:0.8px; margin:20px 0 8px;">Condiciones financieras del leaseback</h2>' +
+    '<p style="font-size:11px; line-height:1.6; text-align:justify;">El plazo del contrato es de <strong>' + d.plazo + ' meses</strong>, con una tasa mensual del <strong>' + fmtPct(d.tasaMensual,2) + '</strong> (equivalente al <strong>' + fmtPct(d.tasaMensual*12,2) + ' anual</strong>) bajo sistema de amortización francés. La cuota mensual asciende a <strong>' + fmtUF(d.cuota) + '</strong> (' + fmtCLP(d.cuota*UF_VALOR) + '), siendo el total a pagar al fondo durante la vigencia del contrato de <strong>' + fmtUF(d.totalPago) + '</strong> (' + fmtCLP(d.totalPago*UF_VALOR) + ').</p>' +
+    '<h2 style="font-size:11px; font-weight:700; color:#0a3d4a; text-transform:uppercase; letter-spacing:0.8px; margin:18px 0 8px;">¿Cómo funciona el leaseback?</h2>' +
+    '<p style="font-size:11px; line-height:1.6; text-align:justify;">El leaseback es una operación financiera mediante la cual el cliente vende temporalmente su propiedad al fondo. Durante la vigencia del contrato mantiene el uso del inmueble pagando una cuota mensual definida, y al final del plazo conserva el derecho preferente de <strong>recompra</strong>, restituyendo su titularidad original. Es una solución ágil para obtener liquidez de corto plazo sin perder el activo subyacente.</p>' +
+    '<div style="background:#fdf3e0; padding:12px 16px; border-left:3px solid #a05c10; border-radius:4px; margin-top:14px; font-size:10.5px; line-height:1.5;">' +
+    '<strong style="color:#a05c10;">Próximos pasos:</strong> ✓ Tasación profesional · ✓ Estudio de títulos · ✓ Aprobación del fondo · ✓ Firma de escritura · ✓ Desembolso. Tiempo estimado total: <strong>15 a 30 días hábiles</strong>.</div>' +
+    '<p style="font-size:11px; line-height:1.6; text-align:justify; margin-top:14px;">No dude en contactarnos para aclarar cualquier consulta o avanzar con la solicitud formal. Agradecemos profundamente su confianza.</p>' +
+    pdfFirma(cfg) + pdfFooter(cfg);
+
+  generarPDF(html, 'Simulación de Leaseback · ' + (d.nombre || 'cliente'));
+}
+
+
+/* ═══════════════════════════════════════════════════════════════════
+   NOTA DE VENTA INTERNA (F-003)
+   Vista integrada · Auto-fill desde la última simulación · PDF imprimible
+═══════════════════════════════════════════════════════════════════ */
+let NV_FUENTE_ULTIMA=null;
+
+function abrirNotaVenta(origen){
+  showView('nota-venta');
+  precargarNotaDesdeSimulacion(origen);
+}
+
+function precargarUltimaSimulacion(){
+  if(NV_FUENTE_ULTIMA==='hipotecario' && H_DATA){ precargarNotaDesdeSimulacion('hipotecario'); return; }
+  if(NV_FUENTE_ULTIMA==='leaseback' && LB_DATA){ precargarNotaDesdeSimulacion('leaseback'); return; }
+  if(H_DATA){ precargarNotaDesdeSimulacion('hipotecario'); return; }
+  if(LB_DATA){ precargarNotaDesdeSimulacion('leaseback'); return; }
+  alert('Aún no hay simulaciones generadas en esta sesión. Genere una simulación primero.');
+}
+
+function precargarNotaDesdeSimulacion(origen){
+  const cfg = cargarConfig() || {};
+  let datos=null;
+  if(origen==='hipotecario' && H_DATA){
+    datos={
+      nombre:H_DATA.nombre, rut:H_DATA.rut, tipo:H_DATA.tipo, email:H_DATA.email, telefono:H_DATA.telefono,
+      valor:H_DATA.valor, monto:H_DATA.fin, plazo:H_DATA.plazo+' años',
+      tasa:fmtPct(H_DATA.tasa,2)+' '+H_DATA.tipoTasa+' (CAE '+fmtPct(H_DATA.cae,2)+')',
+      fee:H_DATA.honorariosUF, feePct:fmtPct(H_DATA.honorariosPct,1),
+      producto:'hipotecario', tipoProp:'casa'
+    };
+    NV_FUENTE_ULTIMA='hipotecario';
+  } else if(origen==='leaseback' && LB_DATA){
+    const tipoPropMap={urbana:'casa',parcela:'parcela',comercial:'comercial',industrial:'bodega'};
+    datos={
+      nombre:LB_DATA.nombre, rut:LB_DATA.rut, tipo:LB_DATA.tipo, email:LB_DATA.email, telefono:LB_DATA.telefono,
+      valor:LB_DATA.valor, monto:LB_DATA.compraventa, plazo:LB_DATA.plazo+' meses',
+      tasa:fmtPct(LB_DATA.tasaMensual,2)+' mensual ('+fmtPct(LB_DATA.tasaMensual*12,2)+' anual)',
+      fee:LB_DATA.feeL4BUF, feePct:fmtPct(LB_DATA.feeL4B,1),
+      direccion:LB_DATA.direccion, comuna:LB_DATA.comuna,
+      producto:'leaseback', tipoProp:tipoPropMap[LB_DATA.tipoPropiedad]||'otro'
+    };
+    NV_FUENTE_ULTIMA='leaseback';
+  } else {
+    alert('No hay simulación '+origen+' generada aún. Genere una simulación primero.');
+    return;
+  }
+  document.getElementById('nv-nombre').value = datos.nombre || '';
+  document.getElementById('nv-rut').value = datos.rut || '';
+  document.getElementById('nv-tipo-persona').value = datos.tipo || 'natural';
+  document.getElementById('nv-email').value = datos.email || '';
+  document.getElementById('nv-telefono').value = datos.telefono || '';
+  if(datos.direccion) document.getElementById('nv-prop-direccion').value = datos.direccion;
+  if(datos.comuna) document.getElementById('nv-prop-comuna').value = datos.comuna;
+  document.getElementById('nv-valor-uf').value = datos.valor || '';
+  document.getElementById('nv-valor-clp').value = datos.valor ? fmtCLP(datos.valor*UF_VALOR) : '';
+  document.getElementById('nv-producto').value = datos.producto || 'hipotecario';
+  document.getElementById('nv-tipo-propiedad').value = datos.tipoProp || 'casa';
+  document.getElementById('nv-monto-uf').value = datos.monto ? Math.round(datos.monto*100)/100 : '';
+  document.getElementById('nv-plazo').value = datos.plazo || '';
+  document.getElementById('nv-tasa').value = datos.tasa || '';
+  document.getElementById('nv-fee-uf').value = datos.fee ? Math.round(datos.fee*100)/100 : '';
+  document.getElementById('nv-fee-clp').value = datos.fee ? fmtCLP(datos.fee*UF_VALOR) : '';
+  document.getElementById('nv-fee-pct').value = datos.feePct || '';
+  document.getElementById('nv-asesor-nombre').value = cfg.nombre || '';
+  document.getElementById('nv-asesor-contacto').value = ((cfg.email||'')+(cfg.telefono?' · '+cfg.telefono:'')).trim();
+  document.getElementById('nv-aviso-vacio').style.display='none';
+  document.getElementById('nv-fuente').style.display='flex';
+  document.getElementById('nv-fuente-tipo').textContent = origen==='hipotecario' ? 'Crédito Hipotecario' : 'Leaseback Inmobiliario';
+}
+
+function limpiarNotaVenta(){
+  if(!confirm('¿Borrar todos los campos del formulario?')) return;
+  document.querySelectorAll('#form-nv input, #form-nv select, #form-nv textarea').forEach(el=>{
+    if(el.tagName==='SELECT') el.selectedIndex=0;
+    else el.value='';
+  });
+  document.getElementById('nv-aviso-vacio').style.display='flex';
+  document.getElementById('nv-fuente').style.display='none';
+}
+
+function nvOnInputUF(){
+  const v=parseFloat(document.getElementById('nv-valor-uf').value)||0;
+  const f=parseFloat(document.getElementById('nv-fee-uf').value)||0;
+  document.getElementById('nv-valor-clp').value=v>0?fmtCLP(v*UF_VALOR):'';
+  document.getElementById('nv-fee-clp').value=f>0?fmtCLP(f*UF_VALOR):'';
+}
+
+function sectionH(t){ return '<h2 style="font-size:11px; font-weight:700; color:#0a3d4a; text-transform:uppercase; letter-spacing:0.5px; border-bottom:1.5px solid #2aa07f; padding-bottom:3px; margin:14px 0 6px;">'+t+'</h2>'; }
+
+function descargarNotaVenta(){
+  const cfg = cargarConfig() || {};
+  const get = id => (document.getElementById(id).value||'').trim();
+  const getSel = id => { const el=document.getElementById(id); return el.options[el.selectedIndex]?el.options[el.selectedIndex].text:''; };
+  if(!get('nv-nombre')){ alert('Falta el nombre del cliente.'); return; }
+  if(!get('nv-rut')){ alert('Falta el RUT del cliente.'); return; }
+
+  const valorUF = parseFloat(get('nv-valor-uf'))||0;
+  const montoUF = parseFloat(get('nv-monto-uf'))||0;
+  const feeUF   = parseFloat(get('nv-fee-uf'))||0;
+  const idNota  = generarIdCot();
+  const fechaHoy = fmtFecha();
+
+  const f = (label, val) => '<tr><td style="padding:5px 10px; border-bottom:1px dotted #d8e0e4; color:#6a7a85; font-size:9.5pt; text-transform:uppercase; letter-spacing:0.3px; font-weight:600; width:38mm; vertical-align:top;">'+label+'</td><td style="padding:5px 10px; border-bottom:1px dotted #d8e0e4; font-size:10pt; color:#1f2d3d;">'+(val||'—')+'</td></tr>';
+  const obs = get('nv-observaciones');
+
+  const html =
+    '<div style="display:flex; justify-content:space-between; align-items:flex-end; padding:0 0 12px 0; border-bottom:2px solid #0a3d4a; margin-bottom:14px;">' +
+      '<div><div style="font-size:24px; font-weight:800; color:#0a3d4a; letter-spacing:-0.5px;">loans<span style="color:#2aa07f">4B</span></div>' +
+      '<div style="font-size:9px; color:#6a7a85; letter-spacing:1.6px; text-transform:uppercase; margin-top:4px; font-weight:500;">Just loans for business</div></div>' +
+      '<div style="text-align:right; font-size:10px; color:#3a4a55;">' +
+        '<div style="font-weight:700; color:#0a3d4a; font-size:11px;">NOTA DE VENTA INTERNA</div>' +
+        '<div style="margin-top:2px;">F-003 · Uso interno comercial</div>' +
+        '<div>N° nota: <strong>'+idNota+'</strong></div>' +
+        '<div>Fecha: '+fechaHoy+'</div>' +
+      '</div>' +
+    '</div>' +
+    '<h1 style="font-family:\'Playfair Display\',serif; font-size:20px; color:#0a3d4a; margin:14px 0 4px;">Nota de Venta · Interna</h1>' +
+    '<div style="font-size:10.5px; color:#6a7a85; margin-bottom:14px; font-style:italic;">Trigger de liquidación de comisión · POL-001 vigente.</div>' +
+    '<div style="background:#eaf6f2; border-left:3px solid #2aa07f; padding:8px 12px; border-radius:4px; font-size:9.5pt; color:#14525f; margin-bottom:14px; line-height:1.5;">' +
+      'Documento de <strong>uso exclusivamente interno</strong>. Lo completa el asesor responsable al concretar una operación. Una vez validado por jefatura, gatilla la facturación al cliente y la liquidación de comisión al asesor.' +
+    '</div>' +
+    sectionH('1. Información del cliente') +
+    '<table style="width:100%; border-collapse:collapse;">' +
+      f('Nombre / Razón social', get('nv-nombre')) +
+      f('RUT', get('nv-rut')) +
+      f('Tipo persona', getSel('nv-tipo-persona')) +
+      f('Giro / Actividad', get('nv-giro')) +
+      f('Correo', get('nv-email')) +
+      f('Teléfono', get('nv-telefono')) +
+      f('Dirección particular', get('nv-direccion')) +
+      f('Comuna / Ciudad', get('nv-comuna')) +
+    '</table>' +
+    sectionH('2. Datos de la propiedad') +
+    '<table style="width:100%; border-collapse:collapse;">' +
+      f('Rol de avalúo', get('nv-rol')) +
+      f('Tipo propiedad', getSel('nv-tipo-propiedad')) +
+      f('Dirección propiedad', get('nv-prop-direccion')) +
+      f('Comuna propiedad', get('nv-prop-comuna')) +
+      f('Región', get('nv-prop-region')) +
+      f('Valor propiedad', valorUF>0 ? fmtUF(valorUF)+' &nbsp; · &nbsp; '+fmtCLP(valorUF*UF_VALOR) : '—') +
+      f('Observaciones propiedad', get('nv-prop-obs')) +
+    '</table>' +
+    sectionH('3. Producto contratado') +
+    '<table style="width:100%; border-collapse:collapse;">' +
+      f('Producto', getSel('nv-producto')) +
+      f('Monto operación', montoUF>0 ? fmtUF(montoUF)+' &nbsp; · &nbsp; '+fmtCLP(montoUF*UF_VALOR) : '—') +
+      f('Plazo', get('nv-plazo')) +
+      f('Tasa pactada', get('nv-tasa')) +
+      f('Entidad / Fondo', get('nv-entidad')) +
+      f('Fecha estim. otorgamiento', get('nv-fecha-otorga')) +
+    '</table>' +
+    sectionH('4. Honorarios y facturación') +
+    '<table style="width:100%; border-collapse:collapse;">' +
+      f('Fee Loans4B', feeUF>0 ? '<strong style="color:#0a3d4a;">'+fmtUF(feeUF)+' &nbsp; · &nbsp; '+fmtCLP(feeUF*UF_VALOR)+'</strong>' : '—') +
+      f('% sobre operación', get('nv-fee-pct')) +
+      f('Momento de cobro', getSel('nv-momento-cobro')) +
+      f('Documento a emitir', getSel('nv-doc')) +
+      f('Razón social facturación', get('nv-razon-facturacion')) +
+    '</table>' +
+    sectionH('5. Contrato a enviar') +
+    '<table style="width:100%; border-collapse:collapse;">' +
+      f('Contrato', get('nv-contrato')) +
+      f('Estado', getSel('nv-contrato-estado')) +
+      f('Fecha envío', get('nv-contrato-fecha')) +
+      f('Anexos', get('nv-anexos')) +
+    '</table>' +
+    sectionH('6. Asesor responsable') +
+    '<table style="width:100%; border-collapse:collapse;">' +
+      f('Asesor', get('nv-asesor-nombre')) +
+      f('Contacto', get('nv-asesor-contacto')) +
+      f('Origen del lead', getSel('nv-origen-lead')) +
+      f('% comisión aplicable', get('nv-comision')) +
+    '</table>' +
+    (obs ? sectionH('7. Observaciones') + '<div style="border:1px solid #d8e0e4; border-radius:6px; padding:10px 14px; background:#fafcfd; font-size:10pt; line-height:1.55; min-height:18mm; white-space:pre-wrap;">'+obs+'</div>' : '') +
+    '<div style="display:grid; grid-template-columns:1fr 1fr; gap:16mm; margin-top:18mm;">' +
+      '<div style="border-top:1px solid #1f2d3d; padding-top:4px; font-size:9pt; color:#3a4a55; text-align:center;"><strong style="display:block; font-size:10pt; color:#0a3d4a;">Asesor responsable</strong>Nombre · Firma · Fecha</div>' +
+      '<div style="border-top:1px solid #1f2d3d; padding-top:4px; font-size:9pt; color:#3a4a55; text-align:center;"><strong style="display:block; font-size:10pt; color:#0a3d4a;">Jefatura Comercial L4B</strong>Nombre · Firma · Fecha</div>' +
+    '</div>' +
+    '<p style="font-size:8pt; color:#6a7a85; font-style:italic; margin-top:14px; line-height:1.5; text-align:justify;">' +
+      'Asesorías Loans4B SpA · RUT 78.302.775-5 · Documento de uso interno y confidencial. Esta nota es el trigger formal para el proceso de facturación al cliente y la liquidación de comisión al asesor, conforme a la Política de Comisiones POL-001 vigente. La información registrada queda sujeta a verificación por la jefatura comercial.' +
+    '</p>';
+
+  generarPDF(html, 'Nota de Venta · ' + (get('nv-nombre') || 'cliente'));
+}
+
+/* === INIT === */
+window.addEventListener('DOMContentLoaded',()=>{
+  aplicarConfigEnUI();
+  aplicarAsesorEnFormularios();
+  actualizarChipUF();
+  fetchUF(false);
+  runSimLeasebackRapido();
+  runSimHipotecarioRapido();
+  actualizarSegTotalDisplay();
+});
+</script>
+</body>
+</html>
+                 
