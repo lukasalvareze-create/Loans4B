@@ -242,6 +242,99 @@ if(FIREBASE_OK){
 
   /* Hide app shell until logged in */
   .app-hidden { display:none !important; }
+
+  /* ===== v9 · PIPELINE / TAREAS / REPORTES / FICHA DETALLE ===== */
+  /* Pipeline kanban */
+  .kanban-board { display:grid; grid-template-columns:repeat(4, minmax(240px,1fr)); gap:14px; }
+  .kanban-col { background:#fff; border:1px solid var(--border-l); border-radius:12px; padding:10px; min-height:280px; box-shadow:var(--shadow); display:flex; flex-direction:column; gap:8px; }
+  .kanban-col-head { display:flex; align-items:center; gap:8px; padding:8px 6px 10px; border-bottom:1px solid var(--border-l); }
+  .kanban-col-head .dot { width:9px; height:9px; border-radius:50%; flex-shrink:0; }
+  .kanban-col-head .t { font-size:12px; font-weight:700; color:var(--teal); text-transform:uppercase; letter-spacing:0.5px; flex:1; }
+  .kanban-col-head .c { background:var(--bg); color:var(--text-2); font-size:11px; font-weight:600; padding:2px 8px; border-radius:12px; }
+  .kanban-col-body { flex:1; display:flex; flex-direction:column; gap:8px; overflow-y:auto; max-height:520px; }
+  .kanban-card { background:#fafcfd; border:1px solid var(--border-l); border-left:3px solid var(--green); border-radius:8px; padding:10px 12px; cursor:pointer; transition:all 0.18s; }
+  .kanban-card:hover { background:#f1f6f8; box-shadow:var(--shadow); transform:translateX(2px); }
+  .kanban-card .nom { font-size:13px; font-weight:600; color:var(--text); margin-bottom:2px; }
+  .kanban-card .rut { font-size:11px; color:var(--muted); font-variant-numeric:tabular-nums; }
+  .kanban-card .meta { display:flex; gap:6px; margin-top:6px; flex-wrap:wrap; }
+  .kanban-card .meta span { font-size:10px; padding:2px 6px; background:#fff; border:1px solid var(--border-l); border-radius:10px; color:var(--text-2); }
+  .kanban-card .est { font-size:11px; color:var(--muted); margin-top:6px; line-height:1.4; font-style:italic; }
+  @media (max-width:1180px) { .kanban-board { grid-template-columns:repeat(2, 1fr); } }
+  @media (max-width:760px)  { .kanban-board { grid-template-columns:1fr; } }
+
+  /* Ficha cliente detalle */
+  .cd-grid { display:grid; grid-template-columns:2fr 1fr; gap:22px; }
+  @media (max-width:1080px){ .cd-grid { grid-template-columns:1fr; } }
+  .cd-hero { background:linear-gradient(135deg,var(--teal),var(--teal-m)); color:#fff; border-radius:14px; padding:24px 28px; margin-bottom:20px; box-shadow:var(--shadow-lg); }
+  .cd-hero .ch-nom { font-family:'Playfair Display',serif; font-size:26px; font-weight:700; }
+  .cd-hero .ch-rut { font-size:13px; color:rgba(255,255,255,0.65); margin-top:2px; font-variant-numeric:tabular-nums; }
+  .cd-hero .ch-meta { display:flex; gap:18px; margin-top:14px; flex-wrap:wrap; }
+  .cd-hero .ch-meta .item { font-size:12px; color:rgba(255,255,255,0.85); }
+  .cd-hero .ch-meta .item strong { color:#fff; font-weight:600; }
+  .cd-etapa-bar { display:flex; gap:8px; margin-top:18px; padding-top:16px; border-top:1px solid rgba(255,255,255,0.18); align-items:center; flex-wrap:wrap; }
+  .cd-etapa-bar .lbl { font-size:11px; color:rgba(255,255,255,0.65); text-transform:uppercase; letter-spacing:1px; font-weight:600; }
+  .cd-etapa-bar select { background:rgba(255,255,255,0.12); color:#fff; border:1px solid rgba(255,255,255,0.25); border-radius:6px; padding:6px 10px; font-size:12px; font-family:inherit; }
+  .cd-etapa-bar select option { background:var(--teal-d); }
+  .cd-card { background:#fff; border:1px solid var(--border-l); border-radius:12px; box-shadow:var(--shadow); margin-bottom:18px; overflow:hidden; }
+  .cd-card-head { padding:14px 20px; border-bottom:1px solid var(--border-l); background:linear-gradient(180deg,#fafdfb,#fff); display:flex; align-items:center; gap:10px; }
+  .cd-card-head h3 { font-size:13px; font-weight:600; color:var(--teal); text-transform:uppercase; letter-spacing:0.5px; flex:1; }
+  .cd-card-body { padding:18px 20px; }
+
+  /* Timeline */
+  .timeline { position:relative; padding-left:22px; }
+  .timeline::before { content:''; position:absolute; left:7px; top:6px; bottom:6px; width:2px; background:var(--border-l); }
+  .timeline-item { position:relative; padding-bottom:18px; }
+  .timeline-item::before { content:''; position:absolute; left:-19px; top:5px; width:12px; height:12px; border-radius:50%; background:var(--green); border:2px solid #fff; box-shadow:0 0 0 2px var(--green-bg); }
+  .timeline-item.simulacion::before { background:var(--amber); box-shadow:0 0 0 2px var(--amber-bg); }
+  .timeline-item.documento::before { background:var(--blue); box-shadow:0 0 0 2px var(--blue-bg); }
+  .timeline-item.etapa::before { background:#7a4ba0; box-shadow:0 0 0 2px #f0e8f6; }
+  .timeline-item .head { display:flex; gap:8px; align-items:baseline; font-size:11.5px; color:var(--muted); margin-bottom:4px; }
+  .timeline-item .head strong { color:var(--teal); font-size:12px; font-weight:600; }
+  .timeline-item .body { font-size:13px; color:var(--text); line-height:1.5; background:#fafcfd; border:1px solid var(--border-l); padding:10px 12px; border-radius:8px; }
+
+  /* Checklist documentos */
+  .doc-list { display:flex; flex-direction:column; gap:6px; }
+  .doc-item { display:flex; align-items:center; gap:10px; padding:10px 12px; background:#fafcfd; border:1px solid var(--border-l); border-radius:8px; transition:all 0.15s; }
+  .doc-item:hover { background:#f1f6f8; }
+  .doc-item .lbl { flex:1; font-size:13px; color:var(--text); }
+  .doc-item select { background:#fff; border:1px solid var(--border); border-radius:6px; padding:5px 9px; font-size:11.5px; font-family:inherit; font-weight:500; }
+  .doc-item.recibido { background:var(--green-bg); border-color:#c9ebde; }
+  .doc-item.observado { background:var(--amber-bg); border-color:#f5dcb0; }
+  .doc-item.recibido .lbl { color:#1d7a5f; }
+  .doc-item.observado .lbl { color:var(--amber); }
+
+  /* Tareas */
+  .tarea-card { background:#fff; border:1px solid var(--border-l); border-left:3px solid var(--blue); border-radius:10px; padding:14px 18px; display:flex; align-items:center; gap:14px; margin-bottom:10px; transition:all 0.15s; }
+  .tarea-card:hover { box-shadow:var(--shadow); }
+  .tarea-card.alta { border-left-color:var(--red); }
+  .tarea-card.media { border-left-color:var(--amber); }
+  .tarea-card.baja { border-left-color:var(--blue); }
+  .tarea-card.completada { opacity:0.55; background:var(--bg); }
+  .tarea-card.completada .titulo { text-decoration:line-through; }
+  .tarea-card.vencida { background:var(--red-bg); border-left-color:var(--red); }
+  .tarea-card .check { width:22px; height:22px; border:2px solid var(--border); border-radius:6px; cursor:pointer; flex-shrink:0; display:flex; align-items:center; justify-content:center; font-size:14px; color:transparent; transition:all 0.15s; }
+  .tarea-card .check:hover { border-color:var(--green); }
+  .tarea-card.completada .check { background:var(--green); border-color:var(--green); color:#fff; }
+  .tarea-card .info { flex:1; min-width:0; }
+  .tarea-card .titulo { font-size:13.5px; font-weight:600; color:var(--text); margin-bottom:3px; }
+  .tarea-card .meta { font-size:11.5px; color:var(--muted); display:flex; gap:10px; flex-wrap:wrap; }
+  .tarea-card .meta .venc { color:var(--text-2); font-weight:500; }
+  .tarea-card.vencida .meta .venc { color:var(--red); font-weight:700; }
+  .tarea-card .acc { display:flex; gap:6px; }
+  .tarea-card .acc button { background:none; border:none; cursor:pointer; color:var(--muted); padding:6px; font-size:14px; border-radius:6px; }
+  .tarea-card .acc button:hover { background:var(--bg); color:var(--teal); }
+  .tarea-card .acc button.del:hover { color:var(--red); }
+
+  /* KPI cards en reportes */
+  .kpi-row { display:grid; grid-template-columns:repeat(4,1fr); gap:14px; margin-bottom:24px; }
+  @media (max-width:980px){ .kpi-row { grid-template-columns:repeat(2,1fr); } }
+  .kpi-card { background:#fff; border:1px solid var(--border-l); border-radius:12px; padding:18px 20px; box-shadow:var(--shadow); }
+  .kpi-card .lbl { font-size:10.5px; color:var(--muted); text-transform:uppercase; letter-spacing:0.8px; font-weight:600; margin-bottom:6px; }
+  .kpi-card .val { font-size:28px; font-weight:700; color:var(--teal); font-variant-numeric:tabular-nums; letter-spacing:-0.5px; }
+  .kpi-card .sub { font-size:11.5px; color:var(--muted); margin-top:2px; }
+  .kpi-card.green .val { color:var(--green); }
+  .kpi-card.amber .val { color:var(--amber); }
+  .kpi-card.blue .val { color:var(--blue); }
 </style>
 </head>
 <body>
@@ -288,6 +381,9 @@ if(FIREBASE_OK){
   <nav class="sidebar-nav">
     <div class="nav-label">CRM</div>
     <button class="nav-item" onclick="showView('clientes')"><span class="icon">👥</span><span>Mis Clientes</span></button>
+    <button class="nav-item" onclick="showView('pipeline')"><span class="icon">🧭</span><span>Pipeline</span></button>
+    <button class="nav-item" onclick="showView('tareas')"><span class="icon">✅</span><span>Tareas</span></button>
+    <button class="nav-item" onclick="showView('reportes')"><span class="icon">📊</span><span>Reportes</span></button>
     <button class="nav-item" onclick="showView('historial')"><span class="icon">🗂️</span><span>Historial</span></button>
     <div class="nav-label" style="margin-top:14px">Simuladores</div>
     <button class="nav-item active" onclick="showView('sim-rapido-leaseback')"><span class="icon">⚡</span><span>Sim. rápida Leaseback</span></button>
@@ -914,6 +1010,183 @@ if(FIREBASE_OK){
     </div>
   </div>
 
+  <!-- ===== PIPELINE KANBAN ===== -->
+  <div class="view" id="view-pipeline">
+    <h1 class="section-title">Pipeline Comercial</h1>
+    <p class="section-sub">Tablero kanban del embudo. Cada tarjeta es un cliente. Para mover un cliente de etapa, abre su ficha y cambia la etapa en el selector superior.</p>
+    <div class="filter-bar">
+      <input type="text" id="pl-buscar" class="grow" placeholder="Buscar cliente en el pipeline…" oninput="renderPipeline()">
+      <select id="pl-asesor" onchange="renderPipeline()">
+        <option value="mios" selected>Solo mis clientes</option>
+        <option value="todos">Todos los asesores</option>
+      </select>
+    </div>
+    <div class="kanban-board" id="pl-board"></div>
+  </div>
+
+  <!-- ===== FICHA CLIENTE DETALLE ===== -->
+  <div class="view" id="view-cliente-detalle">
+    <button class="btn ghost" onclick="showView('clientes')" style="margin-bottom:14px"><span>‹</span> Volver a Clientes</button>
+    <div class="cd-hero">
+      <div class="ch-nom" id="cd-nom">—</div>
+      <div class="ch-rut" id="cd-rut">—</div>
+      <div class="ch-meta">
+        <div class="item"><strong id="cd-tipo">—</strong></div>
+        <div class="item">📧 <strong id="cd-email">—</strong></div>
+        <div class="item">📞 <strong id="cd-telefono">—</strong></div>
+        <div class="item">📍 <strong id="cd-comuna">—</strong></div>
+        <div class="item">👤 <strong id="cd-asesor">—</strong></div>
+      </div>
+      <div class="cd-etapa-bar">
+        <span class="lbl">Etapa pipeline</span>
+        <select id="cd-etapa-sel" onchange="cambiarEtapaCliente()"></select>
+        <span class="lbl" style="margin-left:18px">Estado actual</span>
+        <input type="text" id="cd-estado-input" placeholder="Texto breve del estado actual…" style="background:rgba(255,255,255,0.12); color:#fff; border:1px solid rgba(255,255,255,0.25); border-radius:6px; padding:6px 10px; font-size:12px; font-family:inherit; min-width:260px;" onchange="guardarEstadoActual()">
+        <button class="btn ghost" onclick="abrirClienteModal(CD_ID)" style="margin-left:auto"><span>✏️</span> Editar ficha</button>
+      </div>
+    </div>
+
+    <div class="cd-grid">
+      <div>
+        <div class="cd-card">
+          <div class="cd-card-head"><h3>📋 Seguimiento del caso</h3><button class="btn green" style="padding:7px 13px; font-size:12px" onclick="abrirNotaSeguimiento()">＋ Nueva nota</button></div>
+          <div class="cd-card-body">
+            <div id="cd-timeline" class="timeline"><div style="font-size:13px; color:var(--muted); padding:6px 0">Aún no hay notas de seguimiento. Click en <strong>＋ Nueva nota</strong> para registrar el primer contacto, llamada o avance.</div></div>
+          </div>
+        </div>
+        <div class="cd-card">
+          <div class="cd-card-head"><h3>📁 Simulaciones y notas de venta</h3></div>
+          <div class="cd-card-body" id="cd-sims"><div style="font-size:13px; color:var(--muted)">Las simulaciones que asocies a este cliente aparecerán aquí.</div></div>
+        </div>
+      </div>
+      <div>
+        <div class="cd-card">
+          <div class="cd-card-head"><h3>📑 Documentación</h3></div>
+          <div class="cd-card-body"><div class="doc-list" id="cd-docs"></div></div>
+        </div>
+        <div class="cd-card">
+          <div class="cd-card-head"><h3>✅ Tareas pendientes</h3><button class="btn green" style="padding:7px 13px; font-size:12px" onclick="abrirTareaModal(CD_ID)">＋ Tarea</button></div>
+          <div class="cd-card-body" id="cd-tareas"><div style="font-size:13px; color:var(--muted)">Sin tareas pendientes para este cliente.</div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal Nota Seguimiento -->
+  <div class="modal-overlay" id="modal-nota">
+    <div class="modal" style="max-width:520px">
+      <div class="modal-head"><h3>Nueva nota de seguimiento</h3><button class="modal-close" onclick="cerrarNotaModal()">×</button></div>
+      <div class="modal-body">
+        <div class="form-group" style="margin-bottom:14px">
+          <label>Tipo</label>
+          <select id="nt-tipo">
+            <option value="contacto">Contacto / Llamada</option>
+            <option value="seguimiento" selected>Avance del caso</option>
+            <option value="documento">Documento recibido</option>
+            <option value="simulacion">Comentario sobre simulación</option>
+            <option value="otro">Otro</option>
+          </select>
+        </div>
+        <div class="form-group" style="margin-bottom:14px">
+          <label>Texto <span class="req">*</span></label>
+          <textarea id="nt-texto" rows="4" placeholder="Ej: Cliente confirmó interés en hipotecario a 25 años, va a enviar liquidaciones esta semana." style="background:#fafcfd; border:1px solid var(--border); border-radius:8px; padding:10px 13px; font-size:13px; font-family:inherit; resize:vertical"></textarea>
+        </div>
+      </div>
+      <div class="modal-foot">
+        <button class="btn ghost" onclick="cerrarNotaModal()">Cancelar</button>
+        <button class="btn green" onclick="guardarNotaSeguimiento()" id="nt-btn"><span>💾</span> Guardar nota</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal Tarea -->
+  <div class="modal-overlay" id="modal-tarea">
+    <div class="modal" style="max-width:520px">
+      <div class="modal-head"><h3 id="mt-titulo">Nueva tarea</h3><button class="modal-close" onclick="cerrarTareaModal()">×</button></div>
+      <div class="modal-body">
+        <input type="hidden" id="mt-id">
+        <input type="hidden" id="mt-cliente-id">
+        <div class="form-group" style="margin-bottom:14px"><label>Título <span class="req">*</span></label><input type="text" id="mt-titulo-inp" placeholder="Ej: Llamar a Pérez para confirmar firma"></div>
+        <div class="form-group" style="margin-bottom:14px"><label>Descripción</label><textarea id="mt-desc" rows="3" placeholder="Detalle opcional…" style="background:#fafcfd; border:1px solid var(--border); border-radius:8px; padding:10px 13px; font-size:13px; font-family:inherit; resize:vertical"></textarea></div>
+        <div class="form-grid" style="margin-bottom:14px">
+          <div class="form-group"><label>Vencimiento</label><input type="date" id="mt-fecha"></div>
+          <div class="form-group"><label>Prioridad</label><select id="mt-prio"><option value="baja">Baja</option><option value="media" selected>Media</option><option value="alta">Alta</option></select></div>
+        </div>
+        <div class="form-group" style="margin-bottom:14px"><label>Cliente asociado <span class="opt">(opcional)</span></label><select id="mt-cli"><option value="">— Sin cliente —</option></select></div>
+      </div>
+      <div class="modal-foot">
+        <button class="btn ghost" onclick="cerrarTareaModal()">Cancelar</button>
+        <button class="btn green" onclick="guardarTarea()" id="mt-btn"><span>💾</span> Guardar tarea</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== TAREAS ===== -->
+  <div class="view" id="view-tareas">
+    <h1 class="section-title">Tareas y Recordatorios</h1>
+    <p class="section-sub">Lista de tareas pendientes. Marca las completadas y agenda nuevas. Las vencidas aparecen destacadas en rojo.</p>
+    <div class="filter-bar">
+      <select id="tr-filtro" onchange="renderTareas()">
+        <option value="pendientes" selected>Pendientes</option>
+        <option value="hoy">Vencen hoy</option>
+        <option value="semana">Esta semana</option>
+        <option value="vencidas">Vencidas</option>
+        <option value="completadas">Completadas</option>
+        <option value="todas">Todas</option>
+      </select>
+      <select id="tr-asesor" onchange="renderTareas()">
+        <option value="mias" selected>Mis tareas</option>
+        <option value="todas">Todas (equipo)</option>
+      </select>
+      <button class="btn green" onclick="abrirTareaModal()" style="margin-left:auto"><span>＋</span> Nueva tarea</button>
+    </div>
+    <div id="tr-lista"></div>
+    <div class="empty-state" id="tr-empty" style="display:none">
+      <div class="ico">✅</div>
+      <h3>Sin tareas en este filtro</h3>
+      <p>Cuando agendes una tarea ("Llamar a Pérez el martes", "Vence DPS de Soto") aparecerá aquí. Click en <strong>＋ Nueva tarea</strong> para empezar.</p>
+    </div>
+  </div>
+
+  <!-- ===== REPORTES ===== -->
+  <div class="view" id="view-reportes">
+    <h1 class="section-title">Reportes</h1>
+    <p class="section-sub">Resumen de actividad por día para el equipo. Descarga el PDF al final del día para enviar a tu jefatura.</p>
+    <div class="filter-bar">
+      <label style="font-size:12.5px; color:var(--text-2); font-weight:600; display:flex; align-items:center; gap:8px">Fecha <input type="date" id="rp-fecha" onchange="renderReporte()"></label>
+      <select id="rp-rango" onchange="renderReporte()">
+        <option value="dia" selected>Día específico</option>
+        <option value="semana">Últimos 7 días</option>
+        <option value="mes">Últimos 30 días</option>
+      </select>
+      <select id="rp-asesor" onchange="renderReporte()">
+        <option value="todos" selected>Todo el equipo</option>
+      </select>
+      <button class="btn green" onclick="descargarReportePDF()" style="margin-left:auto"><span>📥</span> Descargar PDF</button>
+    </div>
+
+    <div class="kpi-row">
+      <div class="kpi-card"><div class="lbl">Clientes nuevos</div><div class="val" id="kpi-clientes">0</div><div class="sub" id="kpi-clientes-sub">en el período</div></div>
+      <div class="kpi-card green"><div class="lbl">Simulaciones</div><div class="val" id="kpi-sims">0</div><div class="sub" id="kpi-sims-sub">generadas y guardadas</div></div>
+      <div class="kpi-card blue"><div class="lbl">Notas de venta</div><div class="val" id="kpi-notas">0</div><div class="sub" id="kpi-notas-sub">emitidas</div></div>
+      <div class="kpi-card amber"><div class="lbl">Tareas completadas</div><div class="val" id="kpi-tareas">0</div><div class="sub" id="kpi-tareas-sub">en el período</div></div>
+    </div>
+
+    <div class="data-table-wrap" style="margin-bottom:24px">
+      <table class="data-table">
+        <thead><tr><th>Asesor</th><th class="num">Clientes nuevos</th><th class="num">Simulaciones</th><th class="num">Notas venta</th><th class="num">UF simulado</th><th class="num">Tareas hechas</th></tr></thead>
+        <tbody id="rp-por-asesor"><tr><td colspan="6" style="padding:30px; text-align:center; color:var(--muted)">Cargando…</td></tr></tbody>
+      </table>
+    </div>
+
+    <div class="cd-card">
+      <div class="cd-card-head"><h3>📜 Actividad cronológica del período</h3></div>
+      <div class="cd-card-body">
+        <div id="rp-cronologia" class="timeline"></div>
+      </div>
+    </div>
+  </div>
+
   <!-- Modal Crear Usuario -->
   <div class="modal-overlay" id="modal-user">
     <div class="modal" style="max-width:500px">
@@ -952,9 +1225,51 @@ const VIEW_TITLES = {
   'conversor': 'Conversor UF / CLP',
   'config': 'Configuración',
   'clientes': 'Mis Clientes',
+  'cliente-detalle': 'Ficha del Cliente',
+  'pipeline': 'Pipeline Comercial',
+  'tareas': 'Tareas y Recordatorios',
+  'reportes': 'Reportes',
   'historial': 'Historial',
   'equipo': 'Equipo (Admin)'
 };
+
+/* === ETAPAS DEL PIPELINE === */
+const ETAPAS = [
+  { id:'prospecto',     label:'Prospecto',     color:'#94a4af', desc:'Lead nuevo sin contacto aún' },
+  { id:'contacto',      label:'En contacto',   color:'#1a6aa0', desc:'Primer contacto realizado' },
+  { id:'simulacion',    label:'Simulación',    color:'#a05c10', desc:'Simulación generada' },
+  { id:'preevaluacion', label:'Pre-evaluación',color:'#7a4ba0', desc:'En evaluación crediticia' },
+  { id:'banco',         label:'En banco',      color:'#1d7a5f', desc:'Documentos enviados a banco' },
+  { id:'aprobado',      label:'Aprobado',      color:'#2aa07f', desc:'Banco aprobó la operación' },
+  { id:'escriturado',   label:'Escriturado',   color:'#0a3d4a', desc:'Operación firmada y cerrada' },
+  { id:'perdido',       label:'Perdido',       color:'#b52a2a', desc:'Lead caído / no avanzó' }
+];
+function etapaInfo(id){ return ETAPAS.find(e=>e.id===id) || ETAPAS[0]; }
+
+/* === DOCUMENTOS POR DEFECTO === */
+const DOCUMENTOS_NATURAL = [
+  { id:'ci_frontal', label:'Cédula identidad (frontal)' },
+  { id:'ci_reverso', label:'Cédula identidad (reverso)' },
+  { id:'liquidaciones', label:'Últimas 3 liquidaciones de sueldo' },
+  { id:'afp', label:'12 cotizaciones AFP' },
+  { id:'cert_renta', label:'Certificado de renta anual (SII)' },
+  { id:'dicom', label:'Informe DICOM / Equifax' },
+  { id:'cert_matrimonio', label:'Certificado de matrimonio (si aplica)' },
+  { id:'avaluo', label:'Avalúo fiscal de la propiedad' },
+  { id:'cv', label:'Certificado dominio vigente CBR' }
+];
+const DOCUMENTOS_JURIDICA = [
+  { id:'ci_representante', label:'CI representante legal' },
+  { id:'escritura', label:'Escritura de constitución' },
+  { id:'cert_vigencia', label:'Certificado vigencia sociedad' },
+  { id:'balance', label:'Balance clasificado (últimos 2 años)' },
+  { id:'eerr', label:'EERR / Estado de resultados' },
+  { id:'cert_inicio', label:'Certificado inicio actividades SII' },
+  { id:'iva_form29', label:'Form. 29 últimos 12 meses' },
+  { id:'cert_no_quiebra', label:'Cert. no quiebra Superir' },
+  { id:'avaluo', label:'Avalúo fiscal de la propiedad' },
+  { id:'cv', label:'Certificado dominio vigente CBR' }
+];
 const SEGUROS_REF = {
   natural:  { desg: 0.90, incendio: 0.52, cesantia: 0.18 },
   juridica: { desg: 0,    incendio: 0.52, cesantia: 0    }
@@ -977,6 +1292,12 @@ function showView(name){
   document.querySelectorAll('.nav-item').forEach(n=>{ if(n.getAttribute('onclick')&&n.getAttribute('onclick').includes("'"+name+"'")) n.classList.add('active'); });
   document.getElementById('topbar-title').textContent=VIEW_TITLES[name]||'';
   aplicarAsesorEnFormularios();
+  // === v9: dispatch a renderers según vista ===
+  try{
+    if(name==='pipeline')  renderPipeline();
+    if(name==='tareas')    renderTareas();
+    if(name==='reportes')  { setDefaultReportDate(); poblarAsesorReporte(); renderReporte(); }
+  }catch(e){ console.warn('showView dispatch:', e); }
   window.scrollTo(0,0);
 }
 
@@ -1704,6 +2025,10 @@ let HISTORIAL_CACHE = [];
 let USERS_CACHE = [];
 let MC_TIPO = 'natural';
 let CLIENTE_SELECCIONADO_SIM = { hipotecario: null, leaseback: null, nv: null };
+/* === v9: estado pipeline / ficha / tareas === */
+let TAREAS_CACHE = [];
+let NOTAS_SEG_CACHE = {};   // clienteId -> [notas]
+let CD_ID = null;            // cliente activo en ficha detalle
 
 /* === HELPERS FIRESTORE === */
 function fbReady(){ return FIREBASE_OK && fbDb && fbAuth; }
@@ -1713,6 +2038,17 @@ function fmtTimestamp(ts){ const d=tsToDate(ts); if(!d) return '—'; return d.t
 function initialsOf(name){ if(!name) return '?'; const p=name.trim().split(/\s+/); return ((p[0]||'')[0]||'')+(((p[1]||'')[0])||''); }
 function escapeHTML(s){ if(s==null) return ''; return String(s).replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m])); }
 function asesorNombrePorId(uid){ if(!uid) return '—'; if(CURRENT_USER && CURRENT_USER.uid===uid && CURRENT_PROFILE) return CURRENT_PROFILE.nombre + ' (yo)'; const u = USERS_CACHE.find(x=>x.id===uid); return u ? u.nombre : '—'; }
+function getMontoUF(h){
+  if(!h) return 0;
+  if(h.montoUF) return Number(h.montoUF)||0;
+  if(h.valorUF) return Number(h.valorUF)||0;
+  if(h.inputs){
+    if(h.inputs.financiarUF)  return Number(h.inputs.financiarUF)||0;
+    if(h.inputs.dineroNetoUF) return Number(h.inputs.dineroNetoUF)||0;
+    if(h.inputs.valorUF)      return Number(h.inputs.valorUF)||0;
+  }
+  return 0;
+}
 
 /* === AUTH === */
 async function iniciarSesion(){
@@ -1740,6 +2076,7 @@ async function cerrarSesion(){
   try{ await fbAuth.signOut(); }catch(e){ console.error(e); }
   CURRENT_USER=null; CURRENT_PROFILE=null;
   CLIENTES_CACHE=[]; HISTORIAL_CACHE=[]; USERS_CACHE=[];
+  TAREAS_CACHE=[]; NOTAS_SEG_CACHE={}; CD_ID=null;
   mostrarLogin();
 }
 
@@ -1773,6 +2110,7 @@ function setupAuthListener(){
       mostrarApp();
       cargarClientes();
       cargarHistorial();
+      cargarTareas();
       if(CURRENT_PROFILE && CURRENT_PROFILE.rol==='admin') cargarEquipo();
       if(CURRENT_PROFILE){
         const cfg = cargarConfig() || {};
@@ -1841,14 +2179,16 @@ function renderClientes(){
   wrap.style.display='block'; empty.style.display='none';
   tbody.innerHTML = lista.map(c=>{
     const tipoBadge = c.tipoPersona==='juridica' ? '<span class="badge blue">Jurídica</span>' : '<span class="badge gray">Natural</span>';
-    return '<tr onclick="abrirClienteModal(\''+c.id+'\')">'+
+    const etapa = etapaInfo(c.etapa||'prospecto');
+    const etapaBadge = '<span class="badge" style="background:'+etapa.color+'1a; color:'+etapa.color+'; border:1px solid '+etapa.color+'40">'+escapeHTML(etapa.label)+'</span>';
+    return '<tr style="cursor:pointer" onclick="mostrarFichaCliente(\''+c.id+'\')">'+
       '<td><strong>'+escapeHTML(c.nombre||'—')+'</strong>'+(c.giro?'<div style="font-size:11px;color:var(--muted);margin-top:2px">'+escapeHTML(c.giro)+'</div>':'')+'</td>'+
       '<td>'+escapeHTML(c.rut||'—')+'</td>'+
-      '<td>'+tipoBadge+'</td>'+
+      '<td>'+tipoBadge+' '+etapaBadge+'</td>'+
       '<td><div style="font-size:12px">'+escapeHTML(c.email||'—')+'</div><div style="font-size:11px;color:var(--muted)">'+escapeHTML(c.telefono||'')+'</div></td>'+
       '<td><span style="font-size:12px">'+escapeHTML(asesorNombrePorId(c.asesorId))+'</span></td>'+
       '<td><span style="font-size:11.5px;color:var(--muted)">'+fmtTimestamp(c.updatedAt||c.createdAt)+'</span></td>'+
-      '<td class="actions"><span style="color:var(--green);font-size:11px;font-weight:600">EDITAR ›</span></td>'+
+      '<td class="actions" onclick="event.stopPropagation()"><button class="btn ghost" style="padding:5px 10px; font-size:11px" onclick="abrirClienteModal(\''+c.id+'\')">✏️ Editar</button></td>'+
     '</tr>';
   }).join('');
 }
@@ -1918,7 +2258,7 @@ async function guardarCliente(){
   };
   try{
     if(id){ await fbDb.collection('clientes').doc(id).update(data); }
-    else { data.asesorId = CURRENT_USER.uid; data.createdAt = nowTs(); await fbDb.collection('clientes').add(data); }
+    else { data.asesorId = CURRENT_USER.uid; data.createdAt = nowTs(); data.etapa = 'prospecto'; data.estadoActual = ''; data.documentos = {}; await fbDb.collection('clientes').add(data); }
     cerrarClienteModal();
     await cargarClientes();
   }catch(e){ console.error('guardarCliente error:',e); alert('Error guardando: '+(e.message||e)); }
@@ -1934,8 +2274,8 @@ async function cargarHistorial(){
       fbDb.collection('notasVenta').orderBy('createdAt','desc').limit(500).get()
     ]);
     const lista = [];
-    sims.forEach(d=>{ const x=d.data(); lista.push({ id:d.id, tipo:'sim-'+x.producto, ...x, fechaSort: tsToDate(x.fechaCreacion) }); });
-    notas.forEach(d=>{ const x=d.data(); lista.push({ id:d.id, tipo:'nota-venta', ...x, fechaSort: tsToDate(x.createdAt) }); });
+    sims.forEach(d=>{ const x=d.data(); lista.push({ id:d.id, tipo:'sim-'+x.producto, _tipo:'simulacion', ...x, fechaSort: tsToDate(x.fechaCreacion) }); });
+    notas.forEach(d=>{ const x=d.data(); lista.push({ id:d.id, tipo:'nota-venta', _tipo:'nota_venta', ...x, fechaSort: tsToDate(x.createdAt) }); });
     lista.sort((a,b)=>(b.fechaSort||0)-(a.fechaSort||0));
     HISTORIAL_CACHE = lista;
     renderHistorial();
@@ -2004,7 +2344,20 @@ async function guardarSimulacionActual(producto){
     await fbDb.collection('simulaciones').add(doc);
     const banner = document.getElementById('save-banner-'+producto);
     if(banner){ banner.querySelector('.sb-status').textContent='✓ Guardada en historial'; }
+    if(cliId){
+      try{
+        await fbDb.collection('clientes').doc(cliId).collection('notas').add({
+          tipo: 'simulacion',
+          texto: 'Nueva simulación '+(producto==='hipotecario'?'Hipotecario':'Leaseback')+' · '+fmtUF(getMontoUF({inputs})),
+          asesorId: CURRENT_USER.uid,
+          asesorNombre: CURRENT_PROFILE ? CURRENT_PROFILE.nombre : '',
+          createdAt: nowTs()
+        });
+        await fbDb.collection('clientes').doc(cliId).update({ updatedAt: nowTs() });
+      }catch(_){}
+    }
     await cargarHistorial();
+    if(CD_ID===cliId && cliId){ await cargarNotas(cliId); renderTimeline(cliId); renderSimsCliente(cliId); }
   }catch(e){ console.error('guardarSimulacion error:',e); alert('Error guardando simulación: '+(e.message||e)); }
 }
 
@@ -2032,7 +2385,20 @@ async function guardarNotaActual(){
   try{
     await fbDb.collection('notasVenta').add(doc);
     if(btn){ btn.innerHTML='<span>✓</span> Guardada en historial'; setTimeout(()=>{ btn.disabled=false; btn.innerHTML='<span>💾</span> Guardar nota en historial'; },2500); }
+    if(cliId){
+      try{
+        await fbDb.collection('clientes').doc(cliId).collection('notas').add({
+          tipo: 'simulacion',
+          texto: 'Nota de Venta emitida · '+fmtUF(doc.montoUF||0),
+          asesorId: CURRENT_USER.uid,
+          asesorNombre: CURRENT_PROFILE ? CURRENT_PROFILE.nombre : '',
+          createdAt: nowTs()
+        });
+        await fbDb.collection('clientes').doc(cliId).update({ updatedAt: nowTs() });
+      }catch(_){}
+    }
     await cargarHistorial();
+    if(CD_ID===cliId && cliId){ await cargarNotas(cliId); renderTimeline(cliId); renderSimsCliente(cliId); }
   }catch(e){ console.error('guardarNota error:',e); alert('Error guardando nota: '+(e.message||e)); if(btn){ btn.disabled=false; btn.innerHTML='<span>💾</span> Guardar nota en historial'; } }
 }
 
@@ -2143,18 +2509,545 @@ function onClientePickerChange(producto, selectEl){
   }
 }
 
-/* === INIT === */
-window.addEventListener('DOMContentLoaded',()=>{
-  aplicarConfigEnUI();
-  aplicarAsesorEnFormularios();
-  actualizarChipUF();
-  fetchUF(false);
-  runSimLeasebackRapido();
-  runSimHipotecarioRapido();
-  actualizarSegTotalDisplay();
-  // === CRM v8 ===
-  setupAuthListener();
-});
-</script>
-</body>
-</html>
+
+/* ============================================================
+   MÓDULO v9 — Pipeline / Ficha Cliente / Tareas / Reportes
+   ============================================================ */
+
+/* === PIPELINE === */
+function renderPipeline(){
+  const board = document.getElementById('pl-board'); if(!board) return;
+  const filtroAsesor = (document.getElementById('pl-asesor')||{}).value || 'mios';
+  const q = ((document.getElementById('pl-buscar')||{}).value || '').trim().toLowerCase();
+  const uid = CURRENT_USER ? CURRENT_USER.uid : null;
+
+  let lista = CLIENTES_CACHE.slice();
+  if(filtroAsesor==='mios' && uid) lista = lista.filter(c => c.asesorId === uid);
+  if(q) lista = lista.filter(c =>
+    (c.nombre||'').toLowerCase().includes(q) ||
+    (c.rut||'').toLowerCase().includes(q) ||
+    (c.email||'').toLowerCase().includes(q)
+  );
+
+  const grupos = {};
+  ETAPAS.forEach(e => grupos[e.id] = []);
+  lista.forEach(c => {
+    const eId = c.etapa || 'prospecto';
+    if(!grupos[eId]) grupos[eId] = [];
+    grupos[eId].push(c);
+  });
+
+  let html = '';
+  ETAPAS.forEach(e => {
+    const items = grupos[e.id] || [];
+    html += '<div class="kanban-col" data-etapa="'+e.id+'">';
+    html += '<div class="kanban-col-head" style="border-top:3px solid '+e.color+'">';
+    html += '<div class="kc-tit">'+escapeHTML(e.label)+'</div>';
+    html += '<div class="kc-count">'+items.length+'</div>';
+    html += '</div>';
+    html += '<div class="kanban-col-body">';
+    if(items.length===0){
+      html += '<div class="kanban-empty">Sin clientes</div>';
+    } else {
+      items.forEach(c => {
+        const estado = c.estadoActual ? '<div class="kc-estado">'+escapeHTML(c.estadoActual)+'</div>' : '';
+        const upd = c.updatedAt ? fmtTimestamp(c.updatedAt) : '—';
+        html += '<div class="kanban-card" onclick="mostrarFichaCliente(\''+c.id+'\')">';
+        html += '<div class="kc-nom">'+escapeHTML(c.nombre||'(sin nombre)')+'</div>';
+        html += '<div class="kc-rut">'+escapeHTML(c.rut||'—')+'</div>';
+        html += estado;
+        html += '<div class="kc-foot"><span>👤 '+escapeHTML(asesorNombrePorId(c.asesorId))+'</span><span>'+upd+'</span></div>';
+        html += '</div>';
+      });
+    }
+    html += '</div></div>';
+  });
+  board.innerHTML = html;
+}
+
+/* === FICHA CLIENTE DETALLE === */
+async function mostrarFichaCliente(id){
+  const c = CLIENTES_CACHE.find(x=>x.id===id);
+  if(!c){ alert('Cliente no encontrado.'); return; }
+  CD_ID = id;
+  showView('cliente-detalle');
+
+  document.getElementById('cd-nom').textContent = c.nombre || '(sin nombre)';
+  document.getElementById('cd-rut').textContent = c.rut || '—';
+  document.getElementById('cd-tipo').textContent = c.tipoPersona==='juridica' ? 'Persona jurídica' : 'Persona natural';
+  document.getElementById('cd-email').textContent = c.email || '—';
+  document.getElementById('cd-telefono').textContent = c.telefono || '—';
+  document.getElementById('cd-comuna').textContent = c.comuna || '—';
+  document.getElementById('cd-asesor').textContent = asesorNombrePorId(c.asesorId);
+
+  const sel = document.getElementById('cd-etapa-sel');
+  sel.innerHTML = ETAPAS.map(e => '<option value="'+e.id+'">'+escapeHTML(e.label)+'</option>').join('');
+  sel.value = c.etapa || 'prospecto';
+  document.getElementById('cd-estado-input').value = c.estadoActual || '';
+
+  renderDocsChecklist(c);
+  await cargarNotas(id);
+  renderTimeline(id);
+  renderSimsCliente(id);
+  renderTareasCliente(id);
+}
+
+async function cambiarEtapaCliente(){
+  if(!CD_ID || !fbReady()) return;
+  const sel = document.getElementById('cd-etapa-sel');
+  const nuevaEtapa = sel.value;
+  const c = CLIENTES_CACHE.find(x=>x.id===CD_ID); if(!c) return;
+  const etapaPrev = c.etapa || 'prospecto';
+  try{
+    await fbDb.collection('clientes').doc(CD_ID).update({
+      etapa: nuevaEtapa,
+      updatedAt: nowTs()
+    });
+    c.etapa = nuevaEtapa;
+    await fbDb.collection('clientes').doc(CD_ID).collection('notas').add({
+      tipo: 'etapa',
+      texto: 'Etapa: '+etapaInfo(etapaPrev).label+' → '+etapaInfo(nuevaEtapa).label,
+      asesorId: CURRENT_USER.uid,
+      asesorNombre: CURRENT_PROFILE ? CURRENT_PROFILE.nombre : '',
+      createdAt: nowTs()
+    });
+    await cargarNotas(CD_ID);
+    renderTimeline(CD_ID);
+  } catch(e){
+    console.error(e); alert('No se pudo cambiar la etapa: '+e.message);
+  }
+}
+
+async function guardarEstadoActual(){
+  if(!CD_ID || !fbReady()) return;
+  const texto = document.getElementById('cd-estado-input').value.trim();
+  const c = CLIENTES_CACHE.find(x=>x.id===CD_ID); if(!c) return;
+  try{
+    await fbDb.collection('clientes').doc(CD_ID).update({
+      estadoActual: texto,
+      updatedAt: nowTs()
+    });
+    c.estadoActual = texto;
+  } catch(e){ console.error(e); alert('No se pudo guardar el estado: '+e.message); }
+}
+
+/* === DOCS CHECKLIST === */
+function renderDocsChecklist(cliente){
+  const cont = document.getElementById('cd-docs'); if(!cont) return;
+  const lista = cliente.tipoPersona==='juridica' ? DOCUMENTOS_JURIDICA : DOCUMENTOS_NATURAL;
+  const docs = cliente.documentos || {};
+  let html = '';
+  lista.forEach(d => {
+    const ok = !!docs[d.id];
+    html += '<div class="doc-item '+(ok?'ok':'')+'">';
+    html += '<label style="display:flex; align-items:center; gap:10px; cursor:pointer; flex:1">';
+    html += '<input type="checkbox" '+(ok?'checked':'')+' onchange="toggleDocumento(\''+d.id+'\', this.checked)">';
+    html += '<span class="doc-lbl">'+escapeHTML(d.label)+'</span>';
+    html += '</label>';
+    if(d.obligatorio) html += '<span class="doc-tag req">Obligatorio</span>';
+    html += '</div>';
+  });
+  cont.innerHTML = html;
+}
+
+async function toggleDocumento(docId, marcado){
+  if(!CD_ID || !fbReady()) return;
+  const c = CLIENTES_CACHE.find(x=>x.id===CD_ID); if(!c) return;
+  const docs = Object.assign({}, c.documentos||{});
+  if(marcado) docs[docId] = { ok:true, fechaRecibido: new Date().toISOString() };
+  else delete docs[docId];
+  try{
+    await fbDb.collection('clientes').doc(CD_ID).update({
+      documentos: docs,
+      updatedAt: nowTs()
+    });
+    c.documentos = docs;
+    await fbDb.collection('clientes').doc(CD_ID).collection('notas').add({
+      tipo: 'documento',
+      texto: (marcado?'✅ Documento recibido: ':'↺ Documento removido: ') + docId,
+      asesorId: CURRENT_USER.uid,
+      asesorNombre: CURRENT_PROFILE ? CURRENT_PROFILE.nombre : '',
+      createdAt: nowTs()
+    });
+    await cargarNotas(CD_ID);
+    renderTimeline(CD_ID);
+  } catch(e){ console.error(e); alert('No se pudo actualizar documento: '+e.message); }
+}
+
+/* === NOTAS DE SEGUIMIENTO === */
+function abrirNotaSeguimiento(){
+  if(!CD_ID){ alert('Abre una ficha de cliente primero.'); return; }
+  document.getElementById('nt-tipo').value = 'seguimiento';
+  document.getElementById('nt-texto').value = '';
+  document.getElementById('modal-nota').classList.add('active');
+  setTimeout(()=>document.getElementById('nt-texto').focus(), 100);
+}
+function cerrarNotaModal(){ document.getElementById('modal-nota').classList.remove('active'); }
+
+async function guardarNotaSeguimiento(){
+  if(!CD_ID || !fbReady()) return;
+  const texto = document.getElementById('nt-texto').value.trim();
+  const tipo  = document.getElementById('nt-tipo').value;
+  if(!texto){ alert('Escribe el texto de la nota.'); return; }
+  const btn = document.getElementById('nt-btn');
+  btn.disabled=true; btn.innerHTML='<span>💾</span> Guardando…';
+  try{
+    await fbDb.collection('clientes').doc(CD_ID).collection('notas').add({
+      tipo, texto,
+      asesorId: CURRENT_USER.uid,
+      asesorNombre: CURRENT_PROFILE ? CURRENT_PROFILE.nombre : '',
+      createdAt: nowTs()
+    });
+    await fbDb.collection('clientes').doc(CD_ID).update({ updatedAt: nowTs() });
+    await cargarNotas(CD_ID);
+    renderTimeline(CD_ID);
+    cerrarNotaModal();
+  } catch(e){ console.error(e); alert('No se pudo guardar la nota: '+e.message); }
+  btn.disabled=false; btn.innerHTML='<span>💾</span> Guardar nota';
+}
+
+async function cargarNotas(clienteId){
+  if(!fbReady()) return;
+  try{
+    const snap = await fbDb.collection('clientes').doc(clienteId).collection('notas')
+      .orderBy('createdAt','desc').limit(100).get();
+    NOTAS_SEG_CACHE[clienteId] = snap.docs.map(d => Object.assign({id:d.id}, d.data()));
+  } catch(e){ console.warn('cargarNotas:', e); NOTAS_SEG_CACHE[clienteId] = []; }
+}
+
+function tipoNotaIcon(tipo){
+  return ({ contacto:'📞', seguimiento:'📝', documento:'📑', simulacion:'📊', etapa:'🧭', otro:'•' })[tipo] || '•';
+}
+function tipoNotaColor(tipo){
+  return ({ contacto:'#3b82f6', seguimiento:'#2aa07f', documento:'#f59e0b', simulacion:'#8b5cf6', etapa:'#0a3d4a', otro:'#94a3b8' })[tipo] || '#94a3b8';
+}
+
+function renderTimeline(clienteId){
+  const cont = document.getElementById('cd-timeline'); if(!cont) return;
+  const notas = NOTAS_SEG_CACHE[clienteId] || [];
+  if(notas.length===0){
+    cont.innerHTML = '<div style="font-size:13px; color:var(--muted); padding:6px 0">Aún no hay notas de seguimiento. Click en <strong>＋ Nueva nota</strong> para registrar el primer contacto, llamada o avance.</div>';
+    return;
+  }
+  let html = '';
+  notas.forEach(n => {
+    html += '<div class="tl-item">';
+    html += '<div class="tl-dot" style="background:'+tipoNotaColor(n.tipo)+'">'+tipoNotaIcon(n.tipo)+'</div>';
+    html += '<div class="tl-body">';
+    html += '<div class="tl-meta"><strong>'+escapeHTML(n.asesorNombre||'—')+'</strong> · '+fmtTimestamp(n.createdAt)+'</div>';
+    html += '<div class="tl-text">'+escapeHTML(n.texto||'')+'</div>';
+    html += '</div></div>';
+  });
+  cont.innerHTML = html;
+}
+
+function renderSimsCliente(clienteId){
+  const cont = document.getElementById('cd-sims'); if(!cont) return;
+  const items = HISTORIAL_CACHE.filter(h => h.clienteId === clienteId);
+  if(items.length===0){
+    cont.innerHTML = '<div style="font-size:13px; color:var(--muted)">Las simulaciones que asocies a este cliente aparecerán aquí.</div>';
+    return;
+  }
+  let html = '<div style="display:flex; flex-direction:column; gap:8px">';
+  items.slice(0,20).forEach(h => {
+    const tipoLabel = h._tipo==='simulacion' ? (h.producto==='hipotecario' ? 'Hipotecario' : 'Leaseback') : 'Nota de Venta';
+    const m = getMontoUF(h);
+    const monto = m ? fmtUF(m) : '—';
+    html += '<div style="border:1px solid var(--border); border-radius:8px; padding:10px 12px; font-size:12.5px">';
+    html += '<div style="display:flex; justify-content:space-between; gap:10px"><strong>'+tipoLabel+'</strong><span style="color:var(--muted)">'+fmtTimestamp(h.createdAt||h.fechaCreacion)+'</span></div>';
+    html += '<div style="color:var(--muted); margin-top:3px">'+escapeHTML(asesorNombrePorId(h.asesorId))+' · '+monto+'</div>';
+    html += '</div>';
+  });
+  html += '</div>';
+  cont.innerHTML = html;
+}
+
+function renderTareasCliente(clienteId){
+  const cont = document.getElementById('cd-tareas'); if(!cont) return;
+  const items = TAREAS_CACHE.filter(t => t.clienteId === clienteId && !t.completada);
+  if(items.length===0){
+    cont.innerHTML = '<div style="font-size:13px; color:var(--muted)">Sin tareas pendientes para este cliente.</div>';
+    return;
+  }
+  let html = '<div style="display:flex; flex-direction:column; gap:8px">';
+  items.forEach(t => {
+    const venc = t.fechaVenc ? fmtFecha(new Date(t.fechaVenc)) : '—';
+    html += '<div class="tarea-card '+(t.prioridad||'media')+'">';
+    html += '<label style="display:flex; align-items:flex-start; gap:10px; cursor:pointer; flex:1">';
+    html += '<input type="checkbox" onchange="completarTarea(\''+t.id+'\', this.checked)">';
+    html += '<div><div style="font-weight:600">'+escapeHTML(t.titulo)+'</div>';
+    if(t.descripcion) html += '<div style="font-size:12px; color:var(--muted); margin-top:2px">'+escapeHTML(t.descripcion)+'</div>';
+    html += '<div style="font-size:11.5px; color:var(--muted); margin-top:3px">📅 '+venc+' · '+escapeHTML(t.prioridad||'media')+'</div>';
+    html += '</div></label></div>';
+  });
+  html += '</div>';
+  cont.innerHTML = html;
+}
+
+/* === TAREAS === */
+async function cargarTareas(){
+  if(!fbReady()){ TAREAS_CACHE=[]; return; }
+  try{
+    const snap = await fbDb.collection('tareas').orderBy('fechaVenc','asc').limit(300).get();
+    TAREAS_CACHE = snap.docs.map(d => Object.assign({id:d.id}, d.data()));
+  } catch(e){
+    try{
+      const snap = await fbDb.collection('tareas').limit(300).get();
+      TAREAS_CACHE = snap.docs.map(d => Object.assign({id:d.id}, d.data()));
+    } catch(e2){ console.warn('cargarTareas:', e2); TAREAS_CACHE = []; }
+  }
+}
+
+function abrirTareaModal(clienteId){
+  document.getElementById('mt-id').value = '';
+  document.getElementById('mt-titulo').textContent = 'Nueva tarea';
+  document.getElementById('mt-titulo-inp').value = '';
+  document.getElementById('mt-desc').value = '';
+  document.getElementById('mt-prio').value = 'media';
+  const hoy = new Date(); const iso = hoy.toISOString().substring(0,10);
+  document.getElementById('mt-fecha').value = iso;
+  const sel = document.getElementById('mt-cli');
+  sel.innerHTML = '<option value="">— Sin cliente —</option>' +
+    CLIENTES_CACHE.map(c => '<option value="'+c.id+'">'+escapeHTML(c.nombre)+' · '+escapeHTML(c.rut||'')+'</option>').join('');
+  sel.value = clienteId || '';
+  document.getElementById('mt-cliente-id').value = clienteId || '';
+  document.getElementById('modal-tarea').classList.add('active');
+  setTimeout(()=>document.getElementById('mt-titulo-inp').focus(), 100);
+}
+function cerrarTareaModal(){ document.getElementById('modal-tarea').classList.remove('active'); }
+
+async function guardarTarea(){
+  if(!fbReady()){ alert('Firebase no configurado.'); return; }
+  const titulo = document.getElementById('mt-titulo-inp').value.trim();
+  if(!titulo){ alert('Escribe un título.'); return; }
+  const data = {
+    titulo,
+    descripcion: document.getElementById('mt-desc').value.trim(),
+    fechaVenc: document.getElementById('mt-fecha').value || null,
+    prioridad: document.getElementById('mt-prio').value || 'media',
+    clienteId: document.getElementById('mt-cli').value || null,
+    asesorId: CURRENT_USER.uid,
+    asesorNombre: CURRENT_PROFILE ? CURRENT_PROFILE.nombre : '',
+    completada: false,
+    createdAt: nowTs(),
+    updatedAt: nowTs()
+  };
+  const btn = document.getElementById('mt-btn');
+  btn.disabled=true; btn.innerHTML='<span>💾</span> Guardando…';
+  try{
+    await fbDb.collection('tareas').add(data);
+    await cargarTareas();
+    cerrarTareaModal();
+    renderTareas();
+    if(CD_ID) renderTareasCliente(CD_ID);
+  } catch(e){ console.error(e); alert('No se pudo guardar la tarea: '+e.message); }
+  btn.disabled=false; btn.innerHTML='<span>💾</span> Guardar tarea';
+}
+
+async function completarTarea(id, marcada){
+  if(!fbReady()) return;
+  try{
+    await fbDb.collection('tareas').doc(id).update({
+      completada: !!marcada,
+      fechaCompletada: marcada ? nowTs() : null,
+      updatedAt: nowTs()
+    });
+    const t = TAREAS_CACHE.find(x=>x.id===id);
+    if(t){ t.completada = !!marcada; t.fechaCompletada = marcada ? new Date() : null; }
+    renderTareas();
+    if(CD_ID) renderTareasCliente(CD_ID);
+  } catch(e){ console.error(e); alert('No se pudo actualizar la tarea: '+e.message); }
+}
+
+function renderTareas(){
+  const cont = document.getElementById('tr-lista'); if(!cont) return;
+  const filtro = (document.getElementById('tr-filtro')||{}).value || 'pendientes';
+  const ases = (document.getElementById('tr-asesor')||{}).value || 'mias';
+  const uid = CURRENT_USER ? CURRENT_USER.uid : null;
+  const ahora = new Date(); ahora.setHours(0,0,0,0);
+  const finSemana = new Date(ahora); finSemana.setDate(finSemana.getDate()+7);
+
+  let items = TAREAS_CACHE.slice();
+  if(ases==='mias' && uid) items = items.filter(t => t.asesorId === uid);
+
+  items = items.filter(t => {
+    const venc = t.fechaVenc ? new Date(t.fechaVenc) : null;
+    if(filtro==='pendientes') return !t.completada;
+    if(filtro==='completadas') return !!t.completada;
+    if(filtro==='hoy') return !t.completada && venc && venc.toDateString()===ahora.toDateString();
+    if(filtro==='semana') return !t.completada && venc && venc>=ahora && venc<=finSemana;
+    if(filtro==='vencidas') return !t.completada && venc && venc<ahora;
+    return true;
+  });
+
+  items.sort((a,b)=>{
+    if(a.completada!==b.completada) return a.completada?1:-1;
+    const da = a.fechaVenc ? new Date(a.fechaVenc).getTime() : 9e15;
+    const db = b.fechaVenc ? new Date(b.fechaVenc).getTime() : 9e15;
+    return da - db;
+  });
+
+  const empty = document.getElementById('tr-empty');
+  if(items.length===0){ cont.innerHTML=''; if(empty) empty.style.display='block'; return; }
+  if(empty) empty.style.display='none';
+
+  let html = '<div style="display:flex; flex-direction:column; gap:10px">';
+  items.forEach(t => {
+    const venc = t.fechaVenc ? new Date(t.fechaVenc) : null;
+    const vencida = venc && !t.completada && venc<ahora;
+    const vencStr = venc ? fmtFecha(venc) : 'Sin fecha';
+    const cli = t.clienteId ? (CLIENTES_CACHE.find(c=>c.id===t.clienteId)||{}).nombre : '';
+    html += '<div class="tarea-card '+(t.prioridad||'media')+(vencida?' vencida':'')+(t.completada?' completada':'')+'">';
+    html += '<label style="display:flex; align-items:flex-start; gap:12px; cursor:pointer; flex:1">';
+    html += '<input type="checkbox" '+(t.completada?'checked':'')+' onchange="completarTarea(\''+t.id+'\', this.checked)">';
+    html += '<div style="flex:1">';
+    html += '<div style="font-weight:600; font-size:14px; '+(t.completada?'text-decoration:line-through; color:var(--muted)':'')+'">'+escapeHTML(t.titulo)+'</div>';
+    if(t.descripcion) html += '<div style="font-size:12.5px; color:var(--muted); margin-top:3px">'+escapeHTML(t.descripcion)+'</div>';
+    html += '<div style="font-size:11.5px; color:var(--muted); margin-top:5px; display:flex; gap:12px; flex-wrap:wrap">';
+    html += '<span>📅 '+vencStr+(vencida?' <span style="color:#dc2626; font-weight:700">(VENCIDA)</span>':'')+'</span>';
+    html += '<span>🏷️ '+(t.prioridad||'media')+'</span>';
+    if(cli) html += '<span>👤 '+escapeHTML(cli)+'</span>';
+    html += '<span>✍️ '+escapeHTML(t.asesorNombre||'—')+'</span>';
+    html += '</div></div></label></div>';
+  });
+  html += '</div>';
+  cont.innerHTML = html;
+}
+
+/* === REPORTES === */
+function setDefaultReportDate(){
+  const el = document.getElementById('rp-fecha');
+  if(el && !el.value){ el.value = new Date().toISOString().substring(0,10); }
+}
+function poblarAsesorReporte(){
+  const sel = document.getElementById('rp-asesor'); if(!sel) return;
+  const cur = sel.value;
+  let html = '<option value="todos">Todo el equipo</option>';
+  USERS_CACHE.forEach(u => { html += '<option value="'+u.id+'">'+escapeHTML(u.nombre)+'</option>'; });
+  if(CURRENT_USER && !USERS_CACHE.find(u=>u.id===CURRENT_USER.uid)){
+    html += '<option value="'+CURRENT_USER.uid+'">'+escapeHTML(CURRENT_PROFILE?CURRENT_PROFILE.nombre:'Yo')+'</option>';
+  }
+  sel.innerHTML = html;
+  sel.value = cur || 'todos';
+}
+
+function getReporteRange(){
+  const rango = (document.getElementById('rp-rango')||{}).value || 'dia';
+  const fechaStr = (document.getElementById('rp-fecha')||{}).value;
+  const ref = fechaStr ? new Date(fechaStr+'T00:00:00') : new Date();
+  ref.setHours(0,0,0,0);
+  let desde, hasta;
+  if(rango==='dia'){ desde = new Date(ref); hasta = new Date(ref); hasta.setHours(23,59,59,999); }
+  else if(rango==='semana'){ hasta = new Date(ref); hasta.setHours(23,59,59,999); desde = new Date(ref); desde.setDate(desde.getDate()-6); }
+  else { hasta = new Date(ref); hasta.setHours(23,59,59,999); desde = new Date(ref); desde.setDate(desde.getDate()-29); }
+  return { desde, hasta, rango };
+}
+
+function dateOf(it){
+  const d = tsToDate(it.createdAt) || tsToDate(it.fechaCreacion) || tsToDate(it.updatedAt);
+  return d || null;
+}
+
+function computeKPIs(desde, hasta, asesorFiltro){
+  const inRange = d => d && d>=desde && d<=hasta;
+  const matchAs = uid => asesorFiltro==='todos' || uid===asesorFiltro;
+  const clientesNuevos = CLIENTES_CACHE.filter(c => inRange(dateOf(c)) && matchAs(c.asesorId));
+  const sims = HISTORIAL_CACHE.filter(h => h._tipo==='simulacion' && inRange(dateOf(h)) && matchAs(h.asesorId));
+  const notas = HISTORIAL_CACHE.filter(h => h._tipo==='nota_venta' && inRange(dateOf(h)) && matchAs(h.asesorId));
+  const tareasHechas = TAREAS_CACHE.filter(t => t.completada && inRange(tsToDate(t.fechaCompletada)) && matchAs(t.asesorId));
+  const ufTotal = sims.reduce((s,h)=> s + getMontoUF(h), 0);
+  return { clientesNuevos, sims, notas, tareasHechas, ufTotal };
+}
+
+function renderReporte(){
+  const { desde, hasta, rango } = getReporteRange();
+  const asesorFiltro = (document.getElementById('rp-asesor')||{}).value || 'todos';
+  const k = computeKPIs(desde, hasta, asesorFiltro);
+  document.getElementById('kpi-clientes').textContent = k.clientesNuevos.length;
+  document.getElementById('kpi-sims').textContent = k.sims.length;
+  document.getElementById('kpi-notas').textContent = k.notas.length;
+  document.getElementById('kpi-tareas').textContent = k.tareasHechas.length;
+  const subRango = rango==='dia' ? fmtFecha(desde) : fmtFecha(desde)+' a '+fmtFecha(hasta);
+  ['kpi-clientes-sub','kpi-sims-sub','kpi-notas-sub','kpi-tareas-sub'].forEach(id => {
+    const el = document.getElementById(id); if(el) el.textContent = subRango;
+  });
+
+  const tbody = document.getElementById('rp-por-asesor');
+  const byAs = {};
+  const ensure = (uid) => {
+    if(!byAs[uid]) byAs[uid] = { nombre: asesorNombrePorId(uid), clientes:0, sims:0, notas:0, uf:0, tareas:0 };
+    return byAs[uid];
+  };
+  k.clientesNuevos.forEach(c => ensure(c.asesorId||'').clientes++);
+  k.sims.forEach(s => { const r = ensure(s.asesorId||''); r.sims++; r.uf += getMontoUF(s); });
+  k.notas.forEach(n => ensure(n.asesorId||'').notas++);
+  k.tareasHechas.forEach(t => ensure(t.asesorId||'').tareas++);
+
+  const rows = Object.values(byAs).sort((a,b)=> (b.sims+b.notas+b.clientes) - (a.sims+a.notas+a.clientes));
+  if(rows.length===0){
+    tbody.innerHTML = '<tr><td colspan="6" style="padding:30px; text-align:center; color:var(--muted)">Sin actividad en este período.</td></tr>';
+  } else {
+    tbody.innerHTML = rows.map(r =>
+      '<tr><td>'+escapeHTML(r.nombre)+'</td>'+
+      '<td class="num">'+r.clientes+'</td>'+
+      '<td class="num">'+r.sims+'</td>'+
+      '<td class="num">'+r.notas+'</td>'+
+      '<td class="num">'+fmtUF(r.uf)+'</td>'+
+      '<td class="num">'+r.tareas+'</td></tr>'
+    ).join('');
+  }
+
+  const eventos = [];
+  k.clientesNuevos.forEach(c => eventos.push({ t:'cliente', when: dateOf(c), nom: c.nombre, ases: asesorNombrePorId(c.asesorId), extra:'Cliente nuevo · '+(c.rut||'') }));
+  k.sims.forEach(s => eventos.push({ t:'sim', when: dateOf(s), nom: (s.producto==='hipotecario'?'Hipotecario':'Leaseback'), ases: asesorNombrePorId(s.asesorId), extra: fmtUF(getMontoUF(s))+' · '+(s.clienteNombre||'sin cliente') }));
+  k.notas.forEach(n => eventos.push({ t:'nota', when: dateOf(n), nom:'Nota de Venta', ases: asesorNombrePorId(n.asesorId), extra: fmtUF(getMontoUF(n))+' · '+(n.clienteNombre||'sin cliente') }));
+  k.tareasHechas.forEach(t => eventos.push({ t:'tarea', when: tsToDate(t.fechaCompletada), nom: t.titulo, ases: asesorNombrePorId(t.asesorId), extra: 'Tarea completada' }));
+  eventos.sort((a,b)=> (b.when?b.when.getTime():0) - (a.when?a.when.getTime():0));
+
+  const cron = document.getElementById('rp-cronologia'); if(!cron) return;
+  if(eventos.length===0){ cron.innerHTML = '<div style="font-size:13px; color:var(--muted); padding:6px 0">Sin eventos registrados en este período.</div>'; return; }
+  cron.innerHTML = eventos.slice(0,200).map(e => {
+    const color = ({ cliente:'#3b82f6', sim:'#2aa07f', nota:'#8b5cf6', tarea:'#f59e0b' })[e.t] || '#94a3b8';
+    const icon  = ({ cliente:'👤', sim:'📊', nota:'📄', tarea:'✅' })[e.t] || '•';
+    return '<div class="tl-item">' +
+      '<div class="tl-dot" style="background:'+color+'">'+icon+'</div>' +
+      '<div class="tl-body">' +
+      '<div class="tl-meta"><strong>'+escapeHTML(e.ases)+'</strong> · '+(e.when?fmtTimestamp(e.when):'—')+'</div>' +
+      '<div class="tl-text">'+escapeHTML(e.nom)+' — <span style="color:var(--muted)">'+escapeHTML(e.extra)+'</span></div>' +
+      '</div></div>';
+  }).join('');
+}
+
+function descargarReportePDF(){
+  const { desde, hasta, rango } = getReporteRange();
+  const asesorFiltro = (document.getElementById('rp-asesor')||{}).value || 'todos';
+  const k = computeKPIs(desde, hasta, asesorFiltro);
+  const tituloRango = rango==='dia' ? 'Día '+fmtFecha(desde) : 'Período '+fmtFecha(desde)+' al '+fmtFecha(hasta);
+  const ases = asesorFiltro==='todos' ? 'Todo el equipo' : asesorNombrePorId(asesorFiltro);
+
+  const byAs = {};
+  const ensure = (uid) => { if(!byAs[uid]) byAs[uid] = { nombre: asesorNombrePorId(uid), clientes:0, sims:0, notas:0, uf:0, tareas:0 }; return byAs[uid]; };
+  k.clientesNuevos.forEach(c => ensure(c.asesorId||'').clientes++);
+  k.sims.forEach(s => { const r = ensure(s.asesorId||''); r.sims++; r.uf += getMontoUF(s); });
+  k.notas.forEach(n => ensure(n.asesorId||'').notas++);
+  k.tareasHechas.forEach(t => ensure(t.asesorId||'').tareas++);
+  const rows = Object.values(byAs).sort((a,b)=> (b.sims+b.notas+b.clientes) - (a.sims+a.notas+a.clientes));
+
+  let tablaHTML = '<table style="width:100%; border-collapse:collapse; font-size:11px; margin-top:8px">' +
+    '<thead><tr style="background:#0a3d4a; color:#fff"><th style="padding:6px 8px; text-align:left">Asesor</th><th style="padding:6px 8px; text-align:right">Clientes nuevos</th><th style="padding:6px 8px; text-align:right">Simulaciones</th><th style="padding:6px 8px; text-align:right">Notas venta</th><th style="padding:6px 8px; text-align:right">UF simulado</th><th style="padding:6px 8px; text-align:right">Tareas hechas</th></tr></thead><tbody>';
+  if(rows.length===0){
+    tablaHTML += '<tr><td colspan="6" style="padding:20px; text-align:center; color:#6c757d">Sin actividad.</td></tr>';
+  } else {
+    rows.forEach(r => {
+      tablaHTML += '<tr style="border-bottom:1px solid #e5e7eb"><td style="padding:6px 8px">'+escapeHTML(r.nombre)+'</td>' +
+        '<td style="padding:6px 8px; text-align:right">'+r.clientes+'</td>' +
+        '<td style="padding:6px 8px; text-align:right">'+r.sims+'</td>' +
+        '<td style="padding:6px 8px; text-align:right">'+r.notas+'</td>' +
+        '<td style="padding:6px 8px; text-align:right">'+fmtUF(r.uf)+'</td>' +
+        '<td style="padding:6px 8px; text-align:right">'+r.tareas+'</td></tr>';
+    });
+  }
+  tablaHTML += '</tbody></table>';
+
+  const kpiHTML = '<div style="display:grid; grid-template-columns:repeat(4,1fr); gap:10px; margin:14px 0">' +
+    '<div style="border:1px solid #e5e7eb; border-radius
