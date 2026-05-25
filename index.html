@@ -3075,4 +3075,53 @@ function descargarReportePDF(){
   const rows = Object.values(byAs).sort((a,b)=> (b.sims+b.notas+b.clientes) - (a.sims+a.notas+a.clientes));
 
   let tablaHTML = '<table style="width:100%; border-collapse:collapse; font-size:11px; margin-top:8px">' +
-    '<thead><tr style="background:#0a3d4a; color:#fff"><th style="padding:6px 8px; text-align:left">Asesor</th><th style="padding:6px 8px; text-align:right">Clientes nuevos</th><th style="padding:6px 8px; text-align:right">Simu
+    '<thead><tr style="background:#0a3d4a; color:#fff"><th style="padding:6px 8px; text-align:left">Asesor</th><th style="padding:6px 8px; text-align:right">Clientes nuevos</th><th style="padding:6px 8px; text-align:right">Simulaciones</th><th style="padding:6px 8px; text-align:right">Notas venta</th><th style="padding:6px 8px; text-align:right">UF simulado</th><th style="padding:6px 8px; text-align:right">Tareas hechas</th></tr></thead><tbody>';
+  if(rows.length===0){
+    tablaHTML += '<tr><td colspan="6" style="padding:20px; text-align:center; color:#6c757d">Sin actividad.</td></tr>';
+  } else {
+    rows.forEach(r => {
+      tablaHTML += '<tr style="border-bottom:1px solid #e5e7eb"><td style="padding:6px 8px">'+escapeHTML(r.nombre)+'</td>' +
+        '<td style="padding:6px 8px; text-align:right">'+r.clientes+'</td>' +
+        '<td style="padding:6px 8px; text-align:right">'+r.sims+'</td>' +
+        '<td style="padding:6px 8px; text-align:right">'+r.notas+'</td>' +
+        '<td style="padding:6px 8px; text-align:right">'+fmtUF(r.uf)+'</td>' +
+        '<td style="padding:6px 8px; text-align:right">'+r.tareas+'</td></tr>';
+    });
+  }
+  tablaHTML += '</tbody></table>';
+
+  const kpiHTML = '<div style="display:grid; grid-template-columns:repeat(4,1fr); gap:10px; margin:14px 0">' +
+    '<div style="border:1px solid #e5e7eb; border-radius:8px; padding:12px"><div style="font-size:10px; color:#6c757d; text-transform:uppercase">Clientes nuevos</div><div style="font-size:24px; font-weight:700; color:#0a3d4a">'+k.clientesNuevos.length+'</div></div>' +
+    '<div style="border:1px solid #e5e7eb; border-radius:8px; padding:12px"><div style="font-size:10px; color:#6c757d; text-transform:uppercase">Simulaciones</div><div style="font-size:24px; font-weight:700; color:#2aa07f">'+k.sims.length+'</div></div>' +
+    '<div style="border:1px solid #e5e7eb; border-radius:8px; padding:12px"><div style="font-size:10px; color:#6c757d; text-transform:uppercase">Notas de venta</div><div style="font-size:24px; font-weight:700; color:#3b82f6">'+k.notas.length+'</div></div>' +
+    '<div style="border:1px solid #e5e7eb; border-radius:8px; padding:12px"><div style="font-size:10px; color:#6c757d; text-transform:uppercase">Tareas completadas</div><div style="font-size:24px; font-weight:700; color:#f59e0b">'+k.tareasHechas.length+'</div></div>' +
+    '</div>';
+
+  const cfg = cargarConfig() || {};
+  const idCot = generarIdCot();
+  const cuerpo =
+    pdfHeader(cfg, 'Reporte de actividad — '+tituloRango, idCot) +
+    '<div style="font-size:11px; color:#6c757d; margin-bottom:6px">Asesor: <strong>'+escapeHTML(ases)+'</strong> · Generado el '+fmtTimestamp(new Date())+'</div>' +
+    sectionH('Resumen del período') + kpiHTML +
+    sectionH('Detalle por asesor') + tablaHTML +
+    sectionH('Total UF simulado') + '<div style="font-size:13px; padding:6px 0">'+fmtUF(k.ufTotal)+'</div>' +
+    pdfFooter(cfg);
+
+  generarPDF(cuerpo, 'Reporte_'+(rango==='dia'?fmtFecha(desde):'periodo'));
+}
+
+/* === INIT === */
+window.addEventListener('DOMContentLoaded',()=>{
+  aplicarConfigEnUI();
+  aplicarAsesorEnFormularios();
+  actualizarChipUF();
+  fetchUF(false);
+  runSimLeasebackRapido();
+  runSimHipotecarioRapido();
+  actualizarSegTotalDisplay();
+  setupAuthListener();
+});
+
+</script>
+</body>
+</html>
