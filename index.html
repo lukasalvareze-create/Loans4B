@@ -6,6 +6,34 @@
 <title>Loans4B — Simuladores Financieros</title>
 <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700&family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
 <!-- PDF nativo via window.print() — sin librerías externas -->
+<!-- ===== FIREBASE (Auth + Firestore) ===== -->
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
+<script>
+/* ============================================================
+   CONFIGURACIÓN FIREBASE — pegar aquí la config del proyecto
+   Obtener en: console.firebase.google.com → Project Settings
+   → Tus apps → Config (objeto firebaseConfig)
+   ============================================================ */
+const FIREBASE_CONFIG = {
+  apiKey: "AIzaSyAI9MGGlFCn6LUbR1Ox0fwqY2bm4K2gX7Y",
+  authDomain: "loans4b-e7c8a.firebaseapp.com",
+  projectId: "loans4b-e7c8a",
+  storageBucket: "loans4b-e7c8a.firebasestorage.app",
+  messagingSenderId: "162997115888",
+  appId: "1:162997115888:web:e9b68cdf8310df54035b35"
+};
+const FIREBASE_OK = FIREBASE_CONFIG.apiKey !== "PEGAR_API_KEY_AQUI";
+let fbAuth=null, fbDb=null;
+if(FIREBASE_OK){
+  try{
+    firebase.initializeApp(FIREBASE_CONFIG);
+    fbAuth = firebase.auth();
+    fbDb   = firebase.firestore();
+  }catch(e){ console.error('Firebase init error:', e); }
+}
+</script>
 <style>
   :root {
     --teal-d:#062831; --teal:#0a3d4a; --teal-m:#14525f; --teal-l:#1b6b7a;
@@ -124,17 +152,144 @@
     .main { margin-left:64px; }
     .sim-grid, .form-grid, .form-grid-3 { grid-template-columns:1fr; }
   }
+
+  /* ===== v8 · CRM / AUTH ===== */
+  /* Login full-screen */
+  .login-screen { position:fixed; inset:0; background:linear-gradient(135deg,var(--teal-d) 0%,var(--teal) 50%,var(--teal-m) 100%); display:none; align-items:center; justify-content:center; z-index:1000; padding:20px; }
+  .login-screen.active { display:flex; }
+  .login-card { background:#fff; border-radius:16px; box-shadow:0 24px 80px rgba(0,0,0,0.35); padding:42px 38px 34px; width:100%; max-width:420px; }
+  .login-brand { text-align:center; margin-bottom:28px; }
+  .login-brand .lg { font-size:32px; color:var(--green); font-weight:800; letter-spacing:-0.5px; }
+  .login-brand .lg .b { color:var(--teal); }
+  .login-brand .ln { font-size:10px; color:var(--muted); letter-spacing:1.8px; text-transform:uppercase; margin-top:4px; font-weight:600; }
+  .login-card h2 { font-family:'Playfair Display',serif; font-size:22px; color:var(--teal); margin-bottom:6px; }
+  .login-card .login-sub { font-size:13px; color:var(--muted); margin-bottom:24px; }
+  .login-card .form-group { margin-bottom:16px; }
+  .login-card .btn-login { width:100%; background:var(--green); color:#fff; border:none; padding:14px; border-radius:10px; font-size:14px; font-weight:600; cursor:pointer; font-family:inherit; transition:all 0.18s; }
+  .login-card .btn-login:hover { background:#239278; }
+  .login-card .btn-login:disabled { background:#a8c9be; cursor:not-allowed; }
+  .login-err { background:var(--red-bg); color:var(--red); padding:10px 12px; border-radius:8px; font-size:12.5px; margin-bottom:14px; display:none; border-left:3px solid var(--red); }
+  .login-err.active { display:block; }
+  .login-warn { background:var(--amber-bg); color:var(--amber); padding:10px 12px; border-radius:8px; font-size:12px; margin-bottom:14px; line-height:1.5; border-left:3px solid var(--amber); }
+  .login-foot { text-align:center; margin-top:18px; font-size:11px; color:var(--muted); }
+
+  /* User chip en sidebar */
+  .user-chip { padding:14px 16px; border-bottom:1px solid rgba(255,255,255,0.08); display:flex; align-items:center; gap:11px; }
+  .user-avatar { width:34px; height:34px; border-radius:50%; background:linear-gradient(135deg,var(--green),var(--green-l)); color:var(--teal-d); display:flex; align-items:center; justify-content:center; font-weight:700; font-size:13px; flex-shrink:0; }
+  .user-info { flex:1; min-width:0; }
+  .user-info .un { font-size:12.5px; color:#fff; font-weight:600; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .user-info .ur { font-size:9.5px; color:var(--green-l); text-transform:uppercase; letter-spacing:1px; font-weight:600; margin-top:1px; }
+  .user-info .ur.admin { color:#ffd479; }
+  .user-logout { background:none; border:none; color:rgba(255,255,255,0.45); cursor:pointer; padding:4px; font-size:14px; transition:color 0.18s; }
+  .user-logout:hover { color:var(--red-bg); }
+
+  /* Modal overlay genérico */
+  .modal-overlay { position:fixed; inset:0; background:rgba(6,40,49,0.55); display:none; align-items:center; justify-content:center; z-index:200; padding:20px; backdrop-filter:blur(2px); }
+  .modal-overlay.active { display:flex; }
+  .modal { background:#fff; border-radius:14px; box-shadow:0 24px 80px rgba(0,0,0,0.35); width:100%; max-width:680px; max-height:88vh; overflow:hidden; display:flex; flex-direction:column; }
+  .modal-head { padding:18px 24px; border-bottom:1px solid var(--border-l); display:flex; align-items:center; justify-content:space-between; }
+  .modal-head h3 { font-family:'Playfair Display',serif; font-size:20px; color:var(--teal); font-weight:700; }
+  .modal-close { background:none; border:none; font-size:24px; color:var(--muted); cursor:pointer; line-height:1; padding:0 6px; }
+  .modal-close:hover { color:var(--red); }
+  .modal-body { padding:22px 24px; overflow-y:auto; flex:1; }
+  .modal-foot { padding:14px 24px; border-top:1px solid var(--border-l); display:flex; justify-content:flex-end; gap:10px; background:#fafcfd; }
+
+  /* Tabla de datos */
+  .data-table-wrap { background:#fff; border:1px solid var(--border-l); border-radius:var(--radius); box-shadow:var(--shadow); overflow:hidden; }
+  .data-table { width:100%; border-collapse:collapse; }
+  .data-table th, .data-table td { padding:13px 16px; text-align:left; font-size:13px; border-bottom:1px solid var(--border-l); }
+  .data-table th { background:var(--bg); font-weight:600; color:var(--teal); text-transform:uppercase; font-size:10.5px; letter-spacing:0.6px; }
+  .data-table tbody tr { transition:background 0.15s; cursor:pointer; }
+  .data-table tbody tr:hover { background:var(--green-bg); }
+  .data-table tbody tr:last-child td { border-bottom:none; }
+  .data-table td.num { text-align:right; font-variant-numeric:tabular-nums; }
+  .data-table td.actions { text-align:right; white-space:nowrap; }
+
+  /* Badge / pill */
+  .badge { display:inline-flex; align-items:center; gap:4px; padding:3px 9px; border-radius:24px; font-size:10.5px; font-weight:600; letter-spacing:0.4px; text-transform:uppercase; }
+  .badge.green { background:var(--green-bg); color:#1d7a5f; }
+  .badge.blue { background:var(--blue-bg); color:var(--blue); }
+  .badge.amber { background:var(--amber-bg); color:var(--amber); }
+  .badge.red { background:var(--red-bg); color:var(--red); }
+  .badge.gray { background:var(--bg); color:var(--muted); }
+
+  /* Filter bar */
+  .filter-bar { display:flex; gap:12px; flex-wrap:wrap; margin-bottom:18px; align-items:center; }
+  .filter-bar input, .filter-bar select { background:#fff; border:1px solid var(--border); border-radius:8px; padding:9px 13px; font-size:13px; color:var(--text); font-family:inherit; outline:none; }
+  .filter-bar input:focus, .filter-bar select:focus { border-color:var(--green); box-shadow:0 0 0 3px rgba(42,160,127,0.12); }
+  .filter-bar .grow { flex:1; min-width:200px; }
+
+  /* Empty state */
+  .empty-state { text-align:center; padding:60px 30px; color:var(--muted); }
+  .empty-state .ico { font-size:42px; margin-bottom:14px; opacity:0.4; }
+  .empty-state h3 { font-size:16px; color:var(--text-2); font-weight:600; margin-bottom:6px; }
+  .empty-state p { font-size:13px; line-height:1.55; max-width:380px; margin:0 auto; }
+
+  /* Cliente picker */
+  .cliente-picker { background:linear-gradient(180deg,#fff,#fafdfb); border:1px dashed var(--green); border-radius:10px; padding:12px 14px; margin-bottom:18px; display:flex; align-items:center; gap:12px; }
+  .cliente-picker .cp-ico { font-size:20px; }
+  .cliente-picker .cp-text { flex:1; font-size:12.5px; color:var(--text-2); }
+  .cliente-picker .cp-text strong { color:var(--teal); }
+  .cliente-picker select { background:#fff; border:1px solid var(--border); border-radius:7px; padding:7px 11px; font-size:12.5px; min-width:220px; }
+  .cliente-picker .btn-clear { background:none; border:none; color:var(--muted); cursor:pointer; font-size:14px; padding:4px 8px; }
+  .cliente-picker .btn-clear:hover { color:var(--red); }
+
+  /* Save banner en resultado de simulación */
+  .save-banner { background:var(--green-bg); border:1px solid #c9ebde; border-radius:10px; padding:14px 18px; margin-top:18px; display:flex; align-items:center; gap:14px; }
+  .save-banner .sb-text { flex:1; font-size:13px; color:var(--teal); }
+  .save-banner .sb-text strong { font-weight:600; }
+  .save-banner .sb-status { font-size:11.5px; color:#1d7a5f; font-weight:600; }
+
+  /* Hide app shell until logged in */
+  .app-hidden { display:none !important; }
 </style>
 </head>
 <body>
 
-<aside class="sidebar">
+<!-- ===== LOGIN SCREEN ===== -->
+<div class="login-screen" id="login-screen">
+  <div class="login-card">
+    <div class="login-brand">
+      <div class="lg">loans<span class="b">4B</span></div>
+      <div class="ln">Just loans for business</div>
+    </div>
+    <h2>Iniciar sesión</h2>
+    <p class="login-sub">Acceso restringido para asesores autorizados.</p>
+    <div class="login-warn" id="login-cfg-warn" style="display:none">
+      <strong>Firebase no configurado.</strong> Pega la configuración del proyecto en el bloque <code>FIREBASE_CONFIG</code> al inicio del archivo. Mientras tanto puedes usar el modo local (sin compartir entre asesores).
+    </div>
+    <div class="login-err" id="login-err"></div>
+    <div class="form-group">
+      <label>Correo</label>
+      <input type="email" id="login-email" placeholder="asesor@loans4b.cl" autocomplete="email">
+    </div>
+    <div class="form-group">
+      <label>Contraseña</label>
+      <input type="password" id="login-pass" placeholder="••••••••" autocomplete="current-password">
+    </div>
+    <button class="btn-login" id="btn-login" onclick="iniciarSesion()">Ingresar</button>
+    <div class="login-foot">© Loans4B · Asesorías SpA · v1.2</div>
+  </div>
+</div>
+
+<aside class="sidebar app-shell">
   <div class="sidebar-logo">
     <div class="brand">loans<span class="b">4B</span></div>
     <div class="tagline">Just loans for business</div>
   </div>
+  <div class="user-chip" id="user-chip" style="display:none">
+    <div class="user-avatar" id="ua-initials">—</div>
+    <div class="user-info">
+      <div class="un" id="ua-nombre">—</div>
+      <div class="ur" id="ua-rol">Asesor</div>
+    </div>
+    <button class="user-logout" onclick="cerrarSesion()" title="Cerrar sesión">⏻</button>
+  </div>
   <nav class="sidebar-nav">
-    <div class="nav-label">Simuladores</div>
+    <div class="nav-label">CRM</div>
+    <button class="nav-item" onclick="showView('clientes')"><span class="icon">👥</span><span>Mis Clientes</span></button>
+    <button class="nav-item" onclick="showView('historial')"><span class="icon">🗂️</span><span>Historial</span></button>
+    <div class="nav-label" style="margin-top:14px">Simuladores</div>
     <button class="nav-item active" onclick="showView('sim-rapido-leaseback')"><span class="icon">⚡</span><span>Sim. rápida Leaseback</span></button>
     <button class="nav-item" onclick="showView('sim-rapido-hipotecario')"><span class="icon">⚡</span><span>Sim. rápida Hipotecario</span></button>
     <button class="nav-item" onclick="showView('sim-leaseback')"><span class="icon">📋</span><span>Simulación Leaseback</span></button>
@@ -144,10 +299,11 @@
     <div class="nav-label" style="margin-top:14px">Herramientas</div>
     <button class="nav-item" onclick="showView('conversor')"><span class="icon">💱</span><span>Conversor UF / CLP</span></button>
     <div class="nav-label" style="margin-top:14px">Sistema</div>
+    <button class="nav-item" id="nav-equipo" onclick="showView('equipo')" style="display:none"><span class="icon">👤</span><span>Equipo (Admin)</span></button>
     <button class="nav-item" onclick="showView('config')"><span class="icon">⚙️</span><span>Configuración</span></button>
   </nav>
   <div class="sidebar-foot">
-    <span class="dot-on"></span><span>Sistema activo · v1.1</span>
+    <span class="dot-on"></span><span id="sys-status">Sistema activo · v1.2</span>
   </div>
 </aside>
 
@@ -249,6 +405,11 @@
   <div class="view" id="view-sim-leaseback">
     <h1 class="section-title">Simulación de Leaseback</h1>
     <p class="section-sub">Simulación formal para enviar al cliente. Genera un PDF profesional con todos los costos desglosados y el dinero neto a recibir.</p>
+    <div class="cliente-picker">
+      <span class="cp-ico">👤</span>
+      <div class="cp-text"><strong>Asociar a cliente</strong><br><span style="font-size:11.5px; color:var(--muted)">Opcional: rellena los datos del formulario automáticamente y vincula la simulación a una ficha.</span></div>
+      <select id="cp-leaseback" onchange="onClientePickerChange('leaseback', this)"><option value="">— Sin asociar a cliente —</option></select>
+    </div>
     <form id="form-leaseback" onsubmit="event.preventDefault(); calcularLeasebackCompleto();">
       <div class="form-card">
         <div class="form-card-header"><span class="h-icon">👤</span><h3>Datos del cliente</h3><div class="green-dot"></div></div>
@@ -320,6 +481,11 @@
         <button class="btn green" onclick="abrirNotaVenta('leaseback')"><span>📝</span> Generar Nota de Venta con estos datos</button>
         <button class="btn ghost" onclick="document.getElementById('lb-resultado').style.display='none'">Editar parámetros</button>
       </div>
+      <div class="save-banner" id="save-banner-leaseback">
+        <div class="sb-text"><strong>💾 Guardar en historial</strong><br><span style="font-size:11.5px;color:var(--muted)">Queda registrada en Firestore, asociada a tu cuenta y (opcional) al cliente seleccionado arriba.</span></div>
+        <span class="sb-status">No guardada</span>
+        <button class="btn" onclick="guardarSimulacionActual('leaseback')"><span>💾</span> Guardar</button>
+      </div>
     </div>
   </div>
 
@@ -327,6 +493,11 @@
   <div class="view" id="view-sim-hipotecario">
     <h1 class="section-title">Simulación de Crédito Hipotecario</h1>
     <p class="section-sub">Simulación formal para enviar al cliente. Calcula cuota, seguros, honorarios y genera el PDF profesional con la firma del asesor.</p>
+    <div class="cliente-picker">
+      <span class="cp-ico">👤</span>
+      <div class="cp-text"><strong>Asociar a cliente</strong><br><span style="font-size:11.5px; color:var(--muted)">Opcional: rellena los datos del formulario automáticamente y vincula la simulación a una ficha.</span></div>
+      <select id="cp-hipotecario" onchange="onClientePickerChange('hipotecario', this)"><option value="">— Sin asociar a cliente —</option></select>
+    </div>
     <form id="form-hipotecario" onsubmit="event.preventDefault(); calcularHipotecarioCompleto();">
       <div class="form-card">
         <div class="form-card-header"><span class="h-icon">👤</span><h3>Datos del cliente</h3><div class="green-dot"></div></div>
@@ -410,6 +581,11 @@
         <button class="btn green" onclick="abrirNotaVenta('hipotecario')"><span>📝</span> Generar Nota de Venta con estos datos</button>
         <button class="btn ghost" onclick="document.getElementById('h-resultado').style.display='none'">Editar parámetros</button>
       </div>
+      <div class="save-banner" id="save-banner-hipotecario">
+        <div class="sb-text"><strong>💾 Guardar en historial</strong><br><span style="font-size:11.5px;color:var(--muted)">Queda registrada en Firestore, asociada a tu cuenta y (opcional) al cliente seleccionado arriba.</span></div>
+        <span class="sb-status">No guardada</span>
+        <button class="btn" onclick="guardarSimulacionActual('hipotecario')"><span>💾</span> Guardar</button>
+      </div>
     </div>
   </div>
 
@@ -417,6 +593,12 @@
   <div class="view" id="view-nota-venta">
     <h1 class="section-title">Nota de Venta · Interna</h1>
     <p class="section-sub">Documento interno para el vendedor. Auto-rellena con los datos de la última simulación. Complete los campos restantes (rol, propiedad, contrato a enviar) y descargue el PDF para registro y disparo de comisión.</p>
+
+    <div class="cliente-picker">
+      <span class="cp-ico">👤</span>
+      <div class="cp-text"><strong>Asociar a cliente</strong><br><span style="font-size:11.5px; color:var(--muted)">Opcional: rellena cliente, RUT, email, teléfono y dirección desde la ficha del CRM.</span></div>
+      <select id="cp-nv" onchange="onClientePickerChange('nv', this)"><option value="">— Sin asociar a cliente —</option></select>
+    </div>
 
     <div id="nv-aviso-vacio" class="alert amber" style="margin-bottom:18px"><span>ℹ️</span><div>Aún no hay simulación cargada. Genere primero una simulación hipotecaria o de leaseback y pulse <strong>"Generar Nota de Venta con estos datos"</strong> para pre-llenar este formulario. También puede llenar la nota manualmente desde cero.</div></div>
 
@@ -538,6 +720,7 @@
 
       <div style="margin-top:22px; display:flex; gap:10px; flex-wrap:wrap;">
         <button type="button" class="btn-pdf" onclick="descargarNotaVenta()"><span>📥</span> Descargar Nota de Venta en PDF</button>
+        <button type="button" class="btn green" id="btn-guardar-nv" onclick="guardarNotaActual()"><span>💾</span> Guardar nota en historial</button>
         <button type="button" class="btn" onclick="precargarUltimaSimulacion()"><span>↻</span> Cargar última simulación</button>
         <button type="button" class="btn ghost" onclick="limpiarNotaVenta()">Limpiar formulario</button>
       </div>
@@ -596,6 +779,165 @@
       </div>
     </div>
   </div>
+
+  <!-- ===== MIS CLIENTES ===== -->
+  <div class="view" id="view-clientes">
+    <h1 class="section-title">Mis Clientes</h1>
+    <p class="section-sub">Ficha única por cliente. La información se comparte entre asesores y queda asociada a simulaciones y notas de venta. Estructura compatible con Kommo para futura sincronización.</p>
+
+    <div class="filter-bar">
+      <input type="text" id="cli-buscar" class="grow" placeholder="Buscar por nombre, RUT o email…" oninput="renderClientes()">
+      <select id="cli-filtro-asesor" onchange="renderClientes()">
+        <option value="todos">Todos los asesores</option>
+        <option value="mios" selected>Solo mis clientes</option>
+      </select>
+      <select id="cli-filtro-tipo" onchange="renderClientes()">
+        <option value="todos">Todo tipo</option>
+        <option value="natural">P. Natural</option>
+        <option value="juridica">P. Jurídica</option>
+      </select>
+      <button class="btn green" onclick="abrirClienteModal()"><span>＋</span> Nuevo cliente</button>
+    </div>
+
+    <div class="data-table-wrap" id="cli-tabla-wrap">
+      <table class="data-table">
+        <thead><tr><th>Nombre</th><th>RUT</th><th>Tipo</th><th>Email · Teléfono</th><th>Asesor</th><th>Actualizado</th><th></th></tr></thead>
+        <tbody id="cli-tbody"><tr><td colspan="7" style="padding:40px; text-align:center; color:var(--muted)">Cargando…</td></tr></tbody>
+      </table>
+    </div>
+    <div class="empty-state" id="cli-empty" style="display:none">
+      <div class="ico">👥</div>
+      <h3>Aún no tienes clientes</h3>
+      <p>Crea tu primera ficha con el botón <strong>＋ Nuevo cliente</strong>. Una vez creada, podrás vincular simulaciones y notas de venta a ella.</p>
+    </div>
+  </div>
+
+  <!-- Modal Cliente -->
+  <div class="modal-overlay" id="modal-cliente">
+    <div class="modal">
+      <div class="modal-head">
+        <h3 id="mc-titulo">Nuevo cliente</h3>
+        <button class="modal-close" onclick="cerrarClienteModal()">×</button>
+      </div>
+      <div class="modal-body">
+        <input type="hidden" id="mc-id">
+        <div class="form-group" style="margin-bottom:14px">
+          <label>Tipo de persona <span class="req">*</span></label>
+          <div class="radio-group">
+            <label class="radio-pill active" id="mc-rp-natural" onclick="mcSetTipo('natural')"><input type="radio" name="mc-tipo" value="natural" checked> P. Natural</label>
+            <label class="radio-pill" id="mc-rp-juridica" onclick="mcSetTipo('juridica')"><input type="radio" name="mc-tipo" value="juridica"> P. Jurídica</label>
+          </div>
+        </div>
+        <div class="form-grid" style="margin-bottom:14px">
+          <div class="form-group"><label>Nombre / Razón social <span class="req">*</span></label><input type="text" id="mc-nombre" placeholder="Ej: María Pérez González"></div>
+          <div class="form-group"><label>RUT <span class="req">*</span></label><input type="text" id="mc-rut" placeholder="12.345.678-9" oninput="formatRUT(this)"></div>
+        </div>
+        <div class="form-group" id="mc-giro-wrap" style="margin-bottom:14px; display:none"><label>Giro</label><input type="text" id="mc-giro" placeholder="Ej: Servicios financieros"></div>
+        <div class="form-grid" style="margin-bottom:14px">
+          <div class="form-group"><label>Email</label><input type="email" id="mc-email" placeholder="cliente@email.com"></div>
+          <div class="form-group"><label>Teléfono</label><input type="tel" id="mc-telefono" placeholder="+56 9 1234 5678"></div>
+        </div>
+        <div class="form-grid" style="margin-bottom:14px">
+          <div class="form-group"><label>Dirección</label><input type="text" id="mc-direccion" placeholder="Av. Apoquindo 1234"></div>
+          <div class="form-group"><label>Comuna</label><input type="text" id="mc-comuna" placeholder="Las Condes"></div>
+        </div>
+        <div class="form-grid" style="margin-bottom:14px">
+          <div class="form-group"><label>Región</label><input type="text" id="mc-region" placeholder="Metropolitana" value="Metropolitana"></div>
+          <div class="form-group"><label>Renta líquida (CLP)</label><input type="number" id="mc-renta" placeholder="2.500.000" step="50000"></div>
+        </div>
+        <div class="form-grid" style="margin-bottom:14px">
+          <div class="form-group"><label>Estado DICOM</label><select id="mc-dicom"><option value="desconocido">Desconocido</option><option value="limpio">Limpio</option><option value="observado">Observado</option></select></div>
+          <div class="form-group"><label>Origen del lead</label><select id="mc-origen"><option value="referido">Referido</option><option value="web">Web</option><option value="rrss">Redes sociales</option><option value="kommo">CRM Kommo</option><option value="cartera">Cartera propia</option><option value="otro">Otro</option></select></div>
+        </div>
+        <div class="form-group" style="margin-bottom:14px"><label>Observaciones internas</label><textarea id="mc-obs" rows="3" placeholder="Notas relevantes para el equipo (no se comparten con el cliente)" style="background:#fafcfd; border:1px solid var(--border); border-radius:8px; padding:10px 13px; font-size:13px; font-family:inherit; resize:vertical"></textarea></div>
+      </div>
+      <div class="modal-foot">
+        <button class="btn ghost" onclick="cerrarClienteModal()">Cancelar</button>
+        <button class="btn green" onclick="guardarCliente()" id="mc-btn-guardar"><span>💾</span> Guardar cliente</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== HISTORIAL ===== -->
+  <div class="view" id="view-historial">
+    <h1 class="section-title">Historial</h1>
+    <p class="section-sub">Registro centralizado de simulaciones y notas de venta. Filtra por producto, asesor, cliente o fecha. Cada simulación queda asociada al asesor que la creó y, opcionalmente, a un cliente de tu cartera.</p>
+
+    <div class="filter-bar">
+      <input type="text" id="hi-buscar" class="grow" placeholder="Buscar por cliente, RUT o ID…" oninput="renderHistorial()">
+      <select id="hi-tipo" onchange="renderHistorial()">
+        <option value="todos">Todo tipo</option>
+        <option value="sim-hipotecario">Sim. Hipotecario</option>
+        <option value="sim-leaseback">Sim. Leaseback</option>
+        <option value="nota-venta">Notas de venta</option>
+      </select>
+      <select id="hi-asesor" onchange="renderHistorial()">
+        <option value="mios" selected>Mis registros</option>
+        <option value="todos">Todos los asesores</option>
+      </select>
+      <select id="hi-rango" onchange="renderHistorial()">
+        <option value="30">Últimos 30 días</option>
+        <option value="90">Últimos 90 días</option>
+        <option value="365">Último año</option>
+        <option value="all">Todo el historial</option>
+      </select>
+    </div>
+
+    <div class="data-table-wrap" id="hi-tabla-wrap">
+      <table class="data-table">
+        <thead><tr><th>Fecha</th><th>Tipo</th><th>Cliente</th><th>Producto</th><th class="num">Monto UF</th><th>Asesor</th><th>Estado</th></tr></thead>
+        <tbody id="hi-tbody"><tr><td colspan="7" style="padding:40px; text-align:center; color:var(--muted)">Cargando…</td></tr></tbody>
+      </table>
+    </div>
+    <div class="empty-state" id="hi-empty" style="display:none">
+      <div class="ico">🗂️</div>
+      <h3>Aún no hay registros</h3>
+      <p>Cuando ejecutes una simulación o crees una nota de venta, podrás guardarla acá para mantener un historial centralizado del equipo.</p>
+    </div>
+  </div>
+
+  <!-- ===== EQUIPO (Admin) ===== -->
+  <div class="view" id="view-equipo">
+    <h1 class="section-title">Equipo</h1>
+    <p class="section-sub">Vista exclusiva para administradores. Crea cuentas para los asesores, asigna roles y revisa actividad agregada.</p>
+
+    <div class="filter-bar">
+      <div style="font-size:12.5px; color:var(--muted); flex:1">Los asesores con rol "admin" tienen acceso a todos los clientes, simulaciones e historial del equipo.</div>
+      <button class="btn green" onclick="abrirUserModal()"><span>＋</span> Crear asesor</button>
+    </div>
+
+    <div class="data-table-wrap">
+      <table class="data-table">
+        <thead><tr><th>Nombre</th><th>Email</th><th>Rol</th><th class="num">Clientes</th><th class="num">Simulaciones</th><th class="num">Notas venta</th><th>Estado</th></tr></thead>
+        <tbody id="eq-tbody"><tr><td colspan="7" style="padding:40px; text-align:center; color:var(--muted)">Cargando…</td></tr></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- Modal Crear Usuario -->
+  <div class="modal-overlay" id="modal-user">
+    <div class="modal" style="max-width:500px">
+      <div class="modal-head">
+        <h3>Crear cuenta de asesor</h3>
+        <button class="modal-close" onclick="cerrarUserModal()">×</button>
+      </div>
+      <div class="modal-body">
+        <div class="login-warn" style="margin-bottom:16px">La cuenta se crea con la contraseña que definas aquí. El asesor podrá cambiarla después desde su perfil. No envía correo automático.</div>
+        <div class="form-group" style="margin-bottom:14px"><label>Nombre completo <span class="req">*</span></label><input type="text" id="nu-nombre" placeholder="Ej: María Pérez"></div>
+        <div class="form-group" style="margin-bottom:14px"><label>Email <span class="req">*</span></label><input type="email" id="nu-email" placeholder="asesor@loans4b.cl"></div>
+        <div class="form-group" style="margin-bottom:14px"><label>Contraseña inicial <span class="req">*</span></label><input type="text" id="nu-pass" placeholder="Mínimo 6 caracteres"></div>
+        <div class="form-grid" style="margin-bottom:14px">
+          <div class="form-group"><label>Teléfono</label><input type="tel" id="nu-telefono" placeholder="+56 9 1234 5678"></div>
+          <div class="form-group"><label>Rol <span class="req">*</span></label><select id="nu-rol"><option value="asesor" selected>Asesor</option><option value="admin">Administrador</option></select></div>
+        </div>
+        <div class="login-err" id="nu-err"></div>
+      </div>
+      <div class="modal-foot">
+        <button class="btn ghost" onclick="cerrarUserModal()">Cancelar</button>
+        <button class="btn green" onclick="crearAsesor()" id="nu-btn-crear"><span>＋</span> Crear cuenta</button>
+      </div>
+    </div>
+  </div>
 </main>
 
 <script>
@@ -606,8 +948,12 @@ const VIEW_TITLES = {
   'sim-rapido-hipotecario': 'Simulación rápida de Hipotecario',
   'sim-leaseback': 'Simulación de Leaseback',
   'sim-hipotecario': 'Simulación de Crédito Hipotecario',
+  'nota-venta': 'Nota de Venta',
   'conversor': 'Conversor UF / CLP',
-  'config': 'Configuración'
+  'config': 'Configuración',
+  'clientes': 'Mis Clientes',
+  'historial': 'Historial',
+  'equipo': 'Equipo (Admin)'
 };
 const SEGUROS_REF = {
   natural:  { desg: 0.90, incendio: 0.52, cesantia: 0.18 },
@@ -1346,6 +1692,457 @@ function descargarNotaVenta(){
   generarPDF(html, 'Nota de Venta · ' + (get('nv-nombre') || 'cliente'));
 }
 
+/* ============================================================
+   ===== MÓDULO CRM v8: AUTH + CLIENTES + HISTORIAL + EQUIPO =====
+   ============================================================ */
+
+/* === ESTADO GLOBAL === */
+let CURRENT_USER = null;
+let CURRENT_PROFILE = null;
+let CLIENTES_CACHE = [];
+let HISTORIAL_CACHE = [];
+let USERS_CACHE = [];
+let MC_TIPO = 'natural';
+let CLIENTE_SELECCIONADO_SIM = { hipotecario: null, leaseback: null, nv: null };
+
+/* === HELPERS FIRESTORE === */
+function fbReady(){ return FIREBASE_OK && fbDb && fbAuth; }
+function nowTs(){ return firebase.firestore.FieldValue.serverTimestamp(); }
+function tsToDate(ts){ if(!ts) return null; if(ts.toDate) return ts.toDate(); if(ts.seconds) return new Date(ts.seconds*1000); return new Date(ts); }
+function fmtTimestamp(ts){ const d=tsToDate(ts); if(!d) return '—'; return d.toLocaleDateString('es-CL',{day:'2-digit',month:'2-digit',year:'numeric'})+' '+d.toLocaleTimeString('es-CL',{hour:'2-digit',minute:'2-digit'}); }
+function initialsOf(name){ if(!name) return '?'; const p=name.trim().split(/\s+/); return ((p[0]||'')[0]||'')+(((p[1]||'')[0])||''); }
+function escapeHTML(s){ if(s==null) return ''; return String(s).replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m])); }
+function asesorNombrePorId(uid){ if(!uid) return '—'; if(CURRENT_USER && CURRENT_USER.uid===uid && CURRENT_PROFILE) return CURRENT_PROFILE.nombre + ' (yo)'; const u = USERS_CACHE.find(x=>x.id===uid); return u ? u.nombre : '—'; }
+
+/* === AUTH === */
+async function iniciarSesion(){
+  const email = document.getElementById('login-email').value.trim();
+  const pass  = document.getElementById('login-pass').value;
+  const err   = document.getElementById('login-err');
+  const btn   = document.getElementById('btn-login');
+  err.classList.remove('active');
+  if(!email || !pass){ err.textContent='Ingresa correo y contraseña.'; err.classList.add('active'); return; }
+  if(!fbReady()){ err.innerHTML='Firebase no está configurado. Edita el bloque <code>FIREBASE_CONFIG</code> al inicio del archivo.'; err.classList.add('active'); return; }
+  btn.disabled=true; btn.textContent='Ingresando…';
+  try{ await fbAuth.signInWithEmailAndPassword(email, pass); }
+  catch(e){
+    let msg='No se pudo iniciar sesión.';
+    if(e.code==='auth/invalid-credential' || e.code==='auth/wrong-password' || e.code==='auth/user-not-found') msg='Correo o contraseña incorrectos.';
+    else if(e.code==='auth/too-many-requests') msg='Demasiados intentos. Espera unos minutos.';
+    else if(e.code==='auth/network-request-failed') msg='Sin conexión. Revisa tu internet.';
+    err.textContent=msg; err.classList.add('active');
+    btn.disabled=false; btn.textContent='Ingresar';
+  }
+}
+
+async function cerrarSesion(){
+  if(!confirm('¿Cerrar sesión?')) return;
+  try{ await fbAuth.signOut(); }catch(e){ console.error(e); }
+  CURRENT_USER=null; CURRENT_PROFILE=null;
+  CLIENTES_CACHE=[]; HISTORIAL_CACHE=[]; USERS_CACHE=[];
+  mostrarLogin();
+}
+
+function mostrarLogin(){
+  document.getElementById('login-screen').classList.add('active');
+  document.querySelectorAll('.app-shell, .main').forEach(el=>el.classList.add('app-hidden'));
+  document.getElementById('user-chip').style.display='none';
+  if(!FIREBASE_OK){ document.getElementById('login-cfg-warn').style.display='block'; }
+}
+
+function mostrarApp(){
+  document.getElementById('login-screen').classList.remove('active');
+  document.querySelectorAll('.app-shell, .main').forEach(el=>el.classList.remove('app-hidden'));
+  document.getElementById('user-chip').style.display='flex';
+  const p=CURRENT_PROFILE || {nombre:'(sin perfil)', rol:'asesor'};
+  document.getElementById('ua-initials').textContent = initialsOf(p.nombre).toUpperCase();
+  document.getElementById('ua-nombre').textContent = p.nombre || p.email || '—';
+  const rolEl = document.getElementById('ua-rol');
+  rolEl.textContent = p.rol==='admin' ? 'Administrador' : 'Asesor';
+  rolEl.className = 'ur' + (p.rol==='admin'?' admin':'');
+  document.getElementById('nav-equipo').style.display = (p.rol==='admin') ? 'flex' : 'none';
+}
+
+function setupAuthListener(){
+  if(!fbReady()){ mostrarLogin(); return; }
+  fbAuth.onAuthStateChanged(async (user)=>{
+    if(user){
+      CURRENT_USER = user;
+      CURRENT_PROFILE = await fetchUserProfile(user.uid);
+      if(!CURRENT_PROFILE){ await ensureUserProfile(user); CURRENT_PROFILE = await fetchUserProfile(user.uid); }
+      mostrarApp();
+      cargarClientes();
+      cargarHistorial();
+      if(CURRENT_PROFILE && CURRENT_PROFILE.rol==='admin') cargarEquipo();
+      if(CURRENT_PROFILE){
+        const cfg = cargarConfig() || {};
+        if(!cfg.nombre || cfg.nombre.trim()==='') {
+          cfg.nombre = CURRENT_PROFILE.nombre || '';
+          cfg.email = CURRENT_PROFILE.email || cfg.email || '';
+          cfg.telefono = CURRENT_PROFILE.telefono || cfg.telefono || '';
+          localStorage.setItem(CFG_KEY, JSON.stringify(cfg));
+          aplicarConfigEnUI();
+          aplicarAsesorEnFormularios();
+        }
+      }
+    } else { mostrarLogin(); }
+  });
+}
+
+async function fetchUserProfile(uid){
+  try{ const doc = await fbDb.collection('users').doc(uid).get(); if(doc.exists) return { uid, ...doc.data() }; return null; }
+  catch(e){ console.error('fetchUserProfile error:',e); return null; }
+}
+
+async function ensureUserProfile(user){
+  try{
+    const ref = fbDb.collection('users').doc(user.uid);
+    const snap = await ref.get();
+    if(snap.exists) return;
+    const all = await fbDb.collection('users').limit(1).get();
+    const esPrimero = all.empty;
+    await ref.set({
+      email: user.email,
+      nombre: user.displayName || user.email.split('@')[0],
+      rol: esPrimero ? 'admin' : 'asesor',
+      telefono: '',
+      activo: true,
+      fechaCreacion: nowTs()
+    });
+  }catch(e){ console.error('ensureUserProfile error:',e); }
+}
+
+/* === CRUD CLIENTES === */
+async function cargarClientes(){
+  if(!fbReady() || !CURRENT_USER) return;
+  try{
+    const snap = await fbDb.collection('clientes').orderBy('updatedAt','desc').limit(500).get();
+    CLIENTES_CACHE = snap.docs.map(d=>({ id:d.id, ...d.data() }));
+    renderClientes();
+    poblarClientePickers();
+  }catch(e){ console.error('cargarClientes error:',e); }
+}
+
+function renderClientes(){
+  const tbody = document.getElementById('cli-tbody');
+  const empty = document.getElementById('cli-empty');
+  const wrap = document.getElementById('cli-tabla-wrap');
+  if(!tbody) return;
+  const q = (document.getElementById('cli-buscar').value||'').toLowerCase().trim();
+  const filtroAsesor = document.getElementById('cli-filtro-asesor').value;
+  const filtroTipo = document.getElementById('cli-filtro-tipo').value;
+  let lista = CLIENTES_CACHE.filter(c=>{
+    if(filtroAsesor==='mios' && c.asesorId !== (CURRENT_USER&&CURRENT_USER.uid)) return false;
+    if(filtroTipo!=='todos' && c.tipoPersona!==filtroTipo) return false;
+    if(q){ const txt = ((c.nombre||'')+' '+(c.rut||'')+' '+(c.email||'')).toLowerCase(); if(!txt.includes(q)) return false; }
+    return true;
+  });
+  if(lista.length===0){ wrap.style.display='none'; empty.style.display='block'; return; }
+  wrap.style.display='block'; empty.style.display='none';
+  tbody.innerHTML = lista.map(c=>{
+    const tipoBadge = c.tipoPersona==='juridica' ? '<span class="badge blue">Jurídica</span>' : '<span class="badge gray">Natural</span>';
+    return '<tr onclick="abrirClienteModal(\''+c.id+'\')">'+
+      '<td><strong>'+escapeHTML(c.nombre||'—')+'</strong>'+(c.giro?'<div style="font-size:11px;color:var(--muted);margin-top:2px">'+escapeHTML(c.giro)+'</div>':'')+'</td>'+
+      '<td>'+escapeHTML(c.rut||'—')+'</td>'+
+      '<td>'+tipoBadge+'</td>'+
+      '<td><div style="font-size:12px">'+escapeHTML(c.email||'—')+'</div><div style="font-size:11px;color:var(--muted)">'+escapeHTML(c.telefono||'')+'</div></td>'+
+      '<td><span style="font-size:12px">'+escapeHTML(asesorNombrePorId(c.asesorId))+'</span></td>'+
+      '<td><span style="font-size:11.5px;color:var(--muted)">'+fmtTimestamp(c.updatedAt||c.createdAt)+'</span></td>'+
+      '<td class="actions"><span style="color:var(--green);font-size:11px;font-weight:600">EDITAR ›</span></td>'+
+    '</tr>';
+  }).join('');
+}
+
+function mcSetTipo(t){
+  MC_TIPO = t;
+  document.getElementById('mc-rp-natural').classList.toggle('active', t==='natural');
+  document.getElementById('mc-rp-juridica').classList.toggle('active', t==='juridica');
+  document.getElementById('mc-giro-wrap').style.display = (t==='juridica') ? 'flex' : 'none';
+}
+
+function abrirClienteModal(id){
+  document.getElementById('modal-cliente').classList.add('active');
+  document.getElementById('mc-id').value = id || '';
+  if(id){
+    const c = CLIENTES_CACHE.find(x=>x.id===id);
+    if(!c){ alert('Cliente no encontrado'); return; }
+    document.getElementById('mc-titulo').textContent='Editar cliente';
+    mcSetTipo(c.tipoPersona||'natural');
+    document.getElementById('mc-nombre').value=c.nombre||'';
+    document.getElementById('mc-rut').value=c.rut||'';
+    document.getElementById('mc-giro').value=c.giro||'';
+    document.getElementById('mc-email').value=c.email||'';
+    document.getElementById('mc-telefono').value=c.telefono||'';
+    document.getElementById('mc-direccion').value=c.direccion||'';
+    document.getElementById('mc-comuna').value=c.comuna||'';
+    document.getElementById('mc-region').value=c.region||'Metropolitana';
+    document.getElementById('mc-renta').value=c.rentaLiquida||'';
+    document.getElementById('mc-dicom').value=c.dicom||'desconocido';
+    document.getElementById('mc-origen').value=c.origen||'referido';
+    document.getElementById('mc-obs').value=c.observaciones||'';
+  } else {
+    document.getElementById('mc-titulo').textContent='Nuevo cliente';
+    mcSetTipo('natural');
+    ['mc-nombre','mc-rut','mc-giro','mc-email','mc-telefono','mc-direccion','mc-comuna','mc-renta','mc-obs'].forEach(k=>document.getElementById(k).value='');
+    document.getElementById('mc-region').value='Metropolitana';
+    document.getElementById('mc-dicom').value='desconocido';
+    document.getElementById('mc-origen').value='referido';
+  }
+}
+
+function cerrarClienteModal(){ document.getElementById('modal-cliente').classList.remove('active'); }
+
+async function guardarCliente(){
+  if(!fbReady()){ alert('Firebase no configurado.'); return; }
+  const nombre = document.getElementById('mc-nombre').value.trim();
+  const rut    = document.getElementById('mc-rut').value.trim();
+  if(!nombre || !rut){ alert('Nombre y RUT son obligatorios.'); return; }
+  const id = document.getElementById('mc-id').value;
+  const btn = document.getElementById('mc-btn-guardar');
+  btn.disabled=true; btn.innerHTML='<span>⏳</span> Guardando…';
+  const data = {
+    nombre, rut,
+    tipoPersona: MC_TIPO,
+    giro: document.getElementById('mc-giro').value.trim(),
+    email: document.getElementById('mc-email').value.trim(),
+    telefono: document.getElementById('mc-telefono').value.trim(),
+    direccion: document.getElementById('mc-direccion').value.trim(),
+    comuna: document.getElementById('mc-comuna').value.trim(),
+    region: document.getElementById('mc-region').value.trim(),
+    rentaLiquida: parseFloat(document.getElementById('mc-renta').value)||0,
+    dicom: document.getElementById('mc-dicom').value,
+    origen: document.getElementById('mc-origen').value,
+    observaciones: document.getElementById('mc-obs').value.trim(),
+    updatedAt: nowTs(),
+    externalIds: { kommo: '' }
+  };
+  try{
+    if(id){ await fbDb.collection('clientes').doc(id).update(data); }
+    else { data.asesorId = CURRENT_USER.uid; data.createdAt = nowTs(); await fbDb.collection('clientes').add(data); }
+    cerrarClienteModal();
+    await cargarClientes();
+  }catch(e){ console.error('guardarCliente error:',e); alert('Error guardando: '+(e.message||e)); }
+  btn.disabled=false; btn.innerHTML='<span>💾</span> Guardar cliente';
+}
+
+/* === HISTORIAL === */
+async function cargarHistorial(){
+  if(!fbReady() || !CURRENT_USER) return;
+  try{
+    const [sims, notas] = await Promise.all([
+      fbDb.collection('simulaciones').orderBy('fechaCreacion','desc').limit(500).get(),
+      fbDb.collection('notasVenta').orderBy('createdAt','desc').limit(500).get()
+    ]);
+    const lista = [];
+    sims.forEach(d=>{ const x=d.data(); lista.push({ id:d.id, tipo:'sim-'+x.producto, ...x, fechaSort: tsToDate(x.fechaCreacion) }); });
+    notas.forEach(d=>{ const x=d.data(); lista.push({ id:d.id, tipo:'nota-venta', ...x, fechaSort: tsToDate(x.createdAt) }); });
+    lista.sort((a,b)=>(b.fechaSort||0)-(a.fechaSort||0));
+    HISTORIAL_CACHE = lista;
+    renderHistorial();
+  }catch(e){ console.error('cargarHistorial error:',e); }
+}
+
+function renderHistorial(){
+  const tbody = document.getElementById('hi-tbody');
+  const empty = document.getElementById('hi-empty');
+  const wrap = document.getElementById('hi-tabla-wrap');
+  if(!tbody) return;
+  const q = (document.getElementById('hi-buscar').value||'').toLowerCase().trim();
+  const tipo = document.getElementById('hi-tipo').value;
+  const ase = document.getElementById('hi-asesor').value;
+  const rango = document.getElementById('hi-rango').value;
+  const hoy = new Date();
+  const limiteDias = rango==='all' ? null : parseInt(rango,10);
+  let lista = HISTORIAL_CACHE.filter(x=>{
+    if(tipo!=='todos' && x.tipo!==tipo) return false;
+    if(ase==='mios' && x.asesorId !== (CURRENT_USER&&CURRENT_USER.uid)) return false;
+    if(limiteDias && x.fechaSort){ const dias = (hoy - x.fechaSort)/(1000*60*60*24); if(dias > limiteDias) return false; }
+    if(q){ const txt = ((x.clienteNombre||'')+' '+(x.clienteRut||'')+' '+(x.id||'')).toLowerCase(); if(!txt.includes(q)) return false; }
+    return true;
+  });
+  if(lista.length===0){ wrap.style.display='none'; empty.style.display='block'; return; }
+  wrap.style.display='block'; empty.style.display='none';
+  tbody.innerHTML = lista.map(x=>{
+    const tipoLabel = x.tipo==='sim-hipotecario'?'Sim. Hipotecario':(x.tipo==='sim-leaseback'?'Sim. Leaseback':'Nota de Venta');
+    const tipoBadge = x.tipo==='nota-venta'?'<span class="badge blue">Nota</span>':(x.tipo==='sim-hipotecario'?'<span class="badge green">Hipotec.</span>':'<span class="badge amber">Leaseback</span>');
+    const monto = x.tipo==='nota-venta' ? (x.montoUF||0) : ((x.inputs && (x.inputs.financiarUF || x.inputs.dineroNetoUF || x.inputs.valorUF)) || 0);
+    const estadoBadge = '<span class="badge gray">'+(x.estado||'borrador')+'</span>';
+    return '<tr>'+
+      '<td>'+fmtTimestamp(x.fechaSort)+'</td>'+
+      '<td>'+tipoBadge+'</td>'+
+      '<td><strong>'+escapeHTML(x.clienteNombre||'—')+'</strong>'+(x.clienteRut?'<div style="font-size:11px;color:var(--muted)">'+escapeHTML(x.clienteRut)+'</div>':'')+'</td>'+
+      '<td>'+escapeHTML(tipoLabel)+'</td>'+
+      '<td class="num">'+fmtNum(monto,0)+'</td>'+
+      '<td>'+escapeHTML(asesorNombrePorId(x.asesorId))+'</td>'+
+      '<td>'+estadoBadge+'</td>'+
+    '</tr>';
+  }).join('');
+}
+
+async function guardarSimulacionActual(producto){
+  if(!fbReady()){ alert('Firebase no configurado. La simulación quedó solo en la pantalla.'); return; }
+  if(!CURRENT_USER){ alert('Debes iniciar sesión.'); return; }
+  const data = producto==='hipotecario' ? H_DATA : LB_DATA;
+  if(!data){ alert('Genera la simulación primero.'); return; }
+  const cliId = CLIENTE_SELECCIONADO_SIM[producto];
+  const cli = cliId ? CLIENTES_CACHE.find(c=>c.id===cliId) : null;
+  const inputs = producto==='hipotecario'
+    ? { valorUF:data.valor, pieUF:data.pie, financiarUF:data.fin, plazoAnios:data.plazo, tasaAnual:data.tasa, tipoTasa:data.tipoTasa, tipoPersona:data.tipo, preEvalUF:data.preEval, comisionPct:data.honorariosPct }
+    : { valorUF:data.valor, deudaUF:data.deuda, plazoMeses:data.plazo, pctCV:data.pctCV, tasaMensual:data.tasaMensual, feeL4B:data.feeL4B, feeFondo:data.feeFondo, gastosOp:data.gastosOp, notariaCLP:data.notariaCLP, dineroNetoUF:data.dineroNeto };
+  const resultados = producto==='hipotecario'
+    ? { cuotaUF:data.cuotaTotal, cuotaSinSegUF:data.cuotaSinSeg, cae:data.cae, totalPagar:data.totalPagar, intereses:data.intereses, honorariosUF:data.honorariosUF }
+    : { cuotaUF:data.cuota, dineroNetoUF:data.dineroNeto, compraventaUF:data.compraventa, totalPago:data.totalPago, feeL4BUF:data.feeL4BUF };
+  const doc = {
+    asesorId: CURRENT_USER.uid, producto, modo: 'completo',
+    clienteId: cliId || null,
+    clienteNombre: cli ? cli.nombre : (data.nombre||''),
+    clienteRut: cli ? cli.rut : (data.rut||''),
+    inputs, resultados, estado: 'borrador',
+    fechaCreacion: nowTs(), fechaActualizacion: nowTs()
+  };
+  try{
+    await fbDb.collection('simulaciones').add(doc);
+    const banner = document.getElementById('save-banner-'+producto);
+    if(banner){ banner.querySelector('.sb-status').textContent='✓ Guardada en historial'; }
+    await cargarHistorial();
+  }catch(e){ console.error('guardarSimulacion error:',e); alert('Error guardando simulación: '+(e.message||e)); }
+}
+
+async function guardarNotaActual(){
+  if(!fbReady()){ alert('Firebase no configurado.'); return; }
+  if(!CURRENT_USER){ alert('Debes iniciar sesión.'); return; }
+  const get = (id)=> (document.getElementById(id)||{}).value || '';
+  const cliId = CLIENTE_SELECCIONADO_SIM.nv;
+  const cli = cliId ? CLIENTES_CACHE.find(c=>c.id===cliId) : null;
+  const campos = {};
+  ['nv-nombre','nv-rut','nv-tipo-persona','nv-giro','nv-email','nv-telefono','nv-direccion','nv-comuna','nv-rol','nv-tipo-propiedad','nv-prop-direccion','nv-prop-comuna','nv-prop-region','nv-valor-uf','nv-valor-clp','nv-prop-obs','nv-producto','nv-monto-uf','nv-plazo','nv-tasa','nv-entidad','nv-fecha-otorga','nv-fee-uf','nv-fee-clp','nv-fee-pct','nv-momento-cobro','nv-doc','nv-razon-facturacion','nv-contrato','nv-contrato-estado','nv-contrato-fecha','nv-anexos','nv-asesor-nombre','nv-asesor-contacto','nv-origen-lead','nv-comision','nv-observaciones'].forEach(k=>{ campos[k]=get(k); });
+  const doc = {
+    asesorId: CURRENT_USER.uid,
+    clienteId: cliId || null,
+    clienteNombre: cli ? cli.nombre : (get('nv-nombre')||''),
+    clienteRut: cli ? cli.rut : (get('nv-rut')||''),
+    montoUF: parseFloat(get('nv-monto-uf'))||0,
+    feeUF: parseFloat(get('nv-fee-uf'))||0,
+    producto: get('nv-producto'),
+    campos, estado: 'borrador',
+    createdAt: nowTs(), updatedAt: nowTs()
+  };
+  const btn = document.getElementById('btn-guardar-nv');
+  if(btn){ btn.disabled=true; btn.innerHTML='<span>⏳</span> Guardando…'; }
+  try{
+    await fbDb.collection('notasVenta').add(doc);
+    if(btn){ btn.innerHTML='<span>✓</span> Guardada en historial'; setTimeout(()=>{ btn.disabled=false; btn.innerHTML='<span>💾</span> Guardar nota en historial'; },2500); }
+    await cargarHistorial();
+  }catch(e){ console.error('guardarNota error:',e); alert('Error guardando nota: '+(e.message||e)); if(btn){ btn.disabled=false; btn.innerHTML='<span>💾</span> Guardar nota en historial'; } }
+}
+
+/* === EQUIPO === */
+async function cargarEquipo(){
+  if(!fbReady() || !CURRENT_PROFILE || CURRENT_PROFILE.rol!=='admin') return;
+  try{
+    const snap = await fbDb.collection('users').orderBy('fechaCreacion','asc').get();
+    USERS_CACHE = snap.docs.map(d=>({ id:d.id, ...d.data() }));
+    renderEquipo();
+  }catch(e){ console.error('cargarEquipo error:',e); }
+}
+
+function renderEquipo(){
+  const tbody = document.getElementById('eq-tbody');
+  if(!tbody) return;
+  if(USERS_CACHE.length===0){ tbody.innerHTML='<tr><td colspan="7" style="padding:40px; text-align:center; color:var(--muted)">No hay asesores aún.</td></tr>'; return; }
+  tbody.innerHTML = USERS_CACHE.map(u=>{
+    const numCli = CLIENTES_CACHE.filter(c=>c.asesorId===u.id).length;
+    const numSim = HISTORIAL_CACHE.filter(h=>h.asesorId===u.id && (h.tipo==='sim-hipotecario'||h.tipo==='sim-leaseback')).length;
+    const numNotas = HISTORIAL_CACHE.filter(h=>h.asesorId===u.id && h.tipo==='nota-venta').length;
+    const rolBadge = u.rol==='admin' ? '<span class="badge amber">Admin</span>' : '<span class="badge gray">Asesor</span>';
+    const estadoBadge = (u.activo===false) ? '<span class="badge red">Inactivo</span>' : '<span class="badge green">Activo</span>';
+    return '<tr>'+
+      '<td><strong>'+escapeHTML(u.nombre||'—')+'</strong></td>'+
+      '<td>'+escapeHTML(u.email||'—')+'</td>'+
+      '<td>'+rolBadge+'</td>'+
+      '<td class="num">'+numCli+'</td>'+
+      '<td class="num">'+numSim+'</td>'+
+      '<td class="num">'+numNotas+'</td>'+
+      '<td>'+estadoBadge+'</td>'+
+    '</tr>';
+  }).join('');
+}
+
+function abrirUserModal(){
+  document.getElementById('modal-user').classList.add('active');
+  ['nu-nombre','nu-email','nu-pass','nu-telefono'].forEach(k=>document.getElementById(k).value='');
+  document.getElementById('nu-rol').value='asesor';
+  document.getElementById('nu-err').classList.remove('active');
+}
+function cerrarUserModal(){ document.getElementById('modal-user').classList.remove('active'); }
+
+async function crearAsesor(){
+  const nombre = document.getElementById('nu-nombre').value.trim();
+  const email  = document.getElementById('nu-email').value.trim();
+  const pass   = document.getElementById('nu-pass').value;
+  const tel    = document.getElementById('nu-telefono').value.trim();
+  const rol    = document.getElementById('nu-rol').value;
+  const err    = document.getElementById('nu-err');
+  err.classList.remove('active');
+  if(!nombre||!email||!pass){ err.textContent='Nombre, email y contraseña son obligatorios.'; err.classList.add('active'); return; }
+  if(pass.length<6){ err.textContent='La contraseña debe tener al menos 6 caracteres.'; err.classList.add('active'); return; }
+  const btn = document.getElementById('nu-btn-crear');
+  btn.disabled=true; btn.innerHTML='<span>⏳</span> Creando…';
+  try{
+    let secondaryApp;
+    try{ secondaryApp = firebase.app('secondary'); }
+    catch(_){ secondaryApp = firebase.initializeApp(FIREBASE_CONFIG, 'secondary'); }
+    const secAuth = secondaryApp.auth();
+    const cred = await secAuth.createUserWithEmailAndPassword(email, pass);
+    await fbDb.collection('users').doc(cred.user.uid).set({
+      email, nombre, telefono: tel, rol, activo: true, fechaCreacion: nowTs()
+    });
+    await secAuth.signOut();
+    cerrarUserModal();
+    await cargarEquipo();
+    alert('Cuenta creada para '+nombre+'.\nComunícale las credenciales por un canal seguro.');
+  }catch(e){
+    console.error('crearAsesor error:',e);
+    let msg=e.message||'Error desconocido';
+    if(e.code==='auth/email-already-in-use') msg='Ese email ya tiene una cuenta.';
+    else if(e.code==='auth/invalid-email') msg='Email inválido.';
+    else if(e.code==='auth/weak-password') msg='Contraseña muy débil (mín. 6 caracteres).';
+    err.textContent=msg; err.classList.add('active');
+  }
+  btn.disabled=false; btn.innerHTML='<span>＋</span> Crear cuenta';
+}
+
+/* === CLIENTE PICKERS === */
+function poblarClientePickers(){
+  const opts = ['<option value="">— Sin asociar a cliente —</option>']
+    .concat(CLIENTES_CACHE.map(c=>'<option value="'+c.id+'">'+escapeHTML(c.nombre)+' · '+escapeHTML(c.rut||'')+'</option>')).join('');
+  ['cp-hipotecario','cp-leaseback','cp-nv'].forEach(id=>{
+    const sel = document.getElementById(id);
+    if(sel){ const cur=sel.value; sel.innerHTML=opts; sel.value=cur||''; }
+  });
+}
+
+function onClientePickerChange(producto, selectEl){
+  const cliId = selectEl.value || null;
+  CLIENTE_SELECCIONADO_SIM[producto] = cliId;
+  if(!cliId) return;
+  const c = CLIENTES_CACHE.find(x=>x.id===cliId);
+  if(!c) return;
+  const set=(id,v)=>{ const el=document.getElementById(id); if(el && v!=null) el.value=v; };
+  if(producto==='hipotecario'){
+    set('h-nombre', c.nombre); set('h-rut', c.rut); set('h-email', c.email); set('h-telefono', c.telefono);
+    const tipoEl = document.getElementById('h-tipo-persona'); if(tipoEl) tipoEl.value = c.tipoPersona||'natural';
+  } else if(producto==='leaseback'){
+    set('lb-nombre', c.nombre); set('lb-rut', c.rut); set('lb-email', c.email); set('lb-telefono', c.telefono);
+    set('lb-direccion', c.direccion); set('lb-comuna', c.comuna);
+  } else if(producto==='nv'){
+    set('nv-nombre', c.nombre); set('nv-rut', c.rut); set('nv-email', c.email); set('nv-telefono', c.telefono);
+    set('nv-direccion', c.direccion); set('nv-comuna', c.comuna);
+    const tp = document.getElementById('nv-tipo-persona'); if(tp) tp.value = c.tipoPersona==='juridica' ? 'jurídica' : 'natural';
+    if(c.tipoPersona==='juridica') set('nv-giro', c.giro);
+  }
+}
+
 /* === INIT === */
 window.addEventListener('DOMContentLoaded',()=>{
   aplicarConfigEnUI();
@@ -1355,8 +2152,9 @@ window.addEventListener('DOMContentLoaded',()=>{
   runSimLeasebackRapido();
   runSimHipotecarioRapido();
   actualizarSegTotalDisplay();
+  // === CRM v8 ===
+  setupAuthListener();
 });
 </script>
 </body>
 </html>
-                 
