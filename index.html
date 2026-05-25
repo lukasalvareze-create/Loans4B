@@ -1822,44 +1822,75 @@ function descargarPDFLeaseback(){
   const d = LB_DATA;
   const idCot = generarIdCot();
   const tipoTxt = d.tipo === 'juridica' ? 'Persona Jurídica' : 'Persona Natural';
-  const tipoPropTxt = {urbana:'inmueble urbano',parcela:'parcela / propiedad rural',comercial:'local comercial',industrial:'bodega / propiedad industrial'}[d.tipoPropiedad] || 'inmueble';
+  const tipoOperacion = 'LEASEBACK INMOBILIARIO';
+  // Cuota mensual descontada al inicio (intereses anticipados, política comercial L4B)
+  const interesesAnticipUF = d.cuota;
+  const dineroNetoFinalUF  = d.dineroNeto - interesesAnticipUF;
+  // Cell helpers para tabla cliente estilo Esteban
+  const fieldRow = (label, value) =>
+    '<tr>' +
+    '<td style="padding:7px 12px; background:#f3f6f8; color:#0a3d4a; font-weight:600; font-size:10.5px; letter-spacing:0.4px; text-transform:uppercase; border-bottom:1px solid #e8eef1; width:42%;">' + label + '</td>' +
+    '<td style="padding:7px 12px; font-size:11.5px; color:#1a2530; border-bottom:1px solid #e8eef1;">' + value + '</td>' +
+    '</tr>';
+  // Fila de tabla numérica
+  const tRow = (concepto, uf, clp, opts) => {
+    opts = opts || {};
+    const bg = opts.bg ? ' style="background:'+opts.bg+';"' : '';
+    const w = opts.bold ? 'font-weight:700; color:#0a3d4a;' : '';
+    return '<tr'+bg+'>' +
+      '<td style="padding:'+(opts.bold?'11px':'8px')+' 12px; border-bottom:1px solid #e8eef1; '+w+'">' + concepto + '</td>' +
+      '<td style="padding:'+(opts.bold?'11px':'8px')+' 12px; border-bottom:1px solid #e8eef1; text-align:right; '+w+'">' + (uf||'') + '</td>' +
+      '<td style="padding:'+(opts.bold?'11px':'8px')+' 12px; border-bottom:1px solid #e8eef1; text-align:right; '+w+'">' + (clp||'') + '</td>' +
+    '</tr>';
+  };
+  const direccionTxt = d.direccion || (d.comuna ? ('Comuna de '+d.comuna) : '—');
+  const ejecutivoTxt = cfg.nombre || '(asesor)';
 
   const html =
     pdfHeader(cfg, 'Simulación de Leaseback Inmobiliario', idCot) +
-    '<h1 style="font-family:\'Playfair Display\',serif; font-size:22px; color:#0a3d4a; margin:20px 0 6px;">Simulación de Leaseback Inmobiliario</h1>' +
-    '<div style="font-size:11px; color:#6a7a85; margin-bottom:18px; font-style:italic;">Liquidez inmediata sobre propiedad libre de gravamen · Recompra al final del plazo.</div>' +
-    '<p style="font-size:11.5px; line-height:1.6; text-align:justify; margin-bottom:14px;">' +
-    'Estimado/a <strong>' + d.nombre + '</strong>' + (d.rut ? ' / RUT ' + d.rut : '') + ': ' +
-    'Nos complace presentarle esta simulación referencial de operación de leaseback inmobiliario gestionada por <strong>' + (cfg.empresa||'Asesorías Loans4B SpA') + '</strong>. ' +
-    'Tras evaluar preliminarmente las características de su ' + tipoPropTxt + (d.comuna?' ubicado en '+d.comuna:'') + ' como <strong>' + tipoTxt + '</strong>, el fondo de financiamiento podrá ejecutar una compraventa equivalente al <strong>' + fmtPct(d.pctCV,1) + '</strong> del valor comercial declarado, es decir <strong>' + fmtUF(d.compraventa) + '</strong> (' + fmtCLP(d.compraventa*UF_VALOR) + ').</p>' +
-    '<div style="display:flex; gap:14px; margin:18px 0;">' +
-    '<div style="flex:1.4; background:linear-gradient(135deg,#0a3d4a,#14525f); color:#fff; padding:18px 20px; border-radius:10px;">' +
-    '<div style="font-size:10px; opacity:0.7; text-transform:uppercase; letter-spacing:1px; font-weight:500;">Dinero neto a recibir</div>' +
-    '<div style="font-size:26px; font-weight:700; margin-top:4px;">' + fmtUF(d.dineroNeto) + '</div>' +
-    '<div style="font-size:11px; opacity:0.85; margin-top:2px;">' + fmtCLP(d.dineroNeto*UF_VALOR) + '</div></div>' +
-    '<div style="flex:1; background:#eaf6f2; color:#0a3d4a; padding:18px 20px; border-radius:10px;">' +
-    '<div style="font-size:10px; color:#14525f; text-transform:uppercase; letter-spacing:1px; font-weight:600;">Cuota mensual</div>' +
-    '<div style="font-size:22px; font-weight:700; margin-top:4px;">' + fmtUF(d.cuota) + '</div>' +
-    '<div style="font-size:10.5px; color:#3a4a55; margin-top:2px;">' + fmtCLP(d.cuota*UF_VALOR) + ' · ' + d.plazo + ' meses</div></div></div>' +
-    '<h2 style="font-size:11px; font-weight:700; color:#0a3d4a; text-transform:uppercase; letter-spacing:0.8px; margin:18px 0 8px;">Estructura de la operación</h2>' +
-    '<table style="width:100%; border-collapse:collapse; font-size:11px; margin-top:6px;">' +
+    '<h1 style="font-family:\'Playfair Display\',serif; font-size:22px; color:#0a3d4a; margin:18px 0 4px;">Simulación de Leaseback Inmobiliario</h1>' +
+    '<div style="font-size:11px; color:#6a7a85; margin-bottom:14px; font-style:italic;">Liquidez inmediata sobre propiedad libre de gravamen · Recompra al final del plazo.</div>' +
+    // === FICHA DE LA OPERACIÓN (estilo Esteban) ===
+    '<table style="width:100%; border-collapse:collapse; border:1px solid #d8e0e4; border-radius:6px; overflow:hidden; margin-bottom:14px;">' +
+    fieldRow('Fecha', fmtFecha()) +
+    fieldRow('Valor UF', fmtCLP(UF_VALOR)) +
+    fieldRow('Cliente', escapeHTML(d.nombre||'—')) +
+    fieldRow('RUT', escapeHTML(d.rut||'—') + ' · ' + tipoTxt) +
+    fieldRow('Tipo de operación', tipoOperacion) +
+    fieldRow('Valor comercial', fmtUF(d.valor) + ' · ' + fmtCLP(d.valor*UF_VALOR)) +
+    fieldRow('Financia', fmtPct(d.pctCV,1) + ' del valor comercial') +
+    fieldRow('Capital financiado', fmtUF(d.compraventa) + ' · ' + fmtCLP(d.compraventa*UF_VALOR)) +
+    fieldRow('Plazo estructurado', d.plazo + ' meses · Renovable<span style="color:#a05c10; font-weight:700;">*</span>') +
+    fieldRow('Tasa referencial', fmtPct(d.tasaMensual,2) + ' mensual · ' + fmtPct(d.tasaMensual*12,2) + ' anual') +
+    fieldRow('Dirección del bien', escapeHTML(direccionTxt)) +
+    fieldRow('Ejecutivo', escapeHTML(ejecutivoTxt)) +
+    '</table>' +
+    // === Texto de 3 líneas (voz L4B) ===
+    '<p style="font-size:11px; line-height:1.55; text-align:justify; color:#3a4a55; margin-bottom:16px;">La presente operación corresponde a una estructura de <strong>financiamiento privado con respaldo inmobiliario</strong>, en virtud de la cual <strong>' + escapeHTML(cfg.empresa||'Asesorías Loans4B SpA') + '</strong> evalúa, diseña y coordina una solución a la medida del perfil del cliente y de las condiciones particulares del inmueble objeto del análisis. Los valores informados son aproximados y referenciales: la aprobación queda sujeta a evaluación legal, financiera y comercial.</p>' +
+    // === ESTRUCTURA DE LA OPERACIÓN — con intereses anticipados ===
+    '<h2 style="font-size:11px; font-weight:700; color:#0a3d4a; text-transform:uppercase; letter-spacing:0.8px; margin:14px 0 8px;">Estructura de la operación</h2>' +
+    '<table style="width:100%; border-collapse:collapse; font-size:11px; margin-top:4px;">' +
     '<thead><tr style="background:#0a3d4a; color:#fff;"><th style="padding:9px 12px; text-align:left; font-weight:600; font-size:10px;">CONCEPTO</th><th style="padding:9px 12px; text-align:right; font-weight:600; font-size:10px; width:90px;">UF</th><th style="padding:9px 12px; text-align:right; font-weight:600; font-size:10px; width:130px;">CLP</th></tr></thead>' +
     '<tbody>' +
-    '<tr><td style="padding:8px 12px; border-bottom:1px solid #e8eef1;">Valor comercial del inmueble</td><td style="padding:8px 12px; border-bottom:1px solid #e8eef1; text-align:right;">' + fmtNum(d.valor) + '</td><td style="padding:8px 12px; border-bottom:1px solid #e8eef1; text-align:right;">' + fmtCLP(d.valor*UF_VALOR) + '</td></tr>' +
-    '<tr style="background:#fafcfd;"><td style="padding:8px 12px; border-bottom:1px solid #e8eef1;">Valor de compraventa (' + fmtPct(d.pctCV,1) + ')</td><td style="padding:8px 12px; border-bottom:1px solid #e8eef1; text-align:right; font-weight:600; color:#0a3d4a;">' + fmtNum(d.compraventa) + '</td><td style="padding:8px 12px; border-bottom:1px solid #e8eef1; text-align:right; font-weight:600; color:#0a3d4a;">' + fmtCLP(d.compraventa*UF_VALOR) + '</td></tr>' +
-    '<tr><td style="padding:8px 12px; border-bottom:1px solid #e8eef1;">(–) Honorarios Loans4B (' + fmtPct(d.feeL4B,1) + ')</td><td style="padding:8px 12px; border-bottom:1px solid #e8eef1; text-align:right;">' + fmtNum(d.feeL4BUF) + '</td><td style="padding:8px 12px; border-bottom:1px solid #e8eef1; text-align:right;">' + fmtCLP(d.feeL4BUF*UF_VALOR) + '</td></tr>' +
-    '<tr><td style="padding:8px 12px; border-bottom:1px solid #e8eef1;">(–) Fee fondo de financiamiento (' + fmtPct(d.feeFondo,1) + ')</td><td style="padding:8px 12px; border-bottom:1px solid #e8eef1; text-align:right;">' + fmtNum(d.feeFondoUF) + '</td><td style="padding:8px 12px; border-bottom:1px solid #e8eef1; text-align:right;">' + fmtCLP(d.feeFondoUF*UF_VALOR) + '</td></tr>' +
-    '<tr><td style="padding:8px 12px; border-bottom:1px solid #e8eef1;">(–) Gastos operacionales (' + fmtPct(d.gastosOp,1) + ')</td><td style="padding:8px 12px; border-bottom:1px solid #e8eef1; text-align:right;">' + fmtNum(d.gastosOpUF) + '</td><td style="padding:8px 12px; border-bottom:1px solid #e8eef1; text-align:right;">' + fmtCLP(d.gastosOpUF*UF_VALOR) + '</td></tr>' +
-    '<tr><td style="padding:8px 12px; border-bottom:1px solid #e8eef1;">(–) Gastos notariales y CBR</td><td style="padding:8px 12px; border-bottom:1px solid #e8eef1; text-align:right;">' + fmtNum(d.notariaUF) + '</td><td style="padding:8px 12px; border-bottom:1px solid #e8eef1; text-align:right;">' + fmtCLP(d.notariaCLP) + '</td></tr>' +
-    '<tr style="background:#eaf6f2;"><td style="padding:11px 12px; font-weight:700; color:#0a3d4a;">DINERO NETO AL CLIENTE</td><td style="padding:11px 12px; text-align:right; font-weight:700; color:#0a3d4a;">' + fmtNum(d.dineroNeto) + '</td><td style="padding:11px 12px; text-align:right; font-weight:700; color:#0a3d4a;">' + fmtCLP(d.dineroNeto*UF_VALOR) + '</td></tr>' +
+    tRow('Valor comercial del inmueble', fmtNum(d.valor), fmtCLP(d.valor*UF_VALOR)) +
+    tRow('Valor de compraventa (' + fmtPct(d.pctCV,1) + ')', fmtNum(d.compraventa), fmtCLP(d.compraventa*UF_VALOR), {bg:'#fafcfd'}) +
+    tRow('(–) Honorarios Loans4B (' + fmtPct(d.feeL4B,1) + ')', fmtNum(d.feeL4BUF), fmtCLP(d.feeL4BUF*UF_VALOR)) +
+    tRow('(–) Fee fondo de financiamiento (' + fmtPct(d.feeFondo,1) + ')', fmtNum(d.feeFondoUF), fmtCLP(d.feeFondoUF*UF_VALOR)) +
+    tRow('(–) Gastos operacionales (' + fmtPct(d.gastosOp,1) + ')', fmtNum(d.gastosOpUF), fmtCLP(d.gastosOpUF*UF_VALOR)) +
+    tRow('(–) Gastos notariales y CBR', fmtNum(d.notariaUF), fmtCLP(d.notariaCLP)) +
+    tRow('(–) Intereses anticipados (1 cuota mensual)', fmtNum(interesesAnticipUF), fmtCLP(interesesAnticipUF*UF_VALOR), {bg:'#fff7ed'}) +
+    tRow('DINERO NETO AL CLIENTE', fmtNum(dineroNetoFinalUF), fmtCLP(dineroNetoFinalUF*UF_VALOR), {bg:'#eaf6f2', bold:true}) +
     '</tbody></table>' +
-    '<h2 style="font-size:11px; font-weight:700; color:#0a3d4a; text-transform:uppercase; letter-spacing:0.8px; margin:20px 0 8px;">Condiciones financieras del leaseback</h2>' +
-    '<p style="font-size:11px; line-height:1.6; text-align:justify;">El plazo del contrato es de <strong>' + d.plazo + ' meses</strong>, con una tasa mensual del <strong>' + fmtPct(d.tasaMensual,2) + '</strong> (equivalente al <strong>' + fmtPct(d.tasaMensual*12,2) + ' anual</strong>) bajo sistema de amortización francés. La cuota mensual asciende a <strong>' + fmtUF(d.cuota) + '</strong> (' + fmtCLP(d.cuota*UF_VALOR) + '), siendo el total a pagar al fondo durante la vigencia del contrato de <strong>' + fmtUF(d.totalPago) + '</strong> (' + fmtCLP(d.totalPago*UF_VALOR) + ').</p>' +
+    '<p style="font-size:10px; color:#6a7a85; margin-top:8px; font-style:italic;">La cuota mensual (UF ' + fmtNum(d.cuota) + ' · ' + fmtCLP(d.cuota*UF_VALOR) + ') se descuenta de la estructura por adelantado como intereses anticipados del primer mes, asegurando el cumplimiento financiero inicial de la operación.</p>' +
+    // === Cómo funciona el leaseback ===
     '<h2 style="font-size:11px; font-weight:700; color:#0a3d4a; text-transform:uppercase; letter-spacing:0.8px; margin:18px 0 8px;">¿Cómo funciona el leaseback?</h2>' +
     '<p style="font-size:11px; line-height:1.6; text-align:justify;">El leaseback es una operación financiera mediante la cual el cliente vende temporalmente su propiedad al fondo. Durante la vigencia del contrato mantiene el uso del inmueble pagando una cuota mensual definida, y al final del plazo conserva el derecho preferente de <strong>recompra</strong>, restituyendo su titularidad original. Es una solución ágil para obtener liquidez de corto plazo sin perder el activo subyacente.</p>' +
+    // === Próximos pasos — 60 días + tasación ===
     '<div style="background:#fdf3e0; padding:12px 16px; border-left:3px solid #a05c10; border-radius:4px; margin-top:14px; font-size:10.5px; line-height:1.5;">' +
-    '<strong style="color:#a05c10;">Próximos pasos:</strong> ✓ Tasación profesional · ✓ Estudio de títulos · ✓ Aprobación del fondo · ✓ Firma de escritura · ✓ Desembolso. Tiempo estimado total: <strong>15 a 30 días hábiles</strong>.</div>' +
-    '<p style="font-size:11px; line-height:1.6; text-align:justify; margin-top:14px;">No dude en contactarnos para aclarar cualquier consulta o avanzar con la solicitud formal. Agradecemos profundamente su confianza.</p>' +
+    '<strong style="color:#a05c10;">Próximos pasos:</strong> ✓ Tasación profesional · ✓ Estudio de títulos · ✓ Aprobación del fondo · ✓ Firma de escritura · ✓ Desembolso. Tiempo estimado total: <strong>60 días</strong>, todo sujeto a tasación de la propiedad.</div>' +
+    // === Nota de renovación ===
+    '<p style="font-size:10px; color:#6a7a85; margin-top:14px; line-height:1.5;"><strong style="color:#a05c10;">*Renovable:</strong> el plazo de la operación es renovable al vencimiento sujeto a evaluación crediticia y comercial actualizada, tasa de mercado vigente y al cumplimiento íntegro de las obligaciones contractuales del cliente durante el período inicial. La renovación se formaliza mediante anexo al contrato.</p>' +
+    '<p style="font-size:11px; line-height:1.6; text-align:justify; margin-top:10px;">No dude en contactarnos para aclarar cualquier consulta o avanzar con la solicitud formal. Agradecemos profundamente su confianza.</p>' +
     pdfFirma(cfg) + pdfFooter(cfg);
 
   generarPDF(html, 'Simulación de Leaseback · ' + (d.nombre || 'cliente'));
@@ -3125,3 +3156,4 @@ window.addEventListener('DOMContentLoaded',()=>{
 </script>
 </body>
 </html>
+
