@@ -234,6 +234,18 @@ if(FIREBASE_OK){
   .cliente-picker .btn-clear { background:none; border:none; color:var(--muted); cursor:pointer; font-size:14px; padding:4px 8px; }
   .cliente-picker .btn-clear:hover { color:var(--red); }
 
+  /* SII card — link al avalúo fiscal */
+  .sii-card { display:flex; align-items:center; gap:14px; background:linear-gradient(180deg,#fff,#f3fbf8); border:1.5px solid var(--green); border-radius:10px; padding:14px 18px; margin-bottom:18px; box-shadow:0 1px 0 rgba(42,160,127,0.06); }
+  .sii-card .sii-ico { font-size:26px; line-height:1; }
+  .sii-card .sii-body { flex:1; }
+  .sii-card .sii-body h4 { font-size:14px; color:var(--teal); margin:0 0 2px; font-weight:700; }
+  .sii-card .sii-body p { font-size:12px; color:var(--text-2); margin:0 0 8px; }
+  .sii-card .sii-steps { display:flex; flex-wrap:wrap; gap:6px; }
+  .sii-card .sii-step { display:inline-flex; align-items:center; gap:6px; font-size:11.5px; color:var(--text-2); background:#eaf6f2; border-radius:999px; padding:3px 10px 3px 4px; }
+  .sii-card .sii-step .num { width:18px; height:18px; border-radius:50%; background:var(--green); color:#fff; font-weight:700; font-size:11px; display:inline-flex; align-items:center; justify-content:center; }
+  .sii-card .btn-sii { background:var(--green); color:#fff; text-decoration:none; padding:10px 18px; border-radius:8px; font-size:13px; font-weight:600; display:inline-flex; align-items:center; gap:7px; white-space:nowrap; transition:background 0.15s; }
+  .sii-card .btn-sii:hover { background:#1d7a5f; }
+
   /* Save banner en resultado de simulación */
   .save-banner { background:var(--green-bg); border:1px solid #c9ebde; border-radius:10px; padding:14px 18px; margin-top:18px; display:flex; align-items:center; gap:14px; }
   .save-banner .sb-text { flex:1; font-size:13px; color:var(--teal); }
@@ -419,6 +431,19 @@ if(FIREBASE_OK){
   <div class="view active" id="view-sim-rapido-leaseback">
     <h1 class="section-title">Simulación rápida de Leaseback</h1>
     <p class="section-sub">Cálculo referencial para conversaciones iniciales. Los parámetros se ajustan automáticamente con la política comercial de Loans4B.</p>
+    <div class="sii-card">
+      <div class="sii-ico">📋</div>
+      <div class="sii-body">
+        <h4>Obtener certificado de avalúo fiscal del SII</h4>
+        <p>Solo necesitas la comuna y el número de rol de la propiedad</p>
+        <div class="sii-steps">
+          <span class="sii-step"><span class="num">1</span>Clic en "Abrir SII"</span>
+          <span class="sii-step"><span class="num">2</span>Ingresa comuna y rol</span>
+          <span class="sii-step"><span class="num">3</span>Descarga el PDF</span>
+        </div>
+      </div>
+      <a class="btn-sii" href="https://www4.sii.cl/mapasui/internet/#!/buscarPropiedades" target="_blank" rel="noopener"><span>🔗</span> Abrir SII</a>
+    </div>
     <div class="sim-grid">
       <div class="form-card">
         <div class="form-card-header"><span class="h-icon">🏦</span><h3>Parámetros del cliente</h3><div class="green-dot"></div></div>
@@ -501,6 +526,19 @@ if(FIREBASE_OK){
   <div class="view" id="view-sim-leaseback">
     <h1 class="section-title">Simulación de Leaseback</h1>
     <p class="section-sub">Simulación formal para enviar al cliente. Genera un PDF profesional con todos los costos desglosados y el dinero neto a recibir.</p>
+    <div class="sii-card">
+      <div class="sii-ico">📋</div>
+      <div class="sii-body">
+        <h4>Obtener certificado de avalúo fiscal del SII</h4>
+        <p>Solo necesitas la comuna y el número de rol de la propiedad</p>
+        <div class="sii-steps">
+          <span class="sii-step"><span class="num">1</span>Clic en "Abrir SII"</span>
+          <span class="sii-step"><span class="num">2</span>Ingresa comuna y rol</span>
+          <span class="sii-step"><span class="num">3</span>Descarga el PDF</span>
+        </div>
+      </div>
+      <a class="btn-sii" href="https://www4.sii.cl/mapasui/internet/#!/buscarPropiedades" target="_blank" rel="noopener"><span>🔗</span> Abrir SII</a>
+    </div>
     <div class="cliente-picker">
       <span class="cp-ico">👤</span>
       <div class="cp-text"><strong>Asociar a cliente</strong><br><span style="font-size:11.5px; color:var(--muted)">Opcional: rellena los datos del formulario automáticamente y vincula la simulación a una ficha.</span></div>
@@ -2326,12 +2364,15 @@ async function guardarSimulacionActual(producto){
   if(!data){ alert('Genera la simulación primero.'); return; }
   const cliId = CLIENTE_SELECCIONADO_SIM[producto];
   const cli = cliId ? CLIENTES_CACHE.find(c=>c.id===cliId) : null;
+  // Helpers: nunca enviar undefined a Firestore (lo rechaza)
+  const nz = v => (v===undefined || v===null || (typeof v==='number' && isNaN(v))) ? 0 : v;
+  const sz = v => (v===undefined || v===null) ? '' : v;
   const inputs = producto==='hipotecario'
-    ? { valorUF:data.valor, pieUF:data.pie, financiarUF:data.fin, plazoAnios:data.plazo, tasaAnual:data.tasa, tipoTasa:data.tipoTasa, tipoPersona:data.tipo, preEvalUF:data.preEval, comisionPct:data.honorariosPct }
-    : { valorUF:data.valor, deudaUF:data.deuda, plazoMeses:data.plazo, pctCV:data.pctCV, tasaMensual:data.tasaMensual, feeL4B:data.feeL4B, feeFondo:data.feeFondo, gastosOp:data.gastosOp, notariaCLP:data.notariaCLP, dineroNetoUF:data.dineroNeto };
+    ? { valorUF:nz(data.valor), pieUF:nz(data.pie), financiarUF:nz(data.fin), plazoAnios:nz(data.plazo), tasaAnual:nz(data.tasa), tipoTasa:sz(data.tipoTasa), tipoPersona:sz(data.tipo), preEvalUF:nz(data.preEval), comisionPct:nz(data.honorariosPct) }
+    : { valorUF:nz(data.valor), deudaUF:nz(data.deuda), plazoMeses:nz(data.plazo), pctCV:nz(data.pctCV), tasaMensual:nz(data.tasaMensual), feeL4B:nz(data.feeL4B), feeFondo:nz(data.feeFondo), gastosOp:nz(data.gastosOp), notariaCLP:nz(data.notariaCLP), dineroNetoUF:nz(data.dineroNeto) };
   const resultados = producto==='hipotecario'
-    ? { cuotaUF:data.cuotaTotal, cuotaSinSegUF:data.cuotaSinSeg, cae:data.cae, totalPagar:data.totalPagar, intereses:data.intereses, honorariosUF:data.honorariosUF }
-    : { cuotaUF:data.cuota, dineroNetoUF:data.dineroNeto, compraventaUF:data.compraventa, totalPago:data.totalPago, feeL4BUF:data.feeL4BUF };
+    ? { cuotaUF:nz(data.cuotaTotal), cuotaSinSegUF:nz(data.cuotaSinSeg), cae:nz(data.cae), totalPagar:nz(data.totalPagar), intereses:nz(data.intereses), honorariosUF:nz(data.honorariosUF) }
+    : { cuotaUF:nz(data.cuota), dineroNetoUF:nz(data.dineroNeto), compraventaUF:nz(data.compraventa), totalPago:nz(data.totalPago), feeL4BUF:nz(data.feeL4BUF) };
   const doc = {
     asesorId: CURRENT_USER.uid, producto, modo: 'completo',
     clienteId: cliId || null,
@@ -3034,53 +3075,4 @@ function descargarReportePDF(){
   const rows = Object.values(byAs).sort((a,b)=> (b.sims+b.notas+b.clientes) - (a.sims+a.notas+a.clientes));
 
   let tablaHTML = '<table style="width:100%; border-collapse:collapse; font-size:11px; margin-top:8px">' +
-    '<thead><tr style="background:#0a3d4a; color:#fff"><th style="padding:6px 8px; text-align:left">Asesor</th><th style="padding:6px 8px; text-align:right">Clientes nuevos</th><th style="padding:6px 8px; text-align:right">Simulaciones</th><th style="padding:6px 8px; text-align:right">Notas venta</th><th style="padding:6px 8px; text-align:right">UF simulado</th><th style="padding:6px 8px; text-align:right">Tareas hechas</th></tr></thead><tbody>';
-  if(rows.length===0){
-    tablaHTML += '<tr><td colspan="6" style="padding:20px; text-align:center; color:#6c757d">Sin actividad.</td></tr>';
-  } else {
-    rows.forEach(r => {
-      tablaHTML += '<tr style="border-bottom:1px solid #e5e7eb"><td style="padding:6px 8px">'+escapeHTML(r.nombre)+'</td>' +
-        '<td style="padding:6px 8px; text-align:right">'+r.clientes+'</td>' +
-        '<td style="padding:6px 8px; text-align:right">'+r.sims+'</td>' +
-        '<td style="padding:6px 8px; text-align:right">'+r.notas+'</td>' +
-        '<td style="padding:6px 8px; text-align:right">'+fmtUF(r.uf)+'</td>' +
-        '<td style="padding:6px 8px; text-align:right">'+r.tareas+'</td></tr>';
-    });
-  }
-  tablaHTML += '</tbody></table>';
-
-  const kpiHTML = '<div style="display:grid; grid-template-columns:repeat(4,1fr); gap:10px; margin:14px 0">' +
-    '<div style="border:1px solid #e5e7eb; border-radius:8px; padding:12px"><div style="font-size:10px; color:#6c757d; text-transform:uppercase">Clientes nuevos</div><div style="font-size:24px; font-weight:700; color:#0a3d4a">'+k.clientesNuevos.length+'</div></div>' +
-    '<div style="border:1px solid #e5e7eb; border-radius:8px; padding:12px"><div style="font-size:10px; color:#6c757d; text-transform:uppercase">Simulaciones</div><div style="font-size:24px; font-weight:700; color:#2aa07f">'+k.sims.length+'</div></div>' +
-    '<div style="border:1px solid #e5e7eb; border-radius:8px; padding:12px"><div style="font-size:10px; color:#6c757d; text-transform:uppercase">Notas de venta</div><div style="font-size:24px; font-weight:700; color:#3b82f6">'+k.notas.length+'</div></div>' +
-    '<div style="border:1px solid #e5e7eb; border-radius:8px; padding:12px"><div style="font-size:10px; color:#6c757d; text-transform:uppercase">Tareas completadas</div><div style="font-size:24px; font-weight:700; color:#f59e0b">'+k.tareasHechas.length+'</div></div>' +
-    '</div>';
-
-  const cfg = cargarConfig() || {};
-  const idCot = generarIdCot();
-  const cuerpo =
-    pdfHeader(cfg, 'Reporte de actividad — '+tituloRango, idCot) +
-    '<div style="font-size:11px; color:#6c757d; margin-bottom:6px">Asesor: <strong>'+escapeHTML(ases)+'</strong> · Generado el '+fmtTimestamp(new Date())+'</div>' +
-    sectionH('Resumen del período') + kpiHTML +
-    sectionH('Detalle por asesor') + tablaHTML +
-    sectionH('Total UF simulado') + '<div style="font-size:13px; padding:6px 0">'+fmtUF(k.ufTotal)+'</div>' +
-    pdfFooter(cfg);
-
-  generarPDF(cuerpo, 'Reporte_'+(rango==='dia'?fmtFecha(desde):'periodo'));
-}
-
-/* === INIT === */
-window.addEventListener('DOMContentLoaded',()=>{
-  aplicarConfigEnUI();
-  aplicarAsesorEnFormularios();
-  actualizarChipUF();
-  fetchUF(false);
-  runSimLeasebackRapido();
-  runSimHipotecarioRapido();
-  actualizarSegTotalDisplay();
-  setupAuthListener();
-});
-
-</script>
-</body>
-</html>
+    '<thead><tr style="background:#0a3d4a; color:#fff"><th style="padding:6px 8px; text-align:left">Asesor</th><th style="padding:6px 8px; text-align:right">Clientes nuevos</th><th style="padding:6px 8px; text-align:right">Simu
