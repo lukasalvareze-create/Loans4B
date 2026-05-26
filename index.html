@@ -478,7 +478,8 @@ if(FIREBASE_OK){
         <div class="sr-row sep"><span class="sr-label">Dinero neto al cliente</span><span class="sr-value big" id="qlb-r-liquidez">UF —</span></div>
         <div class="sr-row"><span class="sr-label">Equivalente en CLP</span><span class="sr-value small" id="qlb-r-liquidez-clp">—</span></div>
         <div class="sr-row"><span class="sr-label">Valor recompra (al final del plazo)</span><span class="sr-value small" id="qlb-r-recompra">—</span></div>
-        <div class="sr-row sep"><span class="sr-label">Intereses anticipados (1 cuota mensual)</span><span class="sr-value" id="qlb-r-cuota">—</span></div>
+        <div class="sr-row sep"><span class="sr-label">Cuota mensual de interés (referencial)</span><span class="sr-value small" id="qlb-r-cuota">—</span></div>
+        <div class="sr-row"><span class="sr-label">Intereses anticipados retenidos por L4B (cuota × plazo)</span><span class="sr-value" id="qlb-r-intereses-total">—</span></div>
         <div class="sr-row"><span class="sr-label">Equivalente CLP</span><span class="sr-value small" id="qlb-r-cuota-clp">—</span></div>
         <div class="sr-row sep"><span class="sr-label">Fee Loans4B</span><span class="sr-value small" id="qlb-r-fee-l4b">—</span></div>
         <div class="sr-row"><span class="sr-label">Fee fondo</span><span class="sr-value small" id="qlb-r-fee-fondo">—</span></div>
@@ -609,7 +610,7 @@ if(FIREBASE_OK){
         <div class="sub-value" id="lb-res-liquidez-clp">≈ $—</div>
         <div class="meta-row">
           <div class="meta-item"><div class="l">Capital compraventa</div><div class="v" id="lb-res-compraventa">UF —</div></div>
-          <div class="meta-item"><div class="l">Intereses anticipados (1 cuota)</div><div class="v" id="lb-res-cuota">UF —</div></div>
+          <div class="meta-item"><div class="l">Intereses anticipados (capital × tasa × plazo)</div><div class="v" id="lb-res-cuota">UF —</div></div>
           <div class="meta-item"><div class="l">Plazo</div><div class="v" id="lb-res-plazo">— meses</div></div>
         </div>
       </div>
@@ -1475,14 +1476,18 @@ function runSimLeasebackRapido(){
   const gastosOpUF=compraventa*(gastosOp/100);
   const notariaUF=notariaCLP/UF_VALOR;
   const i=tasaMensual/100;
-  const cuota=compraventa*(i*Math.pow(1+i,plazo))/(Math.pow(1+i,plazo)-1);
-  // Los intereses anticipados (1 cuota) se descuentan del capital al inicio (política L4B)
-  const dineroNeto=compraventa-feeL4BUF-feeFondoUF-gastosOpUF-notariaUF-deuda-cuota;
+  // INTERÉS SIMPLE (no amortizable): el capital no se amortiza durante el plazo,
+  // vuelve íntegro como recompra. Cuota mensual = capital × tasa mensual. Intereses
+  // totales del plazo = cuota × meses. Esto se retiene upfront (política L4B).
+  const cuota=compraventa*i;                  // 1 cuota mensual de interés (referencial)
+  const interesesAnticipados=cuota*plazo;     // Intereses totales del plazo (descuento upfront)
+  const dineroNeto=compraventa-feeL4BUF-feeFondoUF-gastosOpUF-notariaUF-deuda-interesesAnticipados;
   document.getElementById('qlb-r-compraventa').textContent=fmtUF(compraventa);
   document.getElementById('qlb-r-liquidez').textContent=fmtUF(dineroNeto);
   document.getElementById('qlb-r-liquidez-clp').textContent='≈ '+fmtCLP(dineroNeto*UF_VALOR);
   document.getElementById('qlb-r-cuota').textContent=fmtUF(cuota);
-  document.getElementById('qlb-r-cuota-clp').textContent='≈ '+fmtCLP(cuota*UF_VALOR);
+  document.getElementById('qlb-r-cuota-clp').textContent='≈ '+fmtCLP(interesesAnticipados*UF_VALOR);
+  const elIntTot=document.getElementById('qlb-r-intereses-total'); if(elIntTot) elIntTot.textContent=fmtUF(interesesAnticipados);
   document.getElementById('qlb-r-fee-l4b').textContent=fmtUF(feeL4BUF);
   document.getElementById('qlb-r-fee-fondo').textContent=fmtUF(feeFondoUF);
   document.getElementById('qlb-r-gastos-op').textContent=fmtUF(gastosOpUF);
@@ -1491,7 +1496,7 @@ function runSimLeasebackRapido(){
   const elRec=document.getElementById('qlb-r-recompra'); if(elRec) elRec.textContent=fmtUF(compraventa);
 }
 function resetLBRapido(){
-  ['qlb-r-compraventa','qlb-r-liquidez','qlb-r-liquidez-clp','qlb-r-cuota','qlb-r-cuota-clp','qlb-r-fee-l4b','qlb-r-fee-fondo','qlb-r-gastos-op','qlb-r-notaria','qlb-r-deuda','qlb-r-recompra'].forEach(id=>{ const el=document.getElementById(id); if(el) el.textContent=id==='qlb-r-liquidez'?'UF —':'—'; });
+  ['qlb-r-compraventa','qlb-r-liquidez','qlb-r-liquidez-clp','qlb-r-cuota','qlb-r-cuota-clp','qlb-r-intereses-total','qlb-r-fee-l4b','qlb-r-fee-fondo','qlb-r-gastos-op','qlb-r-notaria','qlb-r-deuda','qlb-r-recompra'].forEach(id=>{ const el=document.getElementById(id); if(el) el.textContent=id==='qlb-r-liquidez'?'UF —':'—'; });
 }
 
 /* === SIM RÁPIDO HIPOTECARIO === */
@@ -1588,16 +1593,20 @@ function calcularLeasebackCompleto(){
   const gastosOpUF=compraventa*(gastosOp/100);
   const notariaUF=notariaCLP/UF_VALOR;
   const i=tasaMensual/100;
-  const cuota=compraventa*(i*Math.pow(1+i,plazo))/(Math.pow(1+i,plazo)-1);
-  const totalPago=cuota*plazo;
-  // Los intereses anticipados (1 cuota) se descuentan del capital al inicio (política L4B)
-  // El cliente no paga cuotas mensuales: L4B retiene los intereses del desembolso del fondo.
-  const dineroNeto=compraventa-feeL4BUF-feeFondoUF-gastosOpUF-notariaUF-deuda-cuota;
-  LB_DATA={tipo, nombre:document.getElementById('lb-nombre').value.trim(), rut:document.getElementById('lb-rut').value.trim(), email:document.getElementById('lb-email').value.trim(), telefono:document.getElementById('lb-telefono').value.trim(), tipoPropiedad:document.getElementById('lb-tipo-propiedad').value, comuna:document.getElementById('lb-comuna').value.trim(), direccion:document.getElementById('lb-direccion').value.trim(), valor, deuda, plazo, pctCV, tasaMensual, feeL4B, feeFondo, gastosOp, notariaCLP, compraventa, feeL4BUF, feeFondoUF, gastosOpUF, notariaUF, dineroNeto, cuota, totalPago};
+  // INTERÉS SIMPLE (fórmula del Excel del jefe, ratificada): el capital no se amortiza
+  // durante el plazo, vuelve íntegro como recompra. Por eso los intereses se calculan
+  // sobre el capital original todos los meses (no decrecen como en sistema francés).
+  // Cuota mensual de interés = capital × tasa mensual. Intereses totales = cuota × plazo.
+  // L4B retiene los intereses totales upfront del desembolso del fondo.
+  const cuota=compraventa*i;                  // 1 cuota mensual de interés (referencial)
+  const interesesAnticipados=cuota*plazo;     // Intereses totales del plazo (descuento upfront)
+  const totalPago=interesesAnticipados;       // El total a pagar al fondo en intereses = upfront
+  const dineroNeto=compraventa-feeL4BUF-feeFondoUF-gastosOpUF-notariaUF-deuda-interesesAnticipados;
+  LB_DATA={tipo, nombre:document.getElementById('lb-nombre').value.trim(), rut:document.getElementById('lb-rut').value.trim(), email:document.getElementById('lb-email').value.trim(), telefono:document.getElementById('lb-telefono').value.trim(), tipoPropiedad:document.getElementById('lb-tipo-propiedad').value, comuna:document.getElementById('lb-comuna').value.trim(), direccion:document.getElementById('lb-direccion').value.trim(), valor, deuda, plazo, pctCV, tasaMensual, feeL4B, feeFondo, gastosOp, notariaCLP, compraventa, feeL4BUF, feeFondoUF, gastosOpUF, notariaUF, dineroNeto, cuota, interesesAnticipados, totalPago};
   document.getElementById('lb-res-liquidez-uf').textContent=fmtUF(dineroNeto);
   document.getElementById('lb-res-liquidez-clp').textContent='≈ '+fmtCLP(dineroNeto*UF_VALOR);
   document.getElementById('lb-res-compraventa').textContent=fmtUF(compraventa);
-  document.getElementById('lb-res-cuota').textContent=fmtUF(cuota);
+  document.getElementById('lb-res-cuota').textContent=fmtUF(interesesAnticipados);
   document.getElementById('lb-res-plazo').textContent=plazo+' meses';
   const tbody=document.getElementById('lb-tabla-desglose');
   const rows=[
@@ -1608,7 +1617,7 @@ function calcularLeasebackCompleto(){
     ['(–) Gastos operacionales ('+fmtPct(gastosOp,1)+')', -gastosOpUF, -gastosOpUF*UF_VALOR],
     ['(–) Gastos notariales y CBR', -notariaUF, -notariaCLP],
     ['(–) Deuda actual liquidada', -deuda, -deuda*UF_VALOR],
-    ['(–) Intereses anticipados primeros '+plazo+' meses (1 cuota retenida por L4B)', -cuota, -cuota*UF_VALOR],
+    ['(–) Intereses anticipados primeros '+plazo+' meses (capital × '+fmtPct(tasaMensual,2)+' × '+plazo+' meses · retenidos por L4B)', -interesesAnticipados, -interesesAnticipados*UF_VALOR],
   ];
   let html='';
   rows.forEach(r=>{ html+=`<tr><td>${r[0]}</td><td class="num">${r[1]===0?'—':fmtNum(r[1])}</td><td class="num">${r[2]===0?'—':fmtCLP(r[2])}</td></tr>`; });
@@ -1852,9 +1861,10 @@ function descargarPDFLeaseback(){
   const idCot = generarIdCot();
   const tipoTxt = d.tipo === 'juridica' ? 'Persona Jurídica' : 'Persona Natural';
   const tipoOperacion = 'LEASEBACK INMOBILIARIO';
-  // Intereses anticipados retenidos por L4B al inicio (política comercial): 1 cuota.
+  // Intereses anticipados retenidos por L4B al inicio (interés simple del plazo completo):
+  //   intereses = capital × tasa mensual × meses
   // d.dineroNeto YA incluye esta resta (definido en calcularLeasebackCompleto).
-  const interesesAnticipUF = d.cuota;
+  const interesesAnticipUF = d.interesesAnticipados || (d.cuota * d.plazo);  // fallback por compat
   const dineroNetoFinalUF  = d.dineroNeto;
   // Cell helpers para tabla cliente estilo Esteban
   const fieldRow = (label, value) =>
@@ -1909,7 +1919,7 @@ function descargarPDFLeaseback(){
     tRow('(–) Gastos operacionales (' + fmtPct(d.gastosOp,1) + ')', fmtNum(d.gastosOpUF), fmtCLP(d.gastosOpUF*UF_VALOR)) +
     tRow('(–) Gastos notariales y CBR', fmtNum(d.notariaUF), fmtCLP(d.notariaCLP)) +
     ((d.deuda||0) > 0 ? tRow('(–) Deuda actual liquidada', fmtNum(d.deuda), fmtCLP(d.deuda*UF_VALOR)) : '') +
-    tRow('(–) Intereses anticipados primeros ' + d.plazo + ' meses (1 cuota retenida por L4B)', fmtNum(interesesAnticipUF), fmtCLP(interesesAnticipUF*UF_VALOR), {bg:'#fff7ed'}) +
+    tRow('(–) Intereses anticipados primeros ' + d.plazo + ' meses (capital × ' + fmtPct(d.tasaMensual,2) + ' × ' + d.plazo + ' meses · retenidos por L4B)', fmtNum(interesesAnticipUF), fmtCLP(interesesAnticipUF*UF_VALOR), {bg:'#fff7ed'}) +
     tRow('DINERO NETO AL CLIENTE', fmtNum(dineroNetoFinalUF), fmtCLP(dineroNetoFinalUF*UF_VALOR), {bg:'#eaf6f2', bold:true}) +
     tRow('Valor recompra (al final del plazo · ' + fmtPct(d.pctCV,1) + ' del valor comercial)', fmtNum(d.compraventa), fmtCLP(d.compraventa*UF_VALOR), {bold:true}) +
     '</tbody></table>' +
