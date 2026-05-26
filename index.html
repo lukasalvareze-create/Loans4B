@@ -72,6 +72,9 @@ if(FIREBASE_OK){
   .uf-chip { background:var(--green-bg); border:1px solid #c9ebde; color:var(--teal); padding:6px 13px; border-radius:24px; font-size:12px; font-weight:600; display:flex; gap:8px; align-items:center; cursor:pointer; transition:all 0.18s; }
   .uf-chip:hover { background:#d9f0e6; }
   .uf-chip .uf-dot { width:7px; height:7px; border-radius:50%; background:var(--green); }
+  .usd-chip { background:#eef5fb; border:1px solid #cfe0ee; color:#1a5a90; padding:6px 13px; border-radius:24px; font-size:12px; font-weight:600; display:flex; gap:8px; align-items:center; cursor:pointer; transition:all 0.18s; }
+  .usd-chip:hover { background:#dfeaf5; }
+  .usd-chip .usd-dot { width:7px; height:7px; border-radius:50%; background:#1a5a90; }
   .date-chip { background:var(--bg); border:1px solid var(--border-l); color:var(--text-2); padding:6px 13px; border-radius:24px; font-size:11.5px; font-weight:500; }
 
   .view { display:none; padding:30px 40px 60px; max-width:1240px; }
@@ -419,9 +422,13 @@ if(FIREBASE_OK){
   <div class="topbar">
     <div class="topbar-title" id="topbar-title">Simulación rápida de Leaseback</div>
     <div class="topbar-right">
-      <div class="uf-chip" onclick="fetchUF(true)" title="Click para actualizar UF desde mindicador.cl">
+      <div class="uf-chip" onclick="fetchUF(true)" title="Click para actualizar UF y USD desde mindicador.cl">
         <span class="uf-dot"></span>
         <span id="uf-chip-text">UF —</span>
+      </div>
+      <div class="usd-chip" onclick="fetchUF(true)" title="Click para actualizar USD desde mindicador.cl">
+        <span class="usd-dot"></span>
+        <span id="usd-chip-text">USD —</span>
       </div>
       <div class="date-chip" id="date-chip">—</div>
     </div>
@@ -873,7 +880,8 @@ if(FIREBASE_OK){
           <div class="form-group"><label>Monto en CLP</label><input type="text" id="conv-clp" placeholder="Ej: 100.200.000" oninput="convDeCLP()"></div>
         </div>
         <div class="hint" style="margin-top:18px; font-size:12.5px">Valor UF utilizado: <strong id="conv-uf-display">—</strong> · Actualizado <span id="conv-uf-fecha">—</span></div>
-        <div style="margin-top:14px"><button class="btn green" onclick="fetchUF(true)"><span>🔄</span> Actualizar UF</button></div>
+        <div class="hint" style="margin-top:6px; font-size:12.5px">Valor USD observado: <strong id="conv-usd-display">—</strong> · Actualizado <span id="conv-usd-fecha">—</span></div>
+        <div style="margin-top:14px"><button class="btn green" onclick="fetchUF(true)"><span>🔄</span> Actualizar UF / USD</button></div>
       </div>
     </div>
   </div>
@@ -1254,6 +1262,8 @@ if(FIREBASE_OK){
 <script>
 let UF_VALOR = 40441.84;
 let UF_FECHA = '21-05-2026';
+let USD_VALOR = 950;
+let USD_FECHA = '21-05-2026';
 const VIEW_TITLES = {
   'sim-rapido-leaseback': 'Simulación rápida de Leaseback',
   'sim-rapido-hipotecario': 'Simulación rápida de Hipotecario',
@@ -1339,28 +1349,45 @@ function showView(name){
   window.scrollTo(0,0);
 }
 
-/* === UF FETCH === */
+/* === UF + USD FETCH === */
 async function fetchUF(force=false){
   const chip=document.getElementById('uf-chip-text');
-  if(force) chip.textContent='UF actualizando…';
+  const chipUsd=document.getElementById('usd-chip-text');
+  if(force){ chip.textContent='UF actualizando…'; if(chipUsd) chipUsd.textContent='USD actualizando…'; }
+  // UF
   try{
     const r=await fetch('https://mindicador.cl/api/uf');
     if(!r.ok) throw new Error('No disponible');
     const j=await r.json();
     UF_VALOR=j.serie[0].valor;
     UF_FECHA=fmtFecha(new Date(j.serie[0].fecha));
-    actualizarChipUF();
-    if(document.getElementById('conv-uf').value) convDeUF();
-    runSimLeasebackRapido();
-    runSimHipotecarioRapido();
-  }catch(e){ actualizarChipUF(); }
+  }catch(e){ /* mantiene valor previo */ }
+  // USD (dolar observado)
+  try{
+    const r2=await fetch('https://mindicador.cl/api/dolar');
+    if(r2.ok){
+      const j2=await r2.json();
+      USD_VALOR=j2.serie[0].valor;
+      USD_FECHA=fmtFecha(new Date(j2.serie[0].fecha));
+    }
+  }catch(e){ /* mantiene valor previo */ }
+  actualizarChipUF();
+  if(document.getElementById('conv-uf') && document.getElementById('conv-uf').value) convDeUF();
+  try{ runSimLeasebackRapido(); }catch(e){}
+  try{ runSimHipotecarioRapido(); }catch(e){}
 }
 function actualizarChipUF(){
   document.getElementById('uf-chip-text').textContent='UF '+fmtCLP(UF_VALOR).replace('$','');
+  const usdEl=document.getElementById('usd-chip-text');
+  if(usdEl) usdEl.textContent='USD '+fmtCLP(USD_VALOR).replace('$','');
   document.getElementById('date-chip').textContent=UF_FECHA;
   if(document.getElementById('conv-uf-display')){
     document.getElementById('conv-uf-display').textContent=fmtCLP(UF_VALOR);
     document.getElementById('conv-uf-fecha').textContent=UF_FECHA;
+  }
+  if(document.getElementById('conv-usd-display')){
+    document.getElementById('conv-usd-display').textContent=fmtCLP(USD_VALOR);
+    document.getElementById('conv-usd-fecha').textContent=USD_FECHA;
   }
 }
 
@@ -1583,6 +1610,7 @@ function calcularLeasebackCompleto(){
   let html='';
   rows.forEach(r=>{ html+=`<tr><td>${r[0]}</td><td class="num">${r[1]===0?'—':fmtNum(r[1])}</td><td class="num">${r[2]===0?'—':fmtCLP(r[2])}</td></tr>`; });
   html+=`<tr class="total"><td>Dinero neto al cliente</td><td class="num">${fmtNum(dineroNeto)}</td><td class="num">${fmtCLP(dineroNeto*UF_VALOR)}</td></tr>`;
+  html+=`<tr><td><strong>Valor recompra</strong> (al final del plazo · ${fmtPct(pctCV,1)} del valor comercial)</td><td class="num"><strong>${fmtNum(compraventa)}</strong></td><td class="num"><strong>${fmtCLP(compraventa*UF_VALOR)}</strong></td></tr>`;
   html+=`<tr><td style="padding-top:18px"><strong>Cuota mensual</strong> (${plazo} meses · tasa ${fmtPct(tasaMensual,2)} mensual)</td><td class="num"><strong>${fmtNum(cuota)}</strong></td><td class="num"><strong>${fmtCLP(cuota*UF_VALOR)}</strong></td></tr>`;
   html+=`<tr><td>Total a pagar al fondo (capital + intereses)</td><td class="num">${fmtNum(totalPago)}</td><td class="num">${fmtCLP(totalPago*UF_VALOR)}</td></tr>`;
   tbody.innerHTML=html;
@@ -1878,8 +1906,10 @@ function descargarPDFLeaseback(){
     tRow('(–) Fee fondo de financiamiento (' + fmtPct(d.feeFondo,1) + ')', fmtNum(d.feeFondoUF), fmtCLP(d.feeFondoUF*UF_VALOR)) +
     tRow('(–) Gastos operacionales (' + fmtPct(d.gastosOp,1) + ')', fmtNum(d.gastosOpUF), fmtCLP(d.gastosOpUF*UF_VALOR)) +
     tRow('(–) Gastos notariales y CBR', fmtNum(d.notariaUF), fmtCLP(d.notariaCLP)) +
+    ((d.deuda||0) > 0 ? tRow('(–) Deuda actual liquidada', fmtNum(d.deuda), fmtCLP(d.deuda*UF_VALOR)) : '') +
     tRow('(–) Intereses primeros ' + d.plazo + ' meses', fmtNum(interesesAnticipUF), fmtCLP(interesesAnticipUF*UF_VALOR), {bg:'#fff7ed'}) +
     tRow('DINERO NETO AL CLIENTE', fmtNum(dineroNetoFinalUF), fmtCLP(dineroNetoFinalUF*UF_VALOR), {bg:'#eaf6f2', bold:true}) +
+    tRow('Valor recompra (al final del plazo · ' + fmtPct(d.pctCV,1) + ' del valor comercial)', fmtNum(d.compraventa), fmtCLP(d.compraventa*UF_VALOR), {bold:true}) +
     '</tbody></table>' +
     // === Cómo funciona el leaseback ===
     '<h2 style="font-size:11px; font-weight:700; color:#0a3d4a; text-transform:uppercase; letter-spacing:0.8px; margin:18px 0 8px;">¿Cómo funciona el leaseback?</h2>' +
@@ -1888,7 +1918,7 @@ function descargarPDFLeaseback(){
     '<div style="background:#fdf3e0; padding:12px 16px; border-left:3px solid #a05c10; border-radius:4px; margin-top:14px; font-size:10.5px; line-height:1.5;">' +
     '<strong style="color:#a05c10;">Próximos pasos:</strong> ✓ Tasación profesional · ✓ Estudio de títulos · ✓ Aprobación del fondo · ✓ Firma de escritura · ✓ Desembolso. Tiempo estimado total: <strong>60 días</strong>, todo sujeto a tasación de la propiedad.</div>' +
     // === Nota de renovación ===
-    '<p style="font-size:10px; color:#6a7a85; margin-top:14px; line-height:1.5;"><strong style="color:#a05c10;">*Renovable:</strong> el plazo de la operación es renovable al vencimiento sujeto a evaluación crediticia y comercial actualizada, tasa de mercado vigente y al cumplimiento íntegro de las obligaciones contractuales del cliente durante el período inicial. La renovación se formaliza mediante anexo al contrato.</p>' +
+    '<p style="font-size:10px; color:#6a7a85; margin-top:14px; line-height:1.5;"><strong style="color:#a05c10;">*Renovable:</strong> el plazo de la operación es renovable al vencimiento sujeto a evaluación crediticia y comercial actualizada y al cumplimiento íntegro de las obligaciones contractuales del cliente durante el período inicial. <strong>La tasa aplicable a la renovación queda sujeta a la tasa de mercado vigente al día de cierre de la renovación.</strong> La renovación se formaliza mediante anexo al contrato.</p>' +
     '<p style="font-size:11px; line-height:1.6; text-align:justify; margin-top:10px;">No dude en contactarnos para aclarar cualquier consulta o avanzar con la solicitud formal. Agradecemos profundamente su confianza.</p>' +
     pdfFirma(cfg) + pdfFooter(cfg);
 
@@ -3155,5 +3185,3 @@ window.addEventListener('DOMContentLoaded',()=>{
 </script>
 </body>
 </html>
-
-                                                                                                                                                                                                                                                                                                                               
