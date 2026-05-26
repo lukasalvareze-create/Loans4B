@@ -1823,7 +1823,7 @@ function descargarPDFLeaseback(){
   const idCot = generarIdCot();
   const tipoTxt = d.tipo === 'juridica' ? 'Persona Jurídica' : 'Persona Natural';
   const tipoOperacion = 'LEASEBACK INMOBILIARIO';
-  // Cuota mensual descontada al inicio (intereses anticipados, política comercial L4B)
+  // Intereses prepagados al inicio (política comercial L4B): se descuenta de una sola vez
   const interesesAnticipUF = d.cuota;
   const dineroNetoFinalUF  = d.dineroNeto - interesesAnticipUF;
   // Cell helpers para tabla cliente estilo Esteban
@@ -1878,10 +1878,9 @@ function descargarPDFLeaseback(){
     tRow('(–) Fee fondo de financiamiento (' + fmtPct(d.feeFondo,1) + ')', fmtNum(d.feeFondoUF), fmtCLP(d.feeFondoUF*UF_VALOR)) +
     tRow('(–) Gastos operacionales (' + fmtPct(d.gastosOp,1) + ')', fmtNum(d.gastosOpUF), fmtCLP(d.gastosOpUF*UF_VALOR)) +
     tRow('(–) Gastos notariales y CBR', fmtNum(d.notariaUF), fmtCLP(d.notariaCLP)) +
-    tRow('(–) Intereses anticipados (1 cuota mensual)', fmtNum(interesesAnticipUF), fmtCLP(interesesAnticipUF*UF_VALOR), {bg:'#fff7ed'}) +
+    tRow('(–) Intereses primeros ' + d.plazo + ' meses', fmtNum(interesesAnticipUF), fmtCLP(interesesAnticipUF*UF_VALOR), {bg:'#fff7ed'}) +
     tRow('DINERO NETO AL CLIENTE', fmtNum(dineroNetoFinalUF), fmtCLP(dineroNetoFinalUF*UF_VALOR), {bg:'#eaf6f2', bold:true}) +
     '</tbody></table>' +
-    '<p style="font-size:10px; color:#6a7a85; margin-top:8px; font-style:italic;">La cuota mensual (UF ' + fmtNum(d.cuota) + ' · ' + fmtCLP(d.cuota*UF_VALOR) + ') se descuenta de la estructura por adelantado como intereses anticipados del primer mes, asegurando el cumplimiento financiero inicial de la operación.</p>' +
     // === Cómo funciona el leaseback ===
     '<h2 style="font-size:11px; font-weight:700; color:#0a3d4a; text-transform:uppercase; letter-spacing:0.8px; margin:18px 0 8px;">¿Cómo funciona el leaseback?</h2>' +
     '<p style="font-size:11px; line-height:1.6; text-align:justify;">El leaseback es una operación financiera mediante la cual el cliente vende temporalmente su propiedad al fondo. Durante la vigencia del contrato mantiene el uso del inmueble pagando una cuota mensual definida, y al final del plazo conserva el derecho preferente de <strong>recompra</strong>, restituyendo su titularidad original. Es una solución ágil para obtener liquidez de corto plazo sin perder el activo subyacente.</p>' +
@@ -3157,3 +3156,4 @@ window.addEventListener('DOMContentLoaded',()=>{
 </body>
 </html>
 
+                                                                                                                                                                                                                                                                                                                               
