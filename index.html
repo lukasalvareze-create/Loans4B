@@ -1871,6 +1871,12 @@ function calcularHipotecarioCompleto(){
   html+=`<tr><td style="padding-top:14px">Total a pagar en ${plazo} años (sin seguros)</td><td class="num">${fmtNum(totalPago)}</td><td class="num">${fmtCLP(totalPago*UF_VALOR)}</td></tr>`;
   html+=`<tr><td>Costo financiero (intereses)</td><td class="num">${fmtNum(interes)}</td><td class="num">${fmtCLP(interes*UF_VALOR)}</td></tr>`;
   html+=`<tr><td style="padding-top:14px"><strong>Honorarios Loans4B</strong> (${fmtPct(honorariosPct,1)} del financiamiento, al otorgamiento)</td><td class="num"><strong>${fmtNum(honorariosUF)}</strong></td><td class="num"><strong>${fmtCLP(honorariosUF*UF_VALOR)}</strong></td></tr>`;
+  // Split honorarios L4B en 3 cuotas iguales (1% + 1% + 1% del financiamiento si pct=3%)
+  const honTercio = honorariosUF/3;
+  const honTercioPct = honorariosPct/3;
+  html+=`<tr><td style="padding-left:32px; color:#3a4a55; font-style:italic; font-size:12px">${fmtPct(honTercioPct,2)} Honorarios L4B · al inicio</td><td class="num" style="color:#3a4a55; font-style:italic">${fmtNum(honTercio)}</td><td class="num" style="color:#3a4a55; font-style:italic">${fmtCLP(honTercio*UF_VALOR)}</td></tr>`;
+  html+=`<tr><td style="padding-left:32px; color:#3a4a55; font-style:italic; font-size:12px">${fmtPct(honTercioPct,2)} Honorarios L4B · contra aprobación</td><td class="num" style="color:#3a4a55; font-style:italic">${fmtNum(honTercio)}</td><td class="num" style="color:#3a4a55; font-style:italic">${fmtCLP(honTercio*UF_VALOR)}</td></tr>`;
+  html+=`<tr><td style="padding-left:32px; color:#3a4a55; font-style:italic; font-size:12px">${fmtPct(honTercioPct,2)} Honorarios L4B · al desembolso</td><td class="num" style="color:#3a4a55; font-style:italic">${fmtNum(honTercio)}</td><td class="num" style="color:#3a4a55; font-style:italic">${fmtCLP(honTercio*UF_VALOR)}</td></tr>`;
   html+=`<tr><td>Pre-evaluación crediticia (al inicio)</td><td class="num">${fmtNum(preeval)}</td><td class="num">${fmtCLP(preeval*UF_VALOR)}</td></tr>`;
   html+=`<tr><td style="padding-top:14px; color:var(--muted)">Ingreso líquido mínimo sugerido (cuota ≤ 25%)</td><td class="num" colspan="2" style="color:var(--muted)">${fmtCLP(ingresoMin)}</td></tr>`;
   tbody.innerHTML=html;
@@ -1990,6 +1996,16 @@ function descargarPDFHipotecario(){
       '<tr><td style="' + tdL + '">Total a pagar en ' + d.plazo + ' años (sin seguros)</td><td style="' + tdN + '">' + fmtNum(d.totalPago) + '</td><td style="' + tdN + '">' + fmtCLP(d.totalPago*UF_VALOR) + '</td></tr>' +
       '<tr><td style="' + tdL + '">Costo financiero (intereses)</td><td style="' + tdN + '">' + fmtNum(d.interes) + '</td><td style="' + tdN + '">' + fmtCLP(d.interes*UF_VALOR) + '</td></tr>' +
       '<tr><td style="' + tdL + '"><strong>Honorarios Loans4B</strong> (' + fmtPct(d.honorariosPct,1) + ' del financiamiento, al otorgamiento)</td><td style="' + tdN + '"><strong>' + fmtNum(d.honorariosUF) + '</strong></td><td style="' + tdN + '"><strong>' + fmtCLP(d.honorariosUF*UF_VALOR) + '</strong></td></tr>' +
+      // Split honorarios L4B en 3 cuotas iguales (1% + 1% + 1% del financiamiento si pct=3%)
+      (function(){
+        const honTercio = (d.honorariosUF||0)/3;
+        const honTercioPct = (d.honorariosPct||0)/3;
+        const splitTdL = 'padding:5px 12px 5px 32px; border-bottom:1px solid #e8eef1; color:#3a4a55; font-style:italic; font-size:10px;';
+        const splitTdN = 'padding:5px 12px; border-bottom:1px solid #e8eef1; text-align:right; color:#3a4a55; font-style:italic; font-variant-numeric:tabular-nums;';
+        return '<tr><td style="'+splitTdL+'">'+fmtPct(honTercioPct,2)+' Honorarios L4B · al inicio</td><td style="'+splitTdN+'">'+fmtNum(honTercio)+'</td><td style="'+splitTdN+'">'+fmtCLP(honTercio*UF_VALOR)+'</td></tr>' +
+               '<tr><td style="'+splitTdL+'">'+fmtPct(honTercioPct,2)+' Honorarios L4B · contra aprobación</td><td style="'+splitTdN+'">'+fmtNum(honTercio)+'</td><td style="'+splitTdN+'">'+fmtCLP(honTercio*UF_VALOR)+'</td></tr>' +
+               '<tr><td style="'+splitTdL+'">'+fmtPct(honTercioPct,2)+' Honorarios L4B · al desembolso</td><td style="'+splitTdN+'">'+fmtNum(honTercio)+'</td><td style="'+splitTdN+'">'+fmtCLP(honTercio*UF_VALOR)+'</td></tr>';
+      })() +
       '<tr><td style="' + tdL + '">Pre-evaluación crediticia (al inicio)</td><td style="' + tdN + '">' + fmtNum(d.preeval) + '</td><td style="' + tdN + '">' + fmtCLP(d.preeval*UF_VALOR) + '</td></tr>' +
       '<tr><td style="padding:7px 12px; color:#6a7a85;">Ingreso líquido mínimo sugerido (cuota ≤ 25%)</td><td colspan="2" style="padding:7px 12px; text-align:right; color:#6a7a85; font-variant-numeric:tabular-nums;">' + fmtCLP(d.ingresoMin) + '</td></tr>' +
       '</tbody></table>';
