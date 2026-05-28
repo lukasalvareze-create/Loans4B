@@ -1902,6 +1902,13 @@ function calcularHipotecarioCompleto(){
    impresión tradicional para no romper el flujo.
 ═══════════════════════════════════════════════════════════════════ */
 async function generarPDF(htmlContent, titulo){
+  // ⚠️ REVERTIDO TEMPORALMENTE — 27-may-2026
+  // html2pdf estaba generando PDFs en blanco en producción. Volvemos al método
+  // legacy (ventana + window.print) que es 100% confiable. Cuando se arregle
+  // html2pdf, basta con borrar la línea de abajo para reactivar la descarga directa.
+  return generarPDFLegacy(htmlContent, titulo);
+
+  // ===== CÓDIGO DE DESCARGA DIRECTA (DESACTIVADO PERO PRESERVADO) =====
   // Fallback si html2pdf no cargó (red bloqueada, CDN caído, etc.)
   if(typeof html2pdf === 'undefined'){
     console.warn('html2pdf no disponible — usando ventana de impresión como fallback');
