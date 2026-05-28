@@ -5,7 +5,8 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Loans4B — Simuladores Financieros</title>
 <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700&family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
-<!-- PDF nativo via window.print() — sin librerías externas -->
+<!-- PDF: descarga directa via html2pdf.js (jsPDF + html2canvas bundle) -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
 <!-- ===== FIREBASE (Auth + Firestore) ===== -->
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js"></script>
@@ -1895,12 +1896,67 @@ function calcularHipotecarioCompleto(){
 }
 
 /* ═══════════════════════════════════════════════════════════════════
-   GENERACIÓN DE PDF — Estrategia confiable: abre una ventana nueva
-   con el contenido formateado y dispara window.print(). El usuario
-   elige "Guardar como PDF" desde el diálogo nativo del navegador.
-   Funciona en cualquier navegador, incluido file://, sin librerías.
+   GENERACIÓN DE PDF — Descarga directa (sin diálogo de impresora).
+   Usa html2pdf.js (jsPDF + html2canvas) cargado desde CDN.
+   Si la librería no está disponible, hace fallback a la ventana de
+   impresión tradicional para no romper el flujo.
 ═══════════════════════════════════════════════════════════════════ */
-function generarPDF(htmlContent, titulo){
+async function generarPDF(htmlContent, titulo){
+  // Fallback si html2pdf no cargó (red bloqueada, CDN caído, etc.)
+  if(typeof html2pdf === 'undefined'){
+    console.warn('html2pdf no disponible — usando ventana de impresión como fallback');
+    return generarPDFLegacy(htmlContent, titulo);
+  }
+
+  // Construir wrapper aislado fuera del flujo visual (off-screen)
+  const wrapper = document.createElement('div');
+  wrapper.id = '_pdf-render-wrapper';
+  wrapper.style.cssText = 'position:fixed; left:-10000px; top:0; width:794px; background:#fff; padding:0; margin:0; font-family:Inter,sans-serif; color:#1a2730; -webkit-print-color-adjust:exact; print-color-adjust:exact;';
+  // El contenedor interno deja un poco de aire para que el contenido respire
+  wrapper.innerHTML = '<div style="padding:0 8px;">' + htmlContent + '</div>';
+  document.body.appendChild(wrapper);
+
+  // Feedback visual durante la generación (~1-3 seg)
+  if(typeof mostrarToastAutoCliente === 'function') {
+    mostrarToastAutoCliente('⏳ Generando PDF…', 'vinculado');
+  }
+
+  const opts = {
+    margin: [12, 14, 12, 14], // mm — mismas márgenes que el @page A4 original
+    filename: (titulo || 'simulacion') + '.pdf',
+    image: { type: 'jpeg', quality: 0.98 },
+    html2canvas: {
+      scale: 2,              // x2 para texto nítido
+      useCORS: true,
+      logging: false,
+      backgroundColor: '#ffffff',
+      windowWidth: 794
+    },
+    jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' },
+    pagebreak: { mode: ['css', 'legacy'] }
+  };
+
+  try {
+    await html2pdf().from(wrapper.firstChild).set(opts).save();
+    if(typeof mostrarToastAutoCliente === 'function') {
+      mostrarToastAutoCliente('✓ PDF descargado · ' + (titulo || 'simulación'), 'creado');
+    }
+  } catch(err) {
+    console.error('html2pdf error:', err);
+    if(typeof mostrarToastAutoCliente === 'function') {
+      mostrarToastAutoCliente('⚠ Falló descarga directa, abriendo ventana de impresión…', 'vinculado');
+    }
+    // Fallback al método tradicional si html2pdf falla por cualquier razón
+    generarPDFLegacy(htmlContent, titulo);
+  } finally {
+    if(wrapper.parentNode) wrapper.parentNode.removeChild(wrapper);
+  }
+}
+
+/* === FALLBACK LEGACY ===
+   Mantenemos el método original (ventana + window.print) por si
+   html2pdf falla. Mismo HTML y estilos que el original. */
+function generarPDFLegacy(htmlContent, titulo){
   const ventana = window.open('', '_blank', 'width=950,height=1200');
   if (!ventana) {
     alert('Tu navegador bloqueó la apertura de la ventana. Por favor permite ventanas emergentes para este sitio e inténtalo de nuevo.');
