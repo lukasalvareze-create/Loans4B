@@ -267,8 +267,11 @@ if(FIREBASE_OK){
   .kanban-col-head .t { font-size:12px; font-weight:700; color:var(--teal); text-transform:uppercase; letter-spacing:0.5px; flex:1; }
   .kanban-col-head .c { background:var(--bg); color:var(--text-2); font-size:11px; font-weight:600; padding:2px 8px; border-radius:12px; }
   .kanban-col-body { flex:1; display:flex; flex-direction:column; gap:8px; overflow-y:auto; max-height:520px; }
-  .kanban-card { background:#fafcfd; border:1px solid var(--border-l); border-left:3px solid var(--green); border-radius:8px; padding:10px 12px; cursor:pointer; transition:all 0.18s; }
+  .kanban-card { background:#fafcfd; border:1px solid var(--border-l); border-left:3px solid var(--green); border-radius:8px; padding:10px 12px; cursor:grab; transition:all 0.18s; user-select:none; }
   .kanban-card:hover { background:#f1f6f8; box-shadow:var(--shadow); transform:translateX(2px); }
+  .kanban-card:active { cursor:grabbing; }
+  .kanban-card.dragging { opacity:0.4; box-shadow:0 8px 20px rgba(10,61,74,0.18); transform:scale(0.97); }
+  .kanban-col-body.drop-target { background:rgba(42,160,127,0.10); border-radius:8px; outline:2px dashed var(--green); outline-offset:-4px; }
   .kanban-card .nom { font-size:13px; font-weight:600; color:var(--text); margin-bottom:2px; }
   .kanban-card .rut { font-size:11px; color:var(--muted); font-variant-numeric:tabular-nums; }
   .kanban-card .meta { display:flex; gap:6px; margin-top:6px; flex-wrap:wrap; }
@@ -510,7 +513,7 @@ if(FIREBASE_OK){
           <span class="sii-step"><span class="num">3</span>Descarga el PDF</span>
         </div>
       </div>
-      <a class="btn-sii" href="https://www4.sii.cl/mapasui/internet/#!/buscarPropiedades" target="_blank" rel="noopener"><span>🔗</span> Abrir SII</a>
+      <a class="btn-sii" href="https://www2.sii.cl/vicana/Menu/ConsultarAntecedentesSC" target="_blank" rel="noopener"><span>🔗</span> Abrir SII</a>
     </div>
     <div class="sim-grid">
       <div class="form-card">
@@ -605,7 +608,7 @@ if(FIREBASE_OK){
           <span class="sii-step"><span class="num">3</span>Descarga el PDF</span>
         </div>
       </div>
-      <a class="btn-sii" href="https://www4.sii.cl/mapasui/internet/#!/buscarPropiedades" target="_blank" rel="noopener"><span>🔗</span> Abrir SII</a>
+      <a class="btn-sii" href="https://www2.sii.cl/vicana/Menu/ConsultarAntecedentesSC" target="_blank" rel="noopener"><span>🔗</span> Abrir SII</a>
     </div>
     <div class="cliente-picker">
       <span class="cp-ico">👤</span>
@@ -665,11 +668,11 @@ if(FIREBASE_OK){
     </form>
     <div id="lb-resultado" style="display:none; margin-top:30px;">
       <div class="result-hero">
-        <div class="label">Capital Entregado al Deudor</div>
+        <div class="label">Capital Entregado al Cliente</div>
         <div class="main-value" id="lb-res-liquidez-uf">UF —</div>
         <div class="sub-value" id="lb-res-liquidez-clp">≈ $—</div>
         <div class="meta-row">
-          <div class="meta-item"><div class="l">Valor recompra deudor</div><div class="v" id="lb-res-recompra">UF —</div></div>
+          <div class="meta-item"><div class="l">Valor recompra</div><div class="v" id="lb-res-recompra">UF —</div></div>
           <div class="meta-item"><div class="l">Gastos operativos (pagar al inicio)</div><div class="v" id="lb-res-gastosop">UF —</div></div>
           <div class="meta-item"><div class="l">Plazo</div><div class="v" id="lb-res-plazo">— meses</div></div>
         </div>
@@ -1324,12 +1327,15 @@ if(FIREBASE_OK){
     <h1 class="section-title">Reportes</h1>
     <p class="section-sub">Resumen de actividad por día para el equipo. Descarga el PDF al final del día para enviar a tu jefatura.</p>
     <div class="filter-bar">
-      <label style="font-size:12.5px; color:var(--text-2); font-weight:600; display:flex; align-items:center; gap:8px">Fecha <input type="date" id="rp-fecha" onchange="renderReporte()"></label>
-      <select id="rp-rango" onchange="renderReporte()">
+      <label id="rp-fecha-wrap" style="font-size:12.5px; color:var(--text-2); font-weight:600; display:flex; align-items:center; gap:8px">Fecha <input type="date" id="rp-fecha" onchange="renderReporte()"></label>
+      <select id="rp-rango" onchange="onCambioRangoReporte()">
         <option value="dia" selected>Día específico</option>
         <option value="semana">Últimos 7 días</option>
         <option value="mes">Últimos 30 días</option>
+        <option value="personalizado">Rango personalizado…</option>
       </select>
+      <label id="rp-desde-wrap" style="font-size:12.5px; color:var(--text-2); font-weight:600; display:none; align-items:center; gap:8px">Desde <input type="date" id="rp-desde" onchange="renderReporte()"></label>
+      <label id="rp-hasta-wrap" style="font-size:12.5px; color:var(--text-2); font-weight:600; display:none; align-items:center; gap:8px">Hasta <input type="date" id="rp-hasta" onchange="renderReporte()"></label>
       <select id="rp-asesor" onchange="renderReporte()">
         <option value="todos" selected>Todo el equipo</option>
       </select>
@@ -1757,20 +1763,20 @@ function calcularLeasebackCompleto(){
   let h='';
   // SECCIÓN 1 — Datos generales
   h+=rTeal('Valor Tasación Comercial','—',fmtCLP(valor*UF_VALOR),fmtNum(valor,1));
-  h+=rPlain('Plazo Operación','—',plazo+' Meses','—');
+  h+=rPlain('Plazo Operación',plazo+' Meses','—','—');
   h+=rTeal('Valor Compraventa',fmtPct(pctCV,1),fmtCLP(compraventa*UF_VALOR),fmtNum(compraventa,1));
-  h+=rPlain('Tasa Renta Mensual','—',fmtPct(tasaMensual,2),'—');
-  h+=rPlain('Tasa Renta Anual','—',fmtPct(tasaAnual,2),'—');
+  h+=rPlain('Tasa Renta Mensual',fmtPct(tasaMensual,2),'—','—');
+  h+=rPlain('Tasa Renta Anual',fmtPct(tasaAnual,2),'—','—');
   h+=rDivider();
   // SECCIÓN 2 — Desglose del giro del fondo
   h+=rPlain('Desglose (giro bruto)','—',fmtCLP(compraventa*UF_VALOR),fmtNum(compraventa,1));
-  h+=rPlain('Prepago de Renta','—',fmtCLP(prepagoRenta*UF_VALOR),'—');
-  h+=rPlain('Estructuración Financiera',fmtPct(feeL4B,1),fmtCLP(feeL4BUF*UF_VALOR),'—');
-  h+=rPlain('Fee de Estructuración Financiera',fmtPct(feeFondo,1),fmtCLP(feeFondoUF*UF_VALOR),'—');
+  h+=rPlain('Prepago de Renta','—',fmtCLP(prepagoRenta*UF_VALOR),fmtNum(prepagoRenta,1));
+  h+=rPlain('Estructuración Financiera',fmtPct(feeL4B,1),fmtCLP(feeL4BUF*UF_VALOR),fmtNum(feeL4BUF,1));
+  h+=rPlain('Fee de Estructuración Financiera',fmtPct(feeFondo,1),fmtCLP(feeFondoUF*UF_VALOR),fmtNum(feeFondoUF,1));
   if(deuda>0) h+=rPlain('Deuda actual liquidada','—',fmtCLP(deuda*UF_VALOR),fmtNum(deuda,1));
   h+=rTeal('Gastos Operacionales Totales','—',fmtCLP(gastosOpFondo*UF_VALOR),fmtNum(gastosOpFondo,1));
-  h+=rGreen('Capital Entregado al Deudor','—',fmtCLP(capitalEntregado*UF_VALOR),fmtNum(capitalEntregado,1));
-  h+=rTeal('Valor Recompra Deudor','—',fmtCLP(valorRecompra*UF_VALOR),fmtNum(valorRecompra,1));
+  h+=rGreen('Capital Entregado al Cliente','—',fmtCLP(capitalEntregado*UF_VALOR),fmtNum(capitalEntregado,1));
+  h+=rTeal('Valor Recompra','—',fmtCLP(valorRecompra*UF_VALOR),fmtNum(valorRecompra,1));
   // SECCIÓN 3 — Gastos operativos (pagados por el cliente al inicio) + SPLIT
   h+=rSubhead('Detalle de gastos operativos · pagados por el cliente al inicio');
   h+=rPlain('Gastos Operativos',fmtPct(gastosOp,1),fmtCLP(gastosOpUF*UF_VALOR),fmtNum(gastosOpUF,1));
@@ -1794,6 +1800,8 @@ function calcularLeasebackCompleto(){
   document.getElementById('lb-tabla-desglose').innerHTML=h;
   document.getElementById('lb-resultado').style.display='block';
   document.getElementById('lb-resultado').scrollIntoView({behavior:'smooth',block:'start'});
+  // Auto-crear cliente en Mis Clientes si nombre+RUT están llenos (fire-and-forget)
+  upsertClienteDesdeSim('leaseback');
 }
 
 /* === HIPOTECARIO COMPLETO === */
@@ -1882,6 +1890,8 @@ function calcularHipotecarioCompleto(){
   tbody.innerHTML=html;
   document.getElementById('h-resultado').style.display='block';
   document.getElementById('h-resultado').scrollIntoView({behavior:'smooth',block:'start'});
+  // Auto-crear cliente en Mis Clientes si nombre+RUT están llenos (fire-and-forget)
+  upsertClienteDesdeSim('hipotecario');
 }
 
 /* ═══════════════════════════════════════════════════════════════════
@@ -2134,20 +2144,20 @@ function descargarPDFLeaseback(){
       let body = '';
       // SECCIÓN 1 — Datos generales
       body += rowTeal('Valor Tasación Comercial','—', fmtCLP(d.valor*UF_VALOR), fmtNum(d.valor,1));
-      body += rowPlain('Plazo Operación','—', d.plazo+' Meses','—');
+      body += rowPlain('Plazo Operación', d.plazo+' Meses','—','—');
       body += rowTeal('Valor Compraventa', fmtPct(d.pctCV,1), fmtCLP(d.compraventa*UF_VALOR), fmtNum(d.compraventa,1));
-      body += rowPlain('Tasa Renta Mensual','—', fmtPct(d.tasaMensual,2),'—');
-      body += rowPlain('Tasa Renta Anual','—', fmtPct(tasaAnual,2),'—');
+      body += rowPlain('Tasa Renta Mensual', fmtPct(d.tasaMensual,2),'—','—');
+      body += rowPlain('Tasa Renta Anual', fmtPct(tasaAnual,2),'—','—');
       body += rowDivider();
       // SECCIÓN 2 — Desglose del giro del fondo
       body += rowPlain('Desglose (giro bruto)','—', fmtCLP(d.compraventa*UF_VALOR), fmtNum(d.compraventa,1));
-      body += rowPlain('Prepago de Renta','—', fmtCLP(prepagoRenta*UF_VALOR),'—');
-      body += rowPlain('Estructuración Financiera', fmtPct(d.feeL4B,1), fmtCLP(d.feeL4BUF*UF_VALOR),'—');
-      body += rowPlain('Fee de Estructuración Financiera', fmtPct(d.feeFondo,1), fmtCLP(d.feeFondoUF*UF_VALOR),'—');
+      body += rowPlain('Prepago de Renta','—', fmtCLP(prepagoRenta*UF_VALOR), fmtNum(prepagoRenta,1));
+      body += rowPlain('Estructuración Financiera', fmtPct(d.feeL4B,1), fmtCLP(d.feeL4BUF*UF_VALOR), fmtNum(d.feeL4BUF,1));
+      body += rowPlain('Fee de Estructuración Financiera', fmtPct(d.feeFondo,1), fmtCLP(d.feeFondoUF*UF_VALOR), fmtNum(d.feeFondoUF,1));
       if((d.deuda||0)>0) body += rowPlain('Deuda actual liquidada','—', fmtCLP(d.deuda*UF_VALOR), fmtNum(d.deuda,1));
       body += rowTeal('Gastos Operacionales Totales','—', fmtCLP(gastosOpFondo*UF_VALOR), fmtNum(gastosOpFondo,1));
-      body += rowGreen('Capital Entregado al Deudor','—', fmtCLP(capitalEntregado*UF_VALOR), fmtNum(capitalEntregado,1));
-      body += rowTeal('Valor Recompra Deudor','—', fmtCLP(valorRecompra*UF_VALOR), fmtNum(valorRecompra,1));
+      body += rowGreen('Capital Entregado al Cliente','—', fmtCLP(capitalEntregado*UF_VALOR), fmtNum(capitalEntregado,1));
+      body += rowTeal('Valor Recompra','—', fmtCLP(valorRecompra*UF_VALOR), fmtNum(valorRecompra,1));
       // SECCIÓN 3 — Gastos operativos pagados por el cliente al inicio + SPLIT
       body += rowSubhead('Detalle de gastos operativos · pagados por el cliente al inicio');
       body += rowPlain('Gastos Operativos', fmtPct(d.gastosOp,1), fmtCLP(d.gastosOpUF*UF_VALOR), fmtNum(d.gastosOpUF,1));
@@ -2382,6 +2392,7 @@ function descargarNotaVenta(){
 /* === ESTADO GLOBAL === */
 let CURRENT_USER = null;
 let CURRENT_PROFILE = null;
+function esAdmin(){ return !!(CURRENT_PROFILE && CURRENT_PROFILE.rol==='admin'); }
 let CLIENTES_CACHE = [];
 let HISTORIAL_CACHE = [];
 let USERS_CACHE = [];
@@ -2461,6 +2472,16 @@ function mostrarApp(){
   rolEl.className = 'ur' + (p.rol==='admin'?' admin':'');
   document.getElementById('nav-equipo').style.display = (p.rol==='admin') ? 'flex' : 'none';
   const nlider = document.getElementById('nav-lider'); if(nlider) nlider.style.display = (p.rol==='admin') ? 'flex' : 'none';
+  // Ocultar dropdowns "mios / todos los asesores" para asesores (no admin):
+  // cada uno ve solo sus propios datos, así que el filtro es redundante.
+  const esAdminUI = (p.rol==='admin');
+  ['cli-filtro-asesor','hi-asesor','pl-asesor'].forEach(id=>{
+    const el = document.getElementById(id);
+    if(el){
+      el.style.display = esAdminUI ? '' : 'none';
+      if(!esAdminUI) el.value = 'mios';
+    }
+  });
 }
 
 function setupAuthListener(){
@@ -2517,8 +2538,24 @@ async function ensureUserProfile(user){
 async function cargarClientes(){
   if(!fbReady() || !CURRENT_USER) return;
   try{
-    const snap = await fbDb.collection('clientes').orderBy('updatedAt','desc').limit(500).get();
+    let query = fbDb.collection('clientes');
+    // Asesores ven SOLO sus propios clientes; admin ve todos.
+    if(!esAdmin()) query = query.where('asesorId','==', CURRENT_USER.uid);
+    let snap;
+    try {
+      snap = await query.orderBy('updatedAt','desc').limit(500).get();
+    } catch(e1) {
+      // Fallback: si no hay índice compuesto (asesorId + updatedAt) en Firestore,
+      // hacemos la query sin orderBy y ordenamos client-side. Evita bloqueos.
+      console.warn('cargarClientes: usando fallback sin orderBy (', e1.message, ')');
+      snap = await query.limit(500).get();
+    }
     CLIENTES_CACHE = snap.docs.map(d=>({ id:d.id, ...d.data() }));
+    CLIENTES_CACHE.sort((a,b)=>{
+      const ta = (a.updatedAt && a.updatedAt.toMillis) ? a.updatedAt.toMillis() : 0;
+      const tb = (b.updatedAt && b.updatedAt.toMillis) ? b.updatedAt.toMillis() : 0;
+      return tb - ta;
+    });
     renderClientes();
     poblarClientePickers();
   }catch(e){ console.error('cargarClientes error:',e); }
@@ -2632,9 +2669,21 @@ async function guardarCliente(){
 async function cargarHistorial(){
   if(!fbReady() || !CURRENT_USER) return;
   try{
+    // Asesores ven SOLO sus propias simulaciones/notas; admin ve todas.
+    const filtrarAsesor = !esAdmin();
+    const uid = CURRENT_USER.uid;
+    const fetchCol = async (col, orderField) => {
+      let q = fbDb.collection(col);
+      if(filtrarAsesor) q = q.where('asesorId','==', uid);
+      try { return await q.orderBy(orderField,'desc').limit(500).get(); }
+      catch(e1){
+        console.warn('cargarHistorial '+col+': fallback sin orderBy (', e1.message, ')');
+        return await q.limit(500).get();
+      }
+    };
     const [sims, notas] = await Promise.all([
-      fbDb.collection('simulaciones').orderBy('fechaCreacion','desc').limit(500).get(),
-      fbDb.collection('notasVenta').orderBy('createdAt','desc').limit(500).get()
+      fetchCol('simulaciones','fechaCreacion'),
+      fetchCol('notasVenta','createdAt')
     ]);
     const lista = [];
     sims.forEach(d=>{ const x=d.data(); lista.push({ id:d.id, tipo:'sim-'+x.producto, _tipo:'simulacion', ...x, fechaSort: tsToDate(x.fechaCreacion) }); });
@@ -2875,6 +2924,96 @@ function onClientePickerChange(producto, selectEl){
   }
 }
 
+/* === AUTO-CREAR CLIENTE DESDE SIMULACIÓN ===
+   Se dispara al final de calcularLeasebackCompleto / calcularHipotecarioCompleto.
+   Si el asesor llenó nombre+RUT y NO seleccionó cliente del picker, crea (o vincula
+   si ya existe del mismo asesor) un cliente en Firestore. Fire-and-forget: nunca
+   bloquea el flujo de la simulación. */
+async function upsertClienteDesdeSim(producto){
+  try{
+    if(!fbReady() || !CURRENT_USER) return;
+    // Respetar selección manual del picker
+    if(CLIENTE_SELECCIONADO_SIM[producto]) return;
+    const prefix = producto==='hipotecario' ? 'h' : 'lb';
+    const get = (id) => { const el=document.getElementById(id); return el ? (el.value||'').trim() : ''; };
+    const nombre = get(prefix+'-nombre');
+    const rut    = get(prefix+'-rut');
+    if(!nombre || !rut) return;
+    const norm = s => (s||'').replace(/[\s.\-]/g,'').toUpperCase();
+    const rutN = norm(rut);
+    // Buscar duplicado por RUT del MISMO asesor en el cache
+    const existing = CLIENTES_CACHE.find(c =>
+      norm(c.rut)===rutN && c.asesorId===CURRENT_USER.uid
+    );
+    const tipoPersona = (document.querySelector('input[name="'+prefix+'-tipo"]:checked')||{value:'natural'}).value;
+    const email = get(prefix+'-email');
+    const telefono = get(prefix+'-telefono');
+    const direccion = producto==='leaseback' ? get('lb-direccion') : '';
+    const comuna    = producto==='leaseback' ? get('lb-comuna') : '';
+    if(existing){
+      // Ya existe: vincular al picker, bump updatedAt y rellenar campos vacíos si hay datos nuevos.
+      CLIENTE_SELECCIONADO_SIM[producto] = existing.id;
+      const picker = document.getElementById('cp-'+producto);
+      if(picker) picker.value = existing.id;
+      const patch = { updatedAt: nowTs() };
+      if(!existing.email && email) patch.email = email;
+      if(!existing.telefono && telefono) patch.telefono = telefono;
+      if(!existing.direccion && direccion) patch.direccion = direccion;
+      if(!existing.comuna && comuna) patch.comuna = comuna;
+      try{ await fbDb.collection('clientes').doc(existing.id).update(patch); }catch(_){}
+      // Refrescar cache local
+      Object.assign(existing, patch);
+      mostrarToastAutoCliente('✓ Vinculado a cliente existente · '+existing.nombre, 'vinculado');
+    } else {
+      // No existe: crear
+      const data = {
+        nombre, rut, tipoPersona,
+        giro: '', email, telefono, direccion, comuna,
+        region: 'Metropolitana',
+        rentaLiquida: 0,
+        dicom: 'desconocido',
+        origen: 'sim-'+producto,
+        observaciones: 'Creado automáticamente desde simulación de '+(producto==='hipotecario'?'Crédito Hipotecario':'Leaseback')+'.',
+        externalIds: { kommo: '' },
+        asesorId: CURRENT_USER.uid,
+        etapa: 'prospecto',
+        estadoActual: '',
+        documentos: {},
+        createdAt: nowTs(),
+        updatedAt: nowTs()
+      };
+      const ref = await fbDb.collection('clientes').add(data);
+      const nuevo = { id: ref.id, ...data };
+      CLIENTES_CACHE.unshift(nuevo);
+      CLIENTE_SELECCIONADO_SIM[producto] = ref.id;
+      poblarClientePickers();
+      const picker = document.getElementById('cp-'+producto);
+      if(picker) picker.value = ref.id;
+      mostrarToastAutoCliente('✓ Cliente creado en Mis Clientes · '+nombre, 'creado');
+    }
+  } catch(e){
+    // Silencioso: nunca interrumpir el flujo de simulación
+    console.warn('upsertClienteDesdeSim:', e);
+  }
+}
+
+function mostrarToastAutoCliente(msg, tipo){
+  let t = document.getElementById('toast-auto-cliente');
+  if(!t){
+    t = document.createElement('div');
+    t.id = 'toast-auto-cliente';
+    t.style.cssText = 'position:fixed; bottom:24px; right:24px; padding:14px 20px; color:#fff; border-radius:8px; font-size:13px; font-weight:600; box-shadow:0 8px 24px rgba(10,61,74,0.25); z-index:9999; opacity:0; transition:opacity 0.25s ease; max-width:340px; line-height:1.4;';
+    document.body.appendChild(t);
+  }
+  t.textContent = msg;
+  t.style.background = tipo==='creado' ? '#1d7a5f' : '#0a3d4a';
+  // Forzar reflow para que la animación arranque desde 0
+  void t.offsetWidth;
+  t.style.opacity = '1';
+  clearTimeout(t._timer);
+  t._timer = setTimeout(()=>{ t.style.opacity = '0'; }, 4000);
+}
+
 
 /* ============================================================
    MÓDULO v9 — Pipeline / Ficha Cliente / Tareas / Reportes
@@ -2918,7 +3057,7 @@ function renderPipeline(){
       items.forEach(c => {
         const estado = c.estadoActual ? '<div class="kc-estado">'+escapeHTML(c.estadoActual)+'</div>' : '';
         const upd = c.updatedAt ? fmtTimestamp(c.updatedAt) : '—';
-        html += '<div class="kanban-card" onclick="mostrarFichaCliente(\''+c.id+'\')">';
+        html += '<div class="kanban-card" draggable="true" data-cli="'+c.id+'" onclick="mostrarFichaCliente(\''+c.id+'\')">';
         html += '<div class="kc-nom">'+escapeHTML(c.nombre||'(sin nombre)')+'</div>';
         html += '<div class="kc-rut">'+escapeHTML(c.rut||'—')+'</div>';
         html += estado;
@@ -2929,6 +3068,91 @@ function renderPipeline(){
     html += '</div></div>';
   });
   board.innerHTML = html;
+  setupKanbanDnD();
+}
+
+/* === DRAG-AND-DROP DEL KANBAN ===
+   - Click corto sobre una tarjeta → abre ficha (mostrarFichaCliente)
+   - Drag de tarjeta → al soltarla en otra columna actualiza la etapa
+   - Si la columna destino es la misma, no hace nada */
+let _kanbanDragCliId = null;
+let _kanbanClickGuard = false;
+function setupKanbanDnD(){
+  const board = document.getElementById('pl-board'); if(!board) return;
+  // Cards: dragstart, dragend
+  board.querySelectorAll('.kanban-card').forEach(card => {
+    card.addEventListener('dragstart', e => {
+      _kanbanDragCliId = card.getAttribute('data-cli');
+      _kanbanClickGuard = true;
+      card.classList.add('dragging');
+      try { e.dataTransfer.effectAllowed = 'move'; e.dataTransfer.setData('text/plain', _kanbanDragCliId); } catch(_){ }
+    });
+    card.addEventListener('dragend', () => {
+      card.classList.remove('dragging');
+      _kanbanDragCliId = null;
+      board.querySelectorAll('.kanban-col-body.drop-target').forEach(el=>el.classList.remove('drop-target'));
+      // Pequeño delay para que el click sintético no se dispare después del drop
+      setTimeout(()=>{ _kanbanClickGuard = false; }, 50);
+    });
+    // Evitar que un click después de drag abra la ficha
+    card.addEventListener('click', e => {
+      if(_kanbanClickGuard){ e.stopPropagation(); e.preventDefault(); }
+    }, true);
+  });
+  // Columns: dragover, dragleave, drop
+  board.querySelectorAll('.kanban-col').forEach(col => {
+    const body = col.querySelector('.kanban-col-body');
+    if(!body) return;
+    col.addEventListener('dragover', e => {
+      if(_kanbanDragCliId){ e.preventDefault(); try{ e.dataTransfer.dropEffect = 'move'; }catch(_){ } body.classList.add('drop-target'); }
+    });
+    col.addEventListener('dragleave', e => {
+      // Solo quitar el target si efectivamente salimos del col
+      if(!col.contains(e.relatedTarget)) body.classList.remove('drop-target');
+    });
+    col.addEventListener('drop', async e => {
+      e.preventDefault();
+      body.classList.remove('drop-target');
+      const cliId = _kanbanDragCliId || (e.dataTransfer && e.dataTransfer.getData('text/plain'));
+      const nuevaEtapa = col.getAttribute('data-etapa');
+      if(!cliId || !nuevaEtapa) return;
+      await moverEtapaCliente(cliId, nuevaEtapa);
+    });
+  });
+}
+
+async function moverEtapaCliente(cliId, nuevaEtapa){
+  if(!fbReady() || !CURRENT_USER) return;
+  const c = CLIENTES_CACHE.find(x=>x.id===cliId);
+  if(!c) return;
+  const etapaPrev = c.etapa || 'prospecto';
+  if(etapaPrev === nuevaEtapa) return;     // sin cambio
+  // Actualización optimista del cache para feedback instantáneo
+  c.etapa = nuevaEtapa;
+  c.updatedAt = nowTs();
+  renderPipeline();
+  try{
+    await fbDb.collection('clientes').doc(cliId).update({
+      etapa: nuevaEtapa,
+      updatedAt: nowTs()
+    });
+    try{
+      await fbDb.collection('clientes').doc(cliId).collection('notas').add({
+        tipo: 'etapa',
+        texto: 'Etapa: '+etapaInfo(etapaPrev).label+' → '+etapaInfo(nuevaEtapa).label+' (drag-and-drop)',
+        asesorId: CURRENT_USER.uid,
+        asesorNombre: CURRENT_PROFILE ? CURRENT_PROFILE.nombre : '',
+        createdAt: nowTs()
+      });
+    } catch(_){ /* nota es secundaria, no bloquear */ }
+    mostrarToastAutoCliente('Etapa actualizada: '+etapaInfo(nuevaEtapa).label, 'vinculado');
+  } catch(e){
+    // Revertir cache si falló
+    c.etapa = etapaPrev;
+    renderPipeline();
+    console.error('moverEtapaCliente:', e);
+    alert('No se pudo cambiar la etapa: '+(e.message||e));
+  }
 }
 
 /* === FICHA CLIENTE DETALLE === */
@@ -3153,15 +3377,20 @@ function renderTareasCliente(clienteId){
 /* === TAREAS === */
 async function cargarTareas(){
   if(!fbReady()){ TAREAS_CACHE=[]; return; }
+  if(!CURRENT_USER){ TAREAS_CACHE=[]; return; }
   try{
-    const snap = await fbDb.collection('tareas').orderBy('fechaVenc','asc').limit(300).get();
+    // Asesores ven SOLO sus propias tareas; admin ve todas.
+    let q = fbDb.collection('tareas');
+    if(!esAdmin()) q = q.where('asesorId','==', CURRENT_USER.uid);
+    let snap;
+    try {
+      snap = await q.orderBy('fechaVenc','asc').limit(300).get();
+    } catch(e1) {
+      console.warn('cargarTareas: fallback sin orderBy (', e1.message, ')');
+      snap = await q.limit(300).get();
+    }
     TAREAS_CACHE = snap.docs.map(d => Object.assign({id:d.id}, d.data()));
-  } catch(e){
-    try{
-      const snap = await fbDb.collection('tareas').limit(300).get();
-      TAREAS_CACHE = snap.docs.map(d => Object.assign({id:d.id}, d.data()));
-    } catch(e2){ console.warn('cargarTareas:', e2); TAREAS_CACHE = []; }
-  }
+  } catch(e2){ console.warn('cargarTareas:', e2); TAREAS_CACHE = []; }
 }
 
 function abrirTareaModal(clienteId){
@@ -3303,10 +3532,42 @@ function getReporteRange(){
   const ref = fechaStr ? new Date(fechaStr+'T00:00:00') : new Date();
   ref.setHours(0,0,0,0);
   let desde, hasta;
-  if(rango==='dia'){ desde = new Date(ref); hasta = new Date(ref); hasta.setHours(23,59,59,999); }
+  if(rango==='personalizado'){
+    const d1 = (document.getElementById('rp-desde')||{}).value;
+    const d2 = (document.getElementById('rp-hasta')||{}).value;
+    // Si falta alguna fecha, usamos el día de referencia como fallback
+    desde = d1 ? new Date(d1+'T00:00:00') : new Date(ref);
+    hasta = d2 ? new Date(d2+'T23:59:59') : new Date(ref);
+    hasta.setHours(23,59,59,999);
+    // Si el usuario invierte fechas, los normalizamos
+    if(desde > hasta){ const tmp = desde; desde = hasta; hasta = tmp; hasta.setHours(23,59,59,999); }
+  }
+  else if(rango==='dia'){ desde = new Date(ref); hasta = new Date(ref); hasta.setHours(23,59,59,999); }
   else if(rango==='semana'){ hasta = new Date(ref); hasta.setHours(23,59,59,999); desde = new Date(ref); desde.setDate(desde.getDate()-6); }
   else { hasta = new Date(ref); hasta.setHours(23,59,59,999); desde = new Date(ref); desde.setDate(desde.getDate()-29); }
   return { desde, hasta, rango };
+}
+
+function onCambioRangoReporte(){
+  const rango = (document.getElementById('rp-rango')||{}).value || 'dia';
+  const esCustom = (rango==='personalizado');
+  const fwrap = document.getElementById('rp-fecha-wrap');
+  const dwrap = document.getElementById('rp-desde-wrap');
+  const hwrap = document.getElementById('rp-hasta-wrap');
+  if(fwrap) fwrap.style.display = esCustom ? 'none' : 'flex';
+  if(dwrap) dwrap.style.display = esCustom ? 'flex' : 'none';
+  if(hwrap) hwrap.style.display = esCustom ? 'flex' : 'none';
+  if(esCustom){
+    // Inicializar valores por defecto si están vacíos (últimos 30 días)
+    const d1 = document.getElementById('rp-desde');
+    const d2 = document.getElementById('rp-hasta');
+    const hoy = new Date();
+    const hace30 = new Date(); hace30.setDate(hace30.getDate()-29);
+    const isoOf = d => d.toISOString().substring(0,10);
+    if(d1 && !d1.value) d1.value = isoOf(hace30);
+    if(d2 && !d2.value) d2.value = isoOf(hoy);
+  }
+  renderReporte();
 }
 
 function dateOf(it){
@@ -3333,7 +3594,7 @@ function renderReporte(){
   document.getElementById('kpi-sims').textContent = k.sims.length;
   document.getElementById('kpi-notas').textContent = k.notas.length;
   document.getElementById('kpi-tareas').textContent = k.tareasHechas.length;
-  const subRango = rango==='dia' ? fmtFecha(desde) : fmtFecha(desde)+' a '+fmtFecha(hasta);
+  const subRango = rango==='dia' ? fmtFecha(desde) : (fmtFecha(desde)+' a '+fmtFecha(hasta));
   ['kpi-clientes-sub','kpi-sims-sub','kpi-notas-sub','kpi-tareas-sub'].forEach(id => {
     const el = document.getElementById(id); if(el) el.textContent = subRango;
   });
