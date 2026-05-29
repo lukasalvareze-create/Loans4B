@@ -811,157 +811,171 @@ if(FIREBASE_OK){
   <!-- NOTA DE VENTA INTERNA (F-003) -->
   <div class="view" id="view-nota-venta">
     <h1 class="section-title">Nota de Venta · Interna</h1>
-    <p class="section-sub">Documento interno para el vendedor. Auto-rellena con los datos de la última simulación. Complete los campos restantes (rol, propiedad, contrato a enviar) y descargue el PDF para registro y disparo de comisión.</p>
+    <p class="section-sub">Documento interno del vendedor. Captura toda la información que después alimenta el contrato. Auto-rellena desde la simulación. Resultado: <strong>PDF de 1 página</strong>.</p>
 
     <div class="cliente-picker">
       <span class="cp-ico">👤</span>
-      <div class="cp-text"><strong>Asociar a cliente</strong><br><span style="font-size:11.5px; color:var(--muted)">Opcional: rellena cliente, RUT, email, teléfono y dirección desde la ficha del CRM.</span></div>
+      <div class="cp-text"><strong>Asociar a cliente</strong><br><span style="font-size:11.5px; color:var(--muted)">Rellena los datos del cliente desde su ficha del CRM.</span></div>
       <select id="cp-nv" onchange="onClientePickerChange('nv', this)"><option value="">— Sin asociar a cliente —</option></select>
     </div>
 
-    <div id="nv-aviso-vacio" class="alert amber" style="margin-bottom:18px"><span>ℹ️</span><div>Aún no hay simulación cargada. Genere primero una simulación hipotecaria o de leaseback y pulse <strong>"Generar Nota de Venta con estos datos"</strong> para pre-llenar este formulario. También puede llenar la nota manualmente desde cero.</div></div>
+    <div id="nv-aviso-vacio" class="alert amber" style="margin-bottom:18px"><span>ℹ️</span><div>Aún no hay simulación cargada. Genera primero una simulación o asocia un cliente para pre-llenar el formulario. También puedes llenar la nota manualmente desde cero.</div></div>
 
-    <div id="nv-fuente" class="alert green" style="display:none; margin-bottom:18px"><span>✅</span><div>Datos cargados desde simulación <strong id="nv-fuente-tipo">—</strong>. Puede editar cualquier campo antes de descargar el PDF.</div></div>
+    <div id="nv-fuente" class="alert green" style="display:none; margin-bottom:18px"><span>✅</span><div>Datos cargados desde simulación <strong id="nv-fuente-tipo">—</strong>. Puedes editar cualquier campo antes de descargar el PDF.</div></div>
 
     <form id="form-nv" onsubmit="event.preventDefault();">
+
+      <!-- 1. CLIENTE -->
       <div class="form-card">
         <div class="form-card-header"><span class="h-icon">👤</span><h3>1. Información del cliente</h3><div class="green-dot"></div></div>
         <div class="form-body">
-          <div class="form-grid">
-            <div class="form-group"><label>Nombre / Razón social <span class="req">*</span></label><input type="text" id="nv-nombre" required></div>
+          <div class="form-grid-3">
+            <div class="form-group"><label>Tipo de persona <span class="req">*</span></label><select id="nv-tipo-persona" onchange="nvOnTipoPersonaChange()"><option value="natural">Persona Natural</option><option value="juridica">Persona Jurídica</option></select></div>
+            <div class="form-group"><label id="nv-nombre-label">Nombre completo <span class="req">*</span></label><input type="text" id="nv-nombre" required></div>
             <div class="form-group"><label>RUT <span class="req">*</span></label><input type="text" id="nv-rut" oninput="formatRUT(this)" required></div>
           </div>
-          <div class="form-grid" style="margin-top:14px">
-            <div class="form-group"><label>Tipo de persona</label><select id="nv-tipo-persona"><option value="natural">Persona Natural</option><option value="juridica">Persona Jurídica</option></select></div>
-            <div class="form-group"><label>Giro / Actividad</label><input type="text" id="nv-giro" placeholder="Solo para persona jurídica"></div>
+          <div class="form-grid-3" style="margin-top:14px" id="nv-pj-row">
+            <div class="form-group"><label>Giro / Actividad</label><input type="text" id="nv-giro" placeholder="Ej: Servicios financieros"></div>
+            <div class="form-group"><label>Representante legal</label><input type="text" id="nv-rep-nombre" placeholder="Nombre del representante"></div>
+            <div class="form-group"><label>RUT representante</label><input type="text" id="nv-rep-rut" oninput="formatRUT(this)" placeholder="12.345.678-9"></div>
           </div>
           <div class="form-grid" style="margin-top:14px">
             <div class="form-group"><label>Correo <span class="req">*</span></label><input type="email" id="nv-email" required></div>
             <div class="form-group"><label>Teléfono / WhatsApp <span class="req">*</span></label><input type="text" id="nv-telefono" required></div>
           </div>
-          <div class="form-grid" style="margin-top:14px">
-            <div class="form-group"><label>Dirección particular</label><input type="text" id="nv-direccion"></div>
+          <div class="form-grid-3" style="margin-top:14px">
+            <div class="form-group"><label id="nv-direccion-label">Domicilio particular</label><input type="text" id="nv-direccion" placeholder="Calle, número, depto"></div>
             <div class="form-group"><label>Comuna / Ciudad</label><input type="text" id="nv-comuna"></div>
+            <div class="form-group"><label>Región</label><input type="text" id="nv-region" placeholder="Ej: Metropolitana"></div>
           </div>
         </div>
       </div>
 
+      <!-- 2. OPERACIÓN -->
       <div class="form-card" style="margin-top:18px">
-        <div class="form-card-header"><span class="h-icon">🏠</span><h3>2. Datos de la propiedad</h3><div class="green-dot"></div></div>
+        <div class="form-card-header"><span class="h-icon">🏠</span><h3>2. Datos de la operación</h3><div class="green-dot"></div></div>
         <div class="form-body">
-          <div class="form-grid">
-            <div class="form-group"><label>Rol de avalúo <span class="req">*</span></label><input type="text" id="nv-rol" placeholder="Ej: 1234-567"><span class="hint">Número de rol del SII de la propiedad.</span></div>
-            <div class="form-group"><label>Tipo de propiedad</label><select id="nv-tipo-propiedad"><option value="casa">Casa habitación</option><option value="departamento">Departamento</option><option value="parcela">Parcela / rural</option><option value="comercial">Local comercial</option><option value="bodega">Bodega / industrial</option><option value="oficina">Oficina</option><option value="terreno">Terreno</option><option value="otro">Otro</option></select></div>
-          </div>
-          <div class="form-group" style="margin-top:14px"><label>Dirección de la propiedad <span class="req">*</span></label><input type="text" id="nv-prop-direccion" placeholder="Calle, número, depto"></div>
-          <div class="form-grid" style="margin-top:14px">
-            <div class="form-group"><label>Comuna propiedad</label><input type="text" id="nv-prop-comuna"></div>
-            <div class="form-group"><label>Región</label><input type="text" id="nv-prop-region" placeholder="Ej: Región Metropolitana"></div>
-          </div>
-          <div class="form-grid" style="margin-top:14px">
-            <div class="form-group"><label>Valor propiedad (UF) <span class="req">*</span></label><input type="number" id="nv-valor-uf" step="1" oninput="nvOnInputUF()"></div>
-            <div class="form-group"><label>Equivalente en CLP</label><input type="text" id="nv-valor-clp" readonly style="background:var(--green-bg); color:var(--teal); font-weight:600;"></div>
-          </div>
-          <div class="form-group" style="margin-top:14px"><label>Observaciones de la propiedad</label><textarea id="nv-prop-obs" rows="2" placeholder="Estado, gravámenes, situación jurídica, etc."></textarea></div>
-        </div>
-      </div>
-
-      <div class="form-card" style="margin-top:18px">
-        <div class="form-card-header"><span class="h-icon">💼</span><h3>3. Producto contratado</h3><div class="green-dot"></div></div>
-        <div class="form-body">
-          <div class="form-grid">
+          <div class="form-grid-3">
             <div class="form-group"><label>Producto <span class="req">*</span></label><select id="nv-producto"><option value="hipotecario">Crédito Hipotecario</option><option value="leaseback">Leaseback Inmobiliario</option><option value="estructuracion">Estructuración hipotecaria</option><option value="levantamiento">Levantamiento de capital</option><option value="factoring">Factoring internacional</option><option value="bridge">Bridge loan internacional</option><option value="otro">Otro</option></select></div>
-            <div class="form-group"><label>Monto operación (UF) <span class="req">*</span></label><input type="number" id="nv-monto-uf" step="1"></div>
+            <div class="form-group"><label>Tipo propiedad</label><select id="nv-tipo-propiedad"><option value="casa">Casa</option><option value="departamento">Departamento</option><option value="parcela">Parcela / rural</option><option value="comercial">Local comercial</option><option value="bodega">Bodega / industrial</option><option value="oficina">Oficina</option><option value="terreno">Terreno</option><option value="otro">Otro</option></select></div>
+            <div class="form-group"><label>Rol de avalúo</label><input type="text" id="nv-rol" placeholder="Ej: 1234-567"></div>
           </div>
-          <div class="form-grid" style="margin-top:14px">
-            <div class="form-group"><label>Plazo</label><input type="text" id="nv-plazo" placeholder="Ej: 20 años / 18 meses"></div>
+          <div class="form-grid-3" style="margin-top:14px">
+            <div class="form-group"><label>Dirección propiedad</label><input type="text" id="nv-prop-direccion" placeholder="Calle, número"></div>
+            <div class="form-group"><label>Comuna propiedad</label><input type="text" id="nv-prop-comuna"></div>
+            <div class="form-group"><label>Región propiedad</label><input type="text" id="nv-prop-region" placeholder="Metropolitana"></div>
+          </div>
+          <div class="form-grid-3" style="margin-top:14px">
+            <div class="form-group"><label>Valor inmueble (UF)</label><input type="number" id="nv-valor-uf" step="1" oninput="nvOnInputUF()"></div>
+            <div class="form-group"><label>Valor inmueble (CLP)</label><input type="text" id="nv-valor-clp" readonly style="background:var(--green-bg); color:var(--teal); font-weight:600;"></div>
+            <div class="form-group"><label>Plazo</label><input type="text" id="nv-plazo" placeholder="Ej: 20 años / 12 meses"></div>
+          </div>
+          <div class="form-grid-3" style="margin-top:14px">
+            <div class="form-group"><label>Monto a financiar (UF) <span class="req">*</span></label><input type="number" id="nv-monto-uf" step="0.01" oninput="nvOnInputUF()"><span class="hint">Va a la cláusula 1ra del contrato.</span></div>
+            <div class="form-group"><label>Monto a financiar (CLP)</label><input type="text" id="nv-monto-clp" readonly style="background:var(--green-bg); color:var(--teal); font-weight:600;"></div>
             <div class="form-group"><label>Tasa pactada</label><input type="text" id="nv-tasa" placeholder="Ej: 4,9% anual"></div>
           </div>
           <div class="form-grid" style="margin-top:14px">
-            <div class="form-group"><label>Entidad financiera / Fondo</label><input type="text" id="nv-entidad" placeholder="Ej: Banco de Chile / Fondo XYZ"></div>
-            <div class="form-group"><label>Fecha estimada otorgamiento</label><input type="date" id="nv-fecha-otorga"></div>
+            <div class="form-group"><label>Fecha estimada de otorgamiento</label><input type="date" id="nv-fecha-otorga"></div>
+            <div class="form-group"><label>Observaciones de la propiedad</label><input type="text" id="nv-prop-obs" placeholder="Estado, gravámenes, etc."></div>
           </div>
         </div>
       </div>
 
+      <!-- 3. HONORARIOS Y PAGOS -->
       <div class="form-card" style="margin-top:18px">
-        <div class="form-card-header"><span class="h-icon">💰</span><h3>4. Honorarios y facturación</h3><div class="green-dot"></div></div>
+        <div class="form-card-header"><span class="h-icon">💰</span><h3>3. Honorarios y desglose de pagos</h3><div class="green-dot"></div></div>
         <div class="form-body">
-          <div class="form-grid">
-            <div class="form-group"><label>Fee Loans4B (UF) <span class="req">*</span></label><input type="number" id="nv-fee-uf" step="0.01" oninput="nvOnInputUF()"></div>
-            <div class="form-group"><label>Fee Loans4B (CLP)</label><input type="text" id="nv-fee-clp" readonly style="background:var(--green-bg); color:var(--teal); font-weight:600;"></div>
+          <div style="background:var(--green-bg); border-left:3px solid var(--green); padding:10px 14px; border-radius:4px; margin-bottom:14px; font-size:11.5px; color:var(--teal); line-height:1.5;">
+            <strong>💡 Auto-cálculo:</strong> El honorario pre-evaluación se setea según tipo persona (10 UF natural · 20 UF jurídica). El Fee L4B se calcula como % del monto a financiar. Los pagos 3 y 4 se dividen el fee a la mitad. Todos los campos son <strong>editables</strong> para casos especiales.
           </div>
-          <div class="form-grid" style="margin-top:14px">
-            <div class="form-group"><label>% honorarios sobre operación</label><input type="text" id="nv-fee-pct" placeholder="Ej: 3,0% / 5,0%"></div>
-            <div class="form-group"><label>Momento de cobro</label><select id="nv-momento-cobro"><option value="otorgamiento">Al otorgamiento / desembolso</option><option value="parcial">Parcial al inicio · saldo al otorgamiento</option><option value="contado">Contado al cierre</option><option value="otro">Otro (especificar)</option></select></div>
+          <div class="form-grid-3">
+            <div class="form-group"><label>Honorarios pre-evaluación (UF) <span class="req">*</span></label><input type="number" id="nv-honorarios-uf" step="0.01" oninput="nvOnInputUF()" placeholder="10 ó 20"></div>
+            <div class="form-group"><label>Honorarios pre-eval (CLP)</label><input type="text" id="nv-honorarios-clp" readonly style="background:var(--green-bg); color:var(--teal); font-weight:600;"></div>
+            <div class="form-group"><label>Gastos notariales (UF)</label><input type="number" id="nv-gastos-notariales-uf" step="0.01" oninput="nvOnInputUF()" placeholder="Variable"></div>
           </div>
-          <div class="form-grid" style="margin-top:14px">
-            <div class="form-group"><label>Documento a emitir</label><select id="nv-doc"><option value="factura">Factura electrónica afecta a IVA</option><option value="boleta">Boleta de honorarios</option><option value="exenta">Factura exenta</option><option value="otro">Otro</option></select></div>
+          <div class="form-grid-3" style="margin-top:14px">
+            <div class="form-group"><label>Fee L4B (% sobre operación)</label><input type="number" id="nv-fee-pct" step="0.1" value="3" oninput="nvOnInputUF()"><span class="hint">Default 3%.</span></div>
+            <div class="form-group"><label>Fee L4B (UF) <span class="req">*</span></label><input type="number" id="nv-fee-uf" step="0.01" oninput="nvOnInputUFFee()"></div>
+            <div class="form-group"><label>Fee L4B (CLP)</label><input type="text" id="nv-fee-clp" readonly style="background:var(--green-bg); color:var(--teal); font-weight:600;"></div>
+          </div>
+
+          <!-- Tabla de pagos -->
+          <h4 style="font-size:12px; color:var(--teal); text-transform:uppercase; letter-spacing:0.5px; margin:18px 0 8px;">Desglose de pagos</h4>
+          <table class="data-table" style="margin-top:0; font-size:12px;">
+            <thead><tr><th style="width:36px">#</th><th>Descripción del pago</th><th class="num" style="width:110px">UF</th><th class="num" style="width:140px">CLP</th></tr></thead>
+            <tbody>
+              <tr>
+                <td><strong>1</strong></td>
+                <td><input type="text" id="nv-pago1-desc" value="Honorarios pre-evaluación · al firmar contrato" style="border:1px solid var(--border-l); padding:5px 8px; border-radius:4px; font-size:12px; width:100%; font-family:inherit"></td>
+                <td><input type="number" id="nv-pago1-uf" step="0.01" oninput="nvOnPagoChange()" style="border:1px solid var(--border-l); padding:5px 8px; border-radius:4px; font-size:12px; width:100%; text-align:right; font-variant-numeric:tabular-nums; font-family:inherit"></td>
+                <td><input type="text" id="nv-pago1-clp" readonly style="background:var(--green-bg); color:var(--teal); font-weight:600; border:1px solid var(--border-l); padding:5px 8px; border-radius:4px; font-size:12px; width:100%; text-align:right; font-variant-numeric:tabular-nums; font-family:inherit"></td>
+              </tr>
+              <tr>
+                <td><strong>2</strong></td>
+                <td><input type="text" id="nv-pago2-desc" value="Gastos notariales · 10 días después de la firma" style="border:1px solid var(--border-l); padding:5px 8px; border-radius:4px; font-size:12px; width:100%; font-family:inherit"></td>
+                <td><input type="number" id="nv-pago2-uf" step="0.01" oninput="nvOnPagoChange()" style="border:1px solid var(--border-l); padding:5px 8px; border-radius:4px; font-size:12px; width:100%; text-align:right; font-variant-numeric:tabular-nums; font-family:inherit"></td>
+                <td><input type="text" id="nv-pago2-clp" readonly style="background:var(--green-bg); color:var(--teal); font-weight:600; border:1px solid var(--border-l); padding:5px 8px; border-radius:4px; font-size:12px; width:100%; text-align:right; font-variant-numeric:tabular-nums; font-family:inherit"></td>
+              </tr>
+              <tr>
+                <td><strong>3</strong></td>
+                <td><input type="text" id="nv-pago3-desc" value="50% honorarios gestión · al otorgamiento del crédito" style="border:1px solid var(--border-l); padding:5px 8px; border-radius:4px; font-size:12px; width:100%; font-family:inherit"></td>
+                <td><input type="number" id="nv-pago3-uf" step="0.01" oninput="nvOnPagoChange()" style="border:1px solid var(--border-l); padding:5px 8px; border-radius:4px; font-size:12px; width:100%; text-align:right; font-variant-numeric:tabular-nums; font-family:inherit"></td>
+                <td><input type="text" id="nv-pago3-clp" readonly style="background:var(--green-bg); color:var(--teal); font-weight:600; border:1px solid var(--border-l); padding:5px 8px; border-radius:4px; font-size:12px; width:100%; text-align:right; font-variant-numeric:tabular-nums; font-family:inherit"></td>
+              </tr>
+              <tr>
+                <td><strong>4</strong></td>
+                <td><input type="text" id="nv-pago4-desc" value="50% honorarios gestión · contra entrega de aprobación" style="border:1px solid var(--border-l); padding:5px 8px; border-radius:4px; font-size:12px; width:100%; font-family:inherit"></td>
+                <td><input type="number" id="nv-pago4-uf" step="0.01" oninput="nvOnPagoChange()" style="border:1px solid var(--border-l); padding:5px 8px; border-radius:4px; font-size:12px; width:100%; text-align:right; font-variant-numeric:tabular-nums; font-family:inherit"></td>
+                <td><input type="text" id="nv-pago4-clp" readonly style="background:var(--green-bg); color:var(--teal); font-weight:600; border:1px solid var(--border-l); padding:5px 8px; border-radius:4px; font-size:12px; width:100%; text-align:right; font-variant-numeric:tabular-nums; font-family:inherit"></td>
+              </tr>
+              <tr style="background:var(--bg)">
+                <td colspan="2" style="text-align:right; font-weight:700; color:var(--teal); padding-right:14px;">TOTAL operación</td>
+                <td class="num" style="font-weight:700; color:var(--teal);" id="nv-total-uf">—</td>
+                <td class="num" style="font-weight:700; color:var(--teal);" id="nv-total-clp">—</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- 4. FACTURACIÓN Y CONTRATO -->
+      <div class="form-card" style="margin-top:18px">
+        <div class="form-card-header"><span class="h-icon">📄</span><h3>4. Facturación y contrato</h3><div class="green-dot"></div></div>
+        <div class="form-body">
+          <div class="form-grid-3">
+            <div class="form-group"><label>Documento a emitir</label><select id="nv-doc"><option value="factura">Factura electrónica</option><option value="boleta">Boleta de honorarios</option><option value="exenta">Factura exenta</option><option value="otro">Otro</option></select></div>
+            <div class="form-group"><label>Momento de cobro</label><select id="nv-momento-cobro"><option value="otorgamiento">Al otorgamiento</option><option value="parcial">Parcial al inicio</option><option value="contado">Contado al cierre</option><option value="otro">Otro</option></select></div>
             <div class="form-group"><label>Razón social facturación</label><input type="text" id="nv-razon-facturacion" placeholder="Si distinta al cliente"></div>
           </div>
-        </div>
-      </div>
-
-      <div class="form-card" style="margin-top:18px">
-        <div class="form-card-header"><span class="h-icon">📄</span><h3>5. Contrato a enviar</h3><div class="green-dot"></div></div>
-        <div class="form-body">
-          <div class="form-grid">
-            <div class="form-group"><label>Contrato que se enviará al cliente</label><input type="text" id="nv-contrato" placeholder="Ej: Mandato de gestión · Contrato leaseback · Promesa CV"><span class="hint">Texto libre. Indique el nombre exacto del documento contractual.</span></div>
+          <div class="form-grid-3" style="margin-top:14px">
+            <div class="form-group"><label>Contrato a enviar</label><input type="text" id="nv-contrato" placeholder="Ej: Contrato Leaseback"></div>
             <div class="form-group"><label>Estado del contrato</label><select id="nv-contrato-estado"><option value="pendiente">Pendiente de envío</option><option value="enviado">Enviado al cliente</option><option value="firmado">Firmado por el cliente</option><option value="protocolizado">Protocolizado en notaría</option></select></div>
+            <div class="form-group"><label>Fecha envío</label><input type="date" id="nv-contrato-fecha"></div>
           </div>
-          <div class="form-grid" style="margin-top:14px">
-            <div class="form-group"><label>Fecha de envío del contrato</label><input type="date" id="nv-contrato-fecha"></div>
-            <div class="form-group"><label>Anexos / documentos adjuntos</label><input type="text" id="nv-anexos" placeholder="Ej: Pre-evaluación, simulación, mandato"></div>
-          </div>
+          <div class="form-group" style="margin-top:14px"><label>Anexos / documentos adjuntos</label><input type="text" id="nv-anexos" placeholder="Ej: Pre-evaluación, simulación, mandato"></div>
         </div>
       </div>
 
+      <!-- 5. ASESOR Y OBSERVACIONES -->
       <div class="form-card" style="margin-top:18px">
-        <div class="form-card-header"><span class="h-icon">👨‍💼</span><h3>6. Asesor responsable</h3><div class="green-dot"></div></div>
+        <div class="form-card-header"><span class="h-icon">👨‍💼</span><h3>5. Asesor y observaciones</h3><div class="green-dot"></div></div>
         <div class="form-body">
-          <div class="form-grid">
+          <div class="form-grid-3">
             <div class="form-group"><label>Nombre asesor <span class="req">*</span></label><input type="text" id="nv-asesor-nombre"></div>
             <div class="form-group"><label>Correo / Teléfono</label><input type="text" id="nv-asesor-contacto"></div>
-          </div>
-          <div class="form-grid" style="margin-top:14px">
-            <div class="form-group"><label>Origen del lead</label><select id="nv-origen-lead"><option value="referido">Referido</option><option value="web">Sitio web</option><option value="cartera">Cartera propia</option><option value="campaña">Campaña</option><option value="otro">Otro</option></select></div>
             <div class="form-group"><label>% comisión aplicable</label><input type="text" id="nv-comision" placeholder="Según POL-001"></div>
           </div>
-        </div>
-      </div>
-
-      <div class="form-card" style="margin-top:18px">
-        <div class="form-card-header"><span class="h-icon">📝</span><h3>7. Observaciones</h3><div class="green-dot"></div></div>
-        <div class="form-body">
-          <div class="form-group"><label>Observaciones internas para jefatura</label><textarea id="nv-observaciones" rows="3" placeholder="Hitos relevantes, condiciones especiales, riesgos detectados, etc."></textarea></div>
+          <div class="form-group" style="margin-top:14px"><label>Observaciones internas para jefatura</label><textarea id="nv-observaciones" rows="3" placeholder="Hitos relevantes, condiciones especiales, riesgos detectados, etc." style="background:#fafcfd; border:1px solid var(--border); border-radius:8px; padding:10px 13px; font-size:13px; font-family:inherit; resize:vertical; width:100%"></textarea></div>
         </div>
       </div>
 
       <div style="margin-top:22px; display:flex; gap:10px; flex-wrap:wrap;">
         <button type="button" class="btn-pdf" onclick="descargarNotaVenta()"><span>📥</span> Descargar Nota de Venta en PDF</button>
         <button type="button" class="btn green" id="btn-guardar-nv" onclick="guardarNotaActual()"><span>💾</span> Guardar nota en historial</button>
-        <button type="button" class="btn" onclick="precargarUltimaSimulacion()"><span>↻</span> Cargar última simulación</button>
         <button type="button" class="btn ghost" onclick="limpiarNotaVenta()">Limpiar formulario</button>
       </div>
     </form>
-  </div>
-
-  <!-- CONVERSOR UF/CLP -->
-  <div class="view" id="view-conversor">
-    <h1 class="section-title">Conversor UF / CLP</h1>
-    <p class="section-sub">Conversión instantánea bidireccional, usando el valor UF de mindicador.cl.</p>
-    <div class="form-card" style="max-width:680px">
-      <div class="form-card-header"><span class="h-icon">💱</span><h3>Conversión bidireccional</h3><div class="green-dot"></div></div>
-      <div class="form-body">
-        <div class="form-grid">
-          <div class="form-group"><label>Monto en UF</label><input type="number" id="conv-uf" placeholder="Ej: 2500" step="0.01" oninput="convDeUF()"></div>
-          <div class="form-group"><label>Monto en CLP</label><input type="text" id="conv-clp" placeholder="Ej: 100.200.000" oninput="convDeCLP()"></div>
-        </div>
-        <div class="hint" style="margin-top:18px; font-size:12.5px">Valor UF utilizado: <strong id="conv-uf-display">—</strong> · Actualizado <span id="conv-uf-fecha">—</span></div>
-        <div class="hint" style="margin-top:6px; font-size:12.5px">Valor USD observado: <strong id="conv-usd-display">—</strong> · Actualizado <span id="conv-usd-fecha">—</span></div>
-        <div style="margin-top:14px"><button class="btn green" onclick="fetchUF(true)"><span>🔄</span> Actualizar UF / USD</button></div>
-      </div>
-    </div>
   </div>
 
   <!-- CONFIGURACIÓN -->
@@ -1181,6 +1195,61 @@ if(FIREBASE_OK){
     </div>
   </div>
 
+  <!-- ===== MODAL KOMMO CSV IMPORT ===== -->
+  <div class="modal-overlay" id="modal-kommo">
+    <div class="modal" style="max-width:820px; max-height:90vh; display:flex; flex-direction:column">
+      <div class="modal-head">
+        <h3>🔄 Importar leads desde Kommo (CSV)</h3>
+        <button class="modal-close" onclick="cerrarKommoImport()">×</button>
+      </div>
+      <div class="modal-body" style="overflow-y:auto; flex:1; padding-bottom:0;">
+
+        <!-- ESTADO 1: pedir archivo -->
+        <div id="kommo-step1">
+          <p style="font-size:13px; color:var(--text-2); line-height:1.55; margin-bottom:16px;">
+            Sube un archivo CSV exportado desde Kommo (Settings → Leads → Export to CSV). El sistema detecta automáticamente las columnas, te muestra un preview, y solo cuando confirmas hace la importación en bloque a etapa <strong>Contacto</strong>.
+          </p>
+          <div style="background:var(--green-bg); border:1px solid #c9ebde; border-radius:8px; padding:14px 16px; margin-bottom:18px;">
+            <div style="font-size:12.5px; color:var(--teal); font-weight:600; margin-bottom:6px;">📋 Columnas que se auto-detectan</div>
+            <div style="font-size:11.5px; color:var(--text-2); line-height:1.5;">Nombre · Email · Teléfono · RUT · Empresa · Giro · Origen · Tipo de persona · Observaciones. Reconoce variantes en español, inglés y portugués (ej: "name", "nombre", "nome do contato", "full name").</div>
+          </div>
+          <label style="display:block; padding:24px; border:2px dashed var(--border); border-radius:10px; text-align:center; cursor:pointer; background:#fafcfd; transition:all 0.18s;" id="kommo-drop-area">
+            <div style="font-size:32px; margin-bottom:8px;">📎</div>
+            <div style="font-size:13px; color:var(--teal); font-weight:600;">Click para elegir archivo CSV</div>
+            <div style="font-size:11px; color:var(--muted); margin-top:4px;">o arrastra y suelta el archivo aquí</div>
+            <input type="file" id="kommo-file" accept=".csv,text/csv" style="display:none" onchange="procesarArchivoKommo(this.files[0])">
+          </label>
+        </div>
+
+        <!-- ESTADO 2: preview con mapping -->
+        <div id="kommo-step2" style="display:none"></div>
+
+        <!-- ESTADO 3: importando con progress -->
+        <div id="kommo-step3" style="display:none">
+          <div style="text-align:center; padding:36px 20px;">
+            <div style="font-size:36px; margin-bottom:14px;">⏳</div>
+            <div style="font-size:15px; color:var(--teal); font-weight:600; margin-bottom:18px;">Importando leads a Firestore…</div>
+            <div style="background:var(--bg); border-radius:8px; height:14px; overflow:hidden; margin-bottom:10px; max-width:420px; margin-left:auto; margin-right:auto;">
+              <div id="kommo-progress-bar" style="background:linear-gradient(90deg, var(--green), var(--green-l)); height:100%; width:0%; transition:width 0.3s;"></div>
+            </div>
+            <div id="kommo-progress-text" style="font-size:13px; color:var(--muted); font-variant-numeric:tabular-nums;">0 / 0</div>
+            <div style="font-size:11px; color:var(--muted); margin-top:14px; max-width:380px; margin-left:auto; margin-right:auto;">No cierres la ventana hasta que termine. Si la conexión se pierde, los leads ya importados quedan guardados.</div>
+          </div>
+        </div>
+
+        <!-- ESTADO 4: resultado -->
+        <div id="kommo-step4" style="display:none"></div>
+
+      </div>
+      <div class="modal-foot" id="kommo-foot">
+        <button class="btn ghost" id="kommo-btn-cancelar" onclick="cerrarKommoImport()">Cancelar</button>
+        <button class="btn ghost" id="kommo-btn-volver" style="display:none" onclick="kommoVolverAStep1()">← Cambiar archivo</button>
+        <button class="btn green" id="kommo-btn-confirmar" style="display:none" onclick="confirmarImportKommo()">＋ Importar leads</button>
+        <button class="btn green" id="kommo-btn-cerrar-ok" style="display:none" onclick="cerrarKommoImport()">Cerrar</button>
+      </div>
+    </div>
+  </div>
+
   <!-- ===== HISTORIAL ===== -->
   <div class="view" id="view-historial">
     <h1 class="section-title">Historial</h1>
@@ -1249,6 +1318,7 @@ if(FIREBASE_OK){
       </select>
       <button class="btn green" onclick="abrirLeadRapido()"><span>＋</span> Nuevo lead</button>
       <button class="btn ghost" onclick="abrirClienteModal()" title="Crear cliente con todos los campos completos" style="font-size:11.5px">＋ Form completo</button>
+      <button class="btn ghost" onclick="abrirKommoImport()" title="Importar leads masivamente desde un CSV exportado de Kommo" style="font-size:11.5px">🔄 Importar Kommo CSV</button>
     </div>
     <div class="kanban-board" id="pl-board"></div>
   </div>
@@ -2449,6 +2519,13 @@ function precargarNotaDesdeSimulacion(origen){
   document.getElementById('nv-fee-pct').value = datos.feePct || '';
   document.getElementById('nv-asesor-nombre').value = cfg.nombre || '';
   document.getElementById('nv-asesor-contacto').value = ((cfg.email||'')+(cfg.telefono?' · '+cfg.telefono:'')).trim();
+  // Auto-calcular honorarios + fee + pagos al pre-cargar
+  nvOnTipoPersonaChange(); // ajusta visibilidad + honorarios default
+  // resetear flags touched para que se auto-rellenen los pagos
+  ['nv-pago1-uf','nv-pago2-uf','nv-pago3-uf','nv-pago4-uf'].forEach(id => {
+    const el = document.getElementById(id); if(el) delete el.dataset.touched;
+  });
+  nvOnInputUF();
   document.getElementById('nv-aviso-vacio').style.display='none';
   document.getElementById('nv-fuente').style.display='flex';
   document.getElementById('nv-fuente-tipo').textContent = origen==='hipotecario' ? 'Crédito Hipotecario' : 'Leaseback Inmobiliario';
@@ -2459,16 +2536,121 @@ function limpiarNotaVenta(){
   document.querySelectorAll('#form-nv input, #form-nv select, #form-nv textarea').forEach(el=>{
     if(el.tagName==='SELECT') el.selectedIndex=0;
     else el.value='';
+    if(el.dataset) delete el.dataset.touched;
   });
+  // Restaurar valores default editados (descripciones de pagos)
+  const p1 = document.getElementById('nv-pago1-desc'); if(p1) p1.value = 'Honorarios pre-evaluación · al firmar contrato';
+  const p2 = document.getElementById('nv-pago2-desc'); if(p2) p2.value = 'Gastos notariales · 10 días después de la firma';
+  const p3 = document.getElementById('nv-pago3-desc'); if(p3) p3.value = '50% honorarios gestión · al otorgamiento del crédito';
+  const p4 = document.getElementById('nv-pago4-desc'); if(p4) p4.value = '50% honorarios gestión · contra entrega de aprobación';
+  const feePct = document.getElementById('nv-fee-pct'); if(feePct) feePct.value = '3';
+  nvOnTipoPersonaChange();
+  nvActualizarPagosCLP();
   document.getElementById('nv-aviso-vacio').style.display='flex';
   document.getElementById('nv-fuente').style.display='none';
 }
 
 function nvOnInputUF(){
-  const v=parseFloat(document.getElementById('nv-valor-uf').value)||0;
-  const f=parseFloat(document.getElementById('nv-fee-uf').value)||0;
-  document.getElementById('nv-valor-clp').value=v>0?fmtCLP(v*UF_VALOR):'';
-  document.getElementById('nv-fee-clp').value=f>0?fmtCLP(f*UF_VALOR):'';
+  // Valor inmueble UF → CLP
+  const valor = parseFloat(document.getElementById('nv-valor-uf').value)||0;
+  document.getElementById('nv-valor-clp').value = valor>0 ? fmtCLP(valor*UF_VALOR) : '';
+  // Monto a financiar UF → CLP
+  const monto = parseFloat(document.getElementById('nv-monto-uf').value)||0;
+  document.getElementById('nv-monto-clp').value = monto>0 ? fmtCLP(monto*UF_VALOR) : '';
+  // Honorarios pre-eval UF → CLP
+  const hon = parseFloat(document.getElementById('nv-honorarios-uf').value)||0;
+  document.getElementById('nv-honorarios-clp').value = hon>0 ? fmtCLP(hon*UF_VALOR) : '';
+  // Fee L4B: si hay monto y %, recalcular fee UF; sino dejar como está (override manual)
+  const pct = parseFloat(document.getElementById('nv-fee-pct').value)||0;
+  if(monto>0 && pct>0){
+    const feeUFCalc = monto * pct / 100;
+    document.getElementById('nv-fee-uf').value = Math.round(feeUFCalc*100)/100;
+  }
+  const fee = parseFloat(document.getElementById('nv-fee-uf').value)||0;
+  document.getElementById('nv-fee-clp').value = fee>0 ? fmtCLP(fee*UF_VALOR) : '';
+  // Gastos notariales UF → CLP
+  const gn = parseFloat(document.getElementById('nv-gastos-notariales-uf').value)||0;
+  // (gastos notariales CLP no tiene campo visible, lo calculamos solo para los pagos)
+  // Auto-asignar a los pagos cuando el usuario aún no ha hecho override
+  // Pago 1 = honorarios pre-eval
+  const p1 = document.getElementById('nv-pago1-uf');
+  if(p1 && (!p1.dataset.touched || p1.value === '')) p1.value = hon>0 ? hon : '';
+  // Pago 2 = gastos notariales
+  const p2 = document.getElementById('nv-pago2-uf');
+  if(p2 && (!p2.dataset.touched || p2.value === '')) p2.value = gn>0 ? gn : '';
+  // Pago 3 = fee/2
+  const p3 = document.getElementById('nv-pago3-uf');
+  if(p3 && (!p3.dataset.touched || p3.value === '')) p3.value = fee>0 ? Math.round((fee/2)*100)/100 : '';
+  // Pago 4 = fee/2
+  const p4 = document.getElementById('nv-pago4-uf');
+  if(p4 && (!p4.dataset.touched || p4.value === '')) p4.value = fee>0 ? Math.round((fee/2)*100)/100 : '';
+  nvActualizarPagosCLP();
+}
+
+/* Cuando el usuario edita el fee UF directamente, recalcular % y pagos 3/4 */
+function nvOnInputUFFee(){
+  const monto = parseFloat(document.getElementById('nv-monto-uf').value)||0;
+  const fee = parseFloat(document.getElementById('nv-fee-uf').value)||0;
+  if(monto>0 && fee>0){
+    const pctCalc = (fee / monto) * 100;
+    document.getElementById('nv-fee-pct').value = Math.round(pctCalc*100)/100;
+  }
+  document.getElementById('nv-fee-clp').value = fee>0 ? fmtCLP(fee*UF_VALOR) : '';
+  // Pagos 3 y 4 = fee/2 cada uno (si no han sido editados manualmente)
+  const p3 = document.getElementById('nv-pago3-uf');
+  if(p3 && !p3.dataset.touched) p3.value = fee>0 ? Math.round((fee/2)*100)/100 : '';
+  const p4 = document.getElementById('nv-pago4-uf');
+  if(p4 && !p4.dataset.touched) p4.value = fee>0 ? Math.round((fee/2)*100)/100 : '';
+  nvActualizarPagosCLP();
+}
+
+/* Cuando el usuario edita un pago manualmente, marcar como "touched" para no sobreescribir */
+function nvOnPagoChange(){
+  ['nv-pago1-uf','nv-pago2-uf','nv-pago3-uf','nv-pago4-uf'].forEach(id => {
+    const el = document.getElementById(id);
+    if(el && el === document.activeElement) el.dataset.touched = '1';
+  });
+  nvActualizarPagosCLP();
+}
+
+/* Recalcula los CLP de cada pago + el total */
+function nvActualizarPagosCLP(){
+  let totalUF = 0;
+  ['nv-pago1','nv-pago2','nv-pago3','nv-pago4'].forEach(p => {
+    const ufEl = document.getElementById(p+'-uf');
+    const clpEl = document.getElementById(p+'-clp');
+    const uf = parseFloat(ufEl ? ufEl.value : 0) || 0;
+    if(clpEl) clpEl.value = uf>0 ? fmtCLP(uf*UF_VALOR) : '';
+    totalUF += uf;
+  });
+  const totUF = document.getElementById('nv-total-uf');
+  const totCLP = document.getElementById('nv-total-clp');
+  if(totUF) totUF.textContent = totalUF>0 ? fmtUF(totalUF) : '—';
+  if(totCLP) totCLP.textContent = totalUF>0 ? fmtCLP(totalUF*UF_VALOR) : '—';
+}
+
+/* Cuando cambia el tipo de persona:
+   - Si jurídica: mostrar fila PJ (giro, representante, RUT rep), label "Domicilio comercial",
+     auto-honorarios a 20 UF si campo vacío.
+   - Si natural: ocultar fila PJ, label "Domicilio particular", auto-honorarios a 10 UF si vacío. */
+function nvOnTipoPersonaChange(){
+  const tipo = document.getElementById('nv-tipo-persona').value;
+  const pjRow = document.getElementById('nv-pj-row');
+  const nomLbl = document.getElementById('nv-nombre-label');
+  const dirLbl = document.getElementById('nv-direccion-label');
+  const honEl  = document.getElementById('nv-honorarios-uf');
+  if(tipo === 'juridica'){
+    if(pjRow) pjRow.style.display = '';
+    if(nomLbl) nomLbl.innerHTML = 'Razón social <span class="req">*</span>';
+    if(dirLbl) dirLbl.textContent = 'Domicilio comercial';
+    if(honEl && (!honEl.value || parseFloat(honEl.value) === 10)){ honEl.value = '20'; }
+  } else {
+    if(pjRow) pjRow.style.display = 'none';
+    if(nomLbl) nomLbl.innerHTML = 'Nombre completo <span class="req">*</span>';
+    if(dirLbl) dirLbl.textContent = 'Domicilio particular';
+    if(honEl && (!honEl.value || parseFloat(honEl.value) === 20)){ honEl.value = '10'; }
+  }
+  nvOnInputUF(); // recalcular todo
 }
 
 function sectionH(t){ return '<h2 style="font-size:11px; font-weight:700; color:#0a3d4a; text-transform:uppercase; letter-spacing:0.5px; border-bottom:1.5px solid #2aa07f; padding-bottom:3px; margin:14px 0 6px;">'+t+'</h2>'; }
@@ -2480,91 +2662,118 @@ function descargarNotaVenta(){
   if(!get('nv-nombre')){ alert('Falta el nombre del cliente.'); return; }
   if(!get('nv-rut')){ alert('Falta el RUT del cliente.'); return; }
 
+  const tipoPersona = get('nv-tipo-persona');
+  const esPJ = tipoPersona === 'juridica';
   const valorUF = parseFloat(get('nv-valor-uf'))||0;
   const montoUF = parseFloat(get('nv-monto-uf'))||0;
   const feeUF   = parseFloat(get('nv-fee-uf'))||0;
+  const feePct  = parseFloat(get('nv-fee-pct'))||0;
+  const honUF   = parseFloat(get('nv-honorarios-uf'))||0;
+  const gnUF    = parseFloat(get('nv-gastos-notariales-uf'))||0;
   const idNota  = generarIdCot();
   const fechaHoy = fmtFecha();
 
-  const f = (label, val) => '<tr><td style="padding:5px 10px; border-bottom:1px dotted #d8e0e4; color:#6a7a85; font-size:9.5pt; text-transform:uppercase; letter-spacing:0.3px; font-weight:600; width:38mm; vertical-align:top;">'+label+'</td><td style="padding:5px 10px; border-bottom:1px dotted #d8e0e4; font-size:10pt; color:#1f2d3d;">'+(val||'—')+'</td></tr>';
+  // Datos de pagos
+  const pagos = [1,2,3,4].map(i => ({
+    n: i,
+    desc: get('nv-pago'+i+'-desc'),
+    uf: parseFloat(get('nv-pago'+i+'-uf'))||0
+  }));
+  const totalUF = pagos.reduce((s,p) => s + p.uf, 0);
+
+  // Helper: fila clave-valor compacta
+  const r = (lbl, val) => '<tr><td style="padding:3px 8px; border-bottom:1px dotted #d8e0e4; color:#6a7a85; font-size:8.5pt; text-transform:uppercase; letter-spacing:0.2px; font-weight:600; width:34mm; vertical-align:top;">'+lbl+'</td><td style="padding:3px 8px; border-bottom:1px dotted #d8e0e4; font-size:9pt; color:#1f2d3d;">'+(val||'—')+'</td></tr>';
+  // Helper: sección title compacta
+  const sec = (t) => '<h2 style="font-size:9.5pt; font-weight:700; color:#0a3d4a; text-transform:uppercase; letter-spacing:0.4px; border-bottom:1.2px solid #2aa07f; padding-bottom:2px; margin:10px 0 4px;">'+t+'</h2>';
   const obs = get('nv-observaciones');
 
+  // === BLOQUE CLIENTE (compacto, 2 columnas) ===
+  let clienteRows = r('Tipo persona', getSel('nv-tipo-persona')) +
+                    r(esPJ ? 'Razón social' : 'Nombre', get('nv-nombre')) +
+                    r('RUT', get('nv-rut'));
+  if(esPJ){
+    clienteRows += r('Giro', get('nv-giro')) +
+                   r('Representante legal', get('nv-rep-nombre')) +
+                   r('RUT representante', get('nv-rep-rut'));
+  }
+  clienteRows += r('Email', get('nv-email')) +
+                 r('Teléfono', get('nv-telefono')) +
+                 r(esPJ ? 'Domicilio comercial' : 'Domicilio particular',
+                   (get('nv-direccion')+(get('nv-comuna')?', '+get('nv-comuna'):'')+(get('nv-region')?', '+get('nv-region'):'')).replace(/^,\s*|,\s*$/g,''));
+
+  // === BLOQUE OPERACIÓN ===
+  let opRows = r('Producto', getSel('nv-producto')) +
+               r('Tipo propiedad', getSel('nv-tipo-propiedad')) +
+               r('Dirección propiedad', (get('nv-prop-direccion')+(get('nv-prop-comuna')?', '+get('nv-prop-comuna'):'')+(get('nv-prop-region')?', '+get('nv-prop-region'):'')).replace(/^,\s*|,\s*$/g,'')) +
+               (get('nv-rol') ? r('Rol avalúo', get('nv-rol')) : '') +
+               r('Valor inmueble', valorUF>0 ? fmtUF(valorUF)+' &nbsp; · &nbsp; '+fmtCLP(valorUF*UF_VALOR) : '—') +
+               r('<strong style="color:#0a3d4a">Monto a financiar</strong>', montoUF>0 ? '<strong>'+fmtUF(montoUF)+' &nbsp; · &nbsp; '+fmtCLP(montoUF*UF_VALOR)+'</strong>' : '—') +
+               r('Plazo', get('nv-plazo')) +
+               r('Tasa pactada', get('nv-tasa')) +
+               (get('nv-fecha-otorga') ? r('Fecha otorgamiento', get('nv-fecha-otorga')) : '');
+
+  // === BLOQUE HONORARIOS & PAGOS (con tabla prominente) ===
+  let honorariosResumen = '<table style="width:100%; border-collapse:collapse;">' +
+    r('Honorarios pre-eval', honUF>0 ? fmtUF(honUF)+' · '+fmtCLP(honUF*UF_VALOR) : '—') +
+    r('Fee L4B ('+(feePct||3)+'%)', feeUF>0 ? fmtUF(feeUF)+' · '+fmtCLP(feeUF*UF_VALOR) : '—') +
+    (gnUF>0 ? r('Gastos notariales', fmtUF(gnUF)+' · '+fmtCLP(gnUF*UF_VALOR)) : '') +
+  '</table>';
+
+  let pagosTable = '<table style="width:100%; border-collapse:collapse; font-size:9pt; margin-top:6px;">' +
+    '<thead><tr style="background:#0a3d4a; color:#fff;">' +
+      '<th style="padding:5px 8px; text-align:center; width:24px; font-size:8.5pt; font-weight:700;">#</th>' +
+      '<th style="padding:5px 8px; text-align:left; font-size:8.5pt; font-weight:700;">Descripción</th>' +
+      '<th style="padding:5px 8px; text-align:right; width:60px; font-size:8.5pt; font-weight:700;">UF</th>' +
+      '<th style="padding:5px 8px; text-align:right; width:90px; font-size:8.5pt; font-weight:700;">CLP</th>' +
+    '</tr></thead><tbody>';
+  pagos.forEach(p => {
+    pagosTable += '<tr style="border-bottom:1px solid #e5e7eb;">' +
+      '<td style="padding:4px 8px; text-align:center; color:#0a3d4a; font-weight:700;">'+p.n+'</td>' +
+      '<td style="padding:4px 8px; color:#1f2d3d;">'+escapeHTML(p.desc||'—')+'</td>' +
+      '<td style="padding:4px 8px; text-align:right; font-variant-numeric:tabular-nums; color:#1f2d3d;">'+(p.uf>0?fmtNum(p.uf,2):'—')+'</td>' +
+      '<td style="padding:4px 8px; text-align:right; font-variant-numeric:tabular-nums; color:#1f2d3d;">'+(p.uf>0?fmtCLP(p.uf*UF_VALOR):'—')+'</td>' +
+    '</tr>';
+  });
+  pagosTable += '<tr style="background:#eaf6f2;">' +
+    '<td colspan="2" style="padding:5px 8px; text-align:right; font-weight:700; color:#0a3d4a;">TOTAL operación</td>' +
+    '<td style="padding:5px 8px; text-align:right; font-weight:700; color:#0a3d4a; font-variant-numeric:tabular-nums;">'+(totalUF>0?fmtNum(totalUF,2):'—')+'</td>' +
+    '<td style="padding:5px 8px; text-align:right; font-weight:700; color:#0a3d4a; font-variant-numeric:tabular-nums;">'+(totalUF>0?fmtCLP(totalUF*UF_VALOR):'—')+'</td>' +
+  '</tr></tbody></table>';
+
+  // === BLOQUE FACTURACIÓN/CONTRATO/ASESOR (resumen 2 columnas) ===
+  let cierreRows = '<table style="width:100%; border-collapse:collapse;">' +
+    r('Documento a emitir', getSel('nv-doc')) +
+    (get('nv-razon-facturacion') ? r('Razón social facturación', get('nv-razon-facturacion')) : '') +
+    (get('nv-contrato') ? r('Contrato', get('nv-contrato')+(getSel('nv-contrato-estado')?' · '+getSel('nv-contrato-estado'):'')) : '') +
+    (get('nv-contrato-fecha') ? r('Fecha envío contrato', get('nv-contrato-fecha')) : '') +
+    (get('nv-anexos') ? r('Anexos', get('nv-anexos')) : '') +
+    r('Asesor responsable', get('nv-asesor-nombre')+(get('nv-asesor-contacto')?' · '+get('nv-asesor-contacto'):'')) +
+    (get('nv-comision') ? r('% comisión', get('nv-comision')) : '') +
+  '</table>';
+
+  // === HTML FINAL — diseño compacto pensado para 1 página A4 ===
   const html =
-    '<div style="display:flex; justify-content:space-between; align-items:flex-end; padding:0 0 12px 0; border-bottom:2px solid #0a3d4a; margin-bottom:14px;">' +
-      '<div><div style="font-size:24px; font-weight:800; color:#0a3d4a; letter-spacing:-0.5px;">loans<span style="color:#2aa07f">4B</span></div>' +
-      '<div style="font-size:9px; color:#6a7a85; letter-spacing:1.6px; text-transform:uppercase; margin-top:4px; font-weight:500;">Just loans for business</div></div>' +
-      '<div style="text-align:right; font-size:10px; color:#3a4a55;">' +
-        '<div style="font-weight:700; color:#0a3d4a; font-size:11px;">NOTA DE VENTA INTERNA</div>' +
-        '<div style="margin-top:2px;">F-003 · Uso interno comercial</div>' +
-        '<div>N° nota: <strong>'+idNota+'</strong></div>' +
+    '<div style="display:flex; justify-content:space-between; align-items:flex-end; padding:0 0 8px 0; border-bottom:2px solid #0a3d4a; margin-bottom:10px;">' +
+      '<div><div style="font-size:20px; font-weight:800; color:#0a3d4a; letter-spacing:-0.5px;">loans<span style="color:#2aa07f">4B</span></div>' +
+      '<div style="font-size:8px; color:#6a7a85; letter-spacing:1.4px; text-transform:uppercase; margin-top:2px; font-weight:500;">Just loans for business</div></div>' +
+      '<div style="text-align:right; font-size:9pt; color:#3a4a55;">' +
+        '<div style="font-weight:700; color:#0a3d4a; font-size:10pt;">NOTA DE VENTA INTERNA</div>' +
+        '<div style="margin-top:1px;">F-003 · N° '+idNota+'</div>' +
         '<div>Fecha: '+fechaHoy+'</div>' +
       '</div>' +
     '</div>' +
-    '<h1 style="font-family:\'Playfair Display\',serif; font-size:20px; color:#0a3d4a; margin:14px 0 4px;">Nota de Venta · Interna</h1>' +
-    '<div style="font-size:10.5px; color:#6a7a85; margin-bottom:14px; font-style:italic;">Trigger de liquidación de comisión · POL-001 vigente.</div>' +
-    '<div style="background:#eaf6f2; border-left:3px solid #2aa07f; padding:8px 12px; border-radius:4px; font-size:9.5pt; color:#14525f; margin-bottom:14px; line-height:1.5;">' +
-      'Documento de <strong>uso exclusivamente interno</strong>. Lo completa el asesor responsable al concretar una operación. Una vez validado por jefatura, gatilla la facturación al cliente y la liquidación de comisión al asesor.' +
-    '</div>' +
-    sectionH('1. Información del cliente') +
-    '<table style="width:100%; border-collapse:collapse;">' +
-      f('Nombre / Razón social', get('nv-nombre')) +
-      f('RUT', get('nv-rut')) +
-      f('Tipo persona', getSel('nv-tipo-persona')) +
-      f('Giro / Actividad', get('nv-giro')) +
-      f('Correo', get('nv-email')) +
-      f('Teléfono', get('nv-telefono')) +
-      f('Dirección particular', get('nv-direccion')) +
-      f('Comuna / Ciudad', get('nv-comuna')) +
-    '</table>' +
-    sectionH('2. Datos de la propiedad') +
-    '<table style="width:100%; border-collapse:collapse;">' +
-      f('Rol de avalúo', get('nv-rol')) +
-      f('Tipo propiedad', getSel('nv-tipo-propiedad')) +
-      f('Dirección propiedad', get('nv-prop-direccion')) +
-      f('Comuna propiedad', get('nv-prop-comuna')) +
-      f('Región', get('nv-prop-region')) +
-      f('Valor propiedad', valorUF>0 ? fmtUF(valorUF)+' &nbsp; · &nbsp; '+fmtCLP(valorUF*UF_VALOR) : '—') +
-      f('Observaciones propiedad', get('nv-prop-obs')) +
-    '</table>' +
-    sectionH('3. Producto contratado') +
-    '<table style="width:100%; border-collapse:collapse;">' +
-      f('Producto', getSel('nv-producto')) +
-      f('Monto operación', montoUF>0 ? fmtUF(montoUF)+' &nbsp; · &nbsp; '+fmtCLP(montoUF*UF_VALOR) : '—') +
-      f('Plazo', get('nv-plazo')) +
-      f('Tasa pactada', get('nv-tasa')) +
-      f('Entidad / Fondo', get('nv-entidad')) +
-      f('Fecha estim. otorgamiento', get('nv-fecha-otorga')) +
-    '</table>' +
-    sectionH('4. Honorarios y facturación') +
-    '<table style="width:100%; border-collapse:collapse;">' +
-      f('Fee Loans4B', feeUF>0 ? '<strong style="color:#0a3d4a;">'+fmtUF(feeUF)+' &nbsp; · &nbsp; '+fmtCLP(feeUF*UF_VALOR)+'</strong>' : '—') +
-      f('% sobre operación', get('nv-fee-pct')) +
-      f('Momento de cobro', getSel('nv-momento-cobro')) +
-      f('Documento a emitir', getSel('nv-doc')) +
-      f('Razón social facturación', get('nv-razon-facturacion')) +
-    '</table>' +
-    sectionH('5. Contrato a enviar') +
-    '<table style="width:100%; border-collapse:collapse;">' +
-      f('Contrato', get('nv-contrato')) +
-      f('Estado', getSel('nv-contrato-estado')) +
-      f('Fecha envío', get('nv-contrato-fecha')) +
-      f('Anexos', get('nv-anexos')) +
-    '</table>' +
-    sectionH('6. Asesor responsable') +
-    '<table style="width:100%; border-collapse:collapse;">' +
-      f('Asesor', get('nv-asesor-nombre')) +
-      f('Contacto', get('nv-asesor-contacto')) +
-      f('Origen del lead', getSel('nv-origen-lead')) +
-      f('% comisión aplicable', get('nv-comision')) +
-    '</table>' +
-    (obs ? sectionH('7. Observaciones') + '<div style="border:1px solid #d8e0e4; border-radius:6px; padding:10px 14px; background:#fafcfd; font-size:10pt; line-height:1.55; min-height:18mm; white-space:pre-wrap;">'+obs+'</div>' : '') +
-    '<div style="display:grid; grid-template-columns:1fr 1fr; gap:16mm; margin-top:18mm;">' +
-      '<div style="border-top:1px solid #1f2d3d; padding-top:4px; font-size:9pt; color:#3a4a55; text-align:center;"><strong style="display:block; font-size:10pt; color:#0a3d4a;">Asesor responsable</strong>Nombre · Firma · Fecha</div>' +
-      '<div style="border-top:1px solid #1f2d3d; padding-top:4px; font-size:9pt; color:#3a4a55; text-align:center;"><strong style="display:block; font-size:10pt; color:#0a3d4a;">Jefatura Comercial L4B</strong>Nombre · Firma · Fecha</div>' +
-    '</div>' +
-    '<p style="font-size:8pt; color:#6a7a85; font-style:italic; margin-top:14px; line-height:1.5; text-align:justify;">' +
-      'Asesorías Loans4B SpA · RUT 78.302.775-5 · Documento de uso interno y confidencial. Esta nota es el trigger formal para el proceso de facturación al cliente y la liquidación de comisión al asesor, conforme a la Política de Comisiones POL-001 vigente. La información registrada queda sujeta a verificación por la jefatura comercial.' +
-    '</p>';
+    '<div style="font-size:8.5pt; color:#6a7a85; margin-bottom:10px; font-style:italic;">Documento interno · Trigger de liquidación de comisión y base de datos para emisión de contrato.</div>' +
+    sec('1. Información del cliente') +
+    '<table style="width:100%; border-collapse:collapse;">' + clienteRows + '</table>' +
+    sec('2. Datos de la operación') +
+    '<table style="width:100%; border-collapse:collapse;">' + opRows + '</table>' +
+    sec('3. Honorarios y desglose de pagos') +
+    honorariosResumen +
+    pagosTable +
+    sec('4. Facturación · contrato · asesor') +
+    cierreRows +
+    (obs ? sec('5. Observaciones') + '<div style="border:1px solid #d8e0e4; border-radius:4px; padding:6px 10px; background:#fafcfd; font-size:9pt; line-height:1.4; white-space:pre-wrap;">'+escapeHTML(obs)+'</div>' : '') +
+    '<div style="margin-top:12px; font-size:7.5pt; color:#9aa3ab; text-align:center; line-height:1.4; border-top:1px solid #e5e7eb; padding-top:6px;">Asesorías Loans4B SpA · RUT 78.302.775-5 · Documento de uso interno y confidencial. Trigger formal para facturación y liquidación de comisión conforme POL-001 vigente.</div>';
 
   generarPDF(html, 'Nota de Venta · ' + (get('nv-nombre') || 'cliente'));
 }
@@ -2934,6 +3143,476 @@ async function guardarLeadRapido(abrirFichaTrasGuardar){
   });
 })();
 
+/* ============================================================
+   IMPORTAR KOMMO CSV — Carga masiva de leads
+   Estados: 1 archivo → 2 preview+mapping → 3 progress → 4 resultado
+   ============================================================ */
+let KOMMO_STATE = null;
+
+/* === CSV parser robusto (RFC 4180): quoted strings, escaped quotes, line endings === */
+function parseCSV(text){
+  // Strip UTF-8 BOM
+  if(text.charCodeAt(0) === 0xFEFF) text = text.slice(1);
+  // Normalizar line endings
+  text = text.replace(/\r\n/g,'\n').replace(/\r/g,'\n');
+  // Detectar separador (coma vs punto y coma — algunos exportadores usan ;)
+  const firstLine = text.split('\n')[0] || '';
+  const commaCnt = (firstLine.match(/,/g)||[]).length;
+  const semiCnt = (firstLine.match(/;/g)||[]).length;
+  const sep = semiCnt > commaCnt ? ';' : ',';
+
+  const rows = [];
+  let row = [];
+  let field = '';
+  let inQuotes = false;
+  let i = 0;
+  while(i < text.length){
+    const ch = text[i];
+    if(inQuotes){
+      if(ch === '"' && text[i+1] === '"'){ field += '"'; i += 2; continue; }
+      if(ch === '"'){ inQuotes = false; i++; continue; }
+      field += ch; i++; continue;
+    }
+    if(ch === '"' && field === ''){ inQuotes = true; i++; continue; }
+    if(ch === sep){ row.push(field); field = ''; i++; continue; }
+    if(ch === '\n'){ row.push(field); rows.push(row); row = []; field = ''; i++; continue; }
+    field += ch; i++;
+  }
+  if(field !== '' || row.length > 0){ row.push(field); rows.push(row); }
+  // Quitar filas vacías al final
+  while(rows.length && rows[rows.length-1].every(x => !String(x).trim())) rows.pop();
+  if(rows.length === 0) return { headers: [], rows: [] };
+
+  const headers = rows[0].map(h => String(h).trim()).filter((h,i,a) => a.indexOf(h)===i || h);
+  // Si hay headers duplicados, los renombramos para no perder columnas
+  const seen = {};
+  const finalHeaders = rows[0].map(h => {
+    let name = String(h).trim() || 'columna_'+(seen.__count = (seen.__count||0)+1);
+    if(seen[name]){ name = name + '_' + (++seen[name]); }
+    seen[name] = 1;
+    return name;
+  });
+  delete seen.__count;
+
+  const dataRows = rows.slice(1).map(r => {
+    const obj = {};
+    finalHeaders.forEach((h, idx) => { obj[h] = String(r[idx] || '').trim(); });
+    return obj;
+  });
+  return { headers: finalHeaders, rows: dataRows };
+}
+
+/* === Detección automática de columnas (multi-idioma) === */
+const KOMMO_HEADER_PATTERNS = {
+  nombre:        /^(nombre|name|full[\s_-]?name|cliente|lead[\s_-]?name|nome|nome[\s_-]?do[\s_-]?contato|raz[oó]n[\s_-]?social|company[\s_-]?name|first[\s_-]?name)/i,
+  email:         /(e[\s_-]?mail|correo|correo[\s_-]?electr[oó]nico|email[\s_-]?principal)/i,
+  telefono:      /(tel[eé]fono|phone|phone[\s_-]?\d?|mobile|m[oó]vil|celular|whatsapp|^tel$|tel\s?\d?|telefone)/i,
+  rut:           /^(rut|rut\/dni|documento|tax[\s_-]?id|cuit|dni|n[uú]mero[\s_-]?de[\s_-]?identificaci[oó]n)/i,
+  empresa:       /^(empresa|company|organization|organisation|business|cuenta|account[\s_-]?name)/i,
+  giro:          /^(giro|actividad|industry|sector)/i,
+  origen:        /(origen|^source$|lead[\s_-]?source|fuente|origen[\s_-]?del[\s_-]?lead|utm[\s_-]?source)/i,
+  tipo_persona:  /^(tipo[\s_-]?(de[\s_-]?)?persona|persona\b|^tipo$)/i,
+  observaciones: /^(observ|notas?|notes?|comments?|coment|description|descripci[oó]n|tags|etiquetas)/i
+};
+
+function kommoDetectarColumna(header){
+  const h = String(header||'').trim();
+  if(!h) return null;
+  for(const field of Object.keys(KOMMO_HEADER_PATTERNS)){
+    if(KOMMO_HEADER_PATTERNS[field].test(h)) return field;
+  }
+  return null;
+}
+
+const KOMMO_FIELD_LABELS = {
+  nombre:'Nombre', email:'Email', telefono:'Teléfono', rut:'RUT',
+  empresa:'Empresa', giro:'Giro', origen:'Origen', tipo_persona:'Tipo persona',
+  observaciones:'Observaciones'
+};
+const KOMMO_FIELDS_ORDER = ['nombre','rut','email','telefono','empresa','giro','tipo_persona','origen','observaciones'];
+
+/* === Helper: obtener valor mapeado === */
+function kommoGet(row, mapping, field){
+  const col = Object.keys(mapping).find(k => mapping[k] === field);
+  return col ? String(row[col]||'').trim() : '';
+}
+
+/* === Validar fila: nombre obligatorio + (email OR teléfono) === */
+function kommoValidarLead(row, mapping){
+  const nombre = kommoGet(row, mapping, 'nombre');
+  const email = kommoGet(row, mapping, 'email');
+  const telefono = kommoGet(row, mapping, 'telefono');
+  if(!nombre) return { valid:false, reason:'sin nombre' };
+  if(!email && !telefono) return { valid:false, reason:'sin email ni teléfono' };
+  return { valid:true };
+}
+
+/* === Inferir tipo persona (natural o jurídica) === */
+function kommoInferirTipoPersona(row, mapping){
+  const tipoCol = Object.keys(mapping).find(k => mapping[k] === 'tipo_persona');
+  if(tipoCol){
+    const v = String(row[tipoCol]||'').toLowerCase();
+    if(v.includes('jur') || v.includes('legal') || v.includes('comp') || v.includes('emp')) return 'juridica';
+    if(v.includes('nat') || v.includes('per')) return 'natural';
+  }
+  const emp = kommoGet(row, mapping, 'empresa');
+  const giro = kommoGet(row, mapping, 'giro');
+  if(emp || giro) return 'juridica';
+  return 'natural';
+}
+
+/* === Detectar duplicados con CLIENTES_CACHE del mismo asesor === */
+function kommoDetectarDuplicados(rows, mapping){
+  if(!CURRENT_USER) return [];
+  const uid = CURRENT_USER.uid;
+  const norm = s => String(s||'').replace(/[\s.\-]/g,'').toUpperCase();
+  const normEmail = s => String(s||'').toLowerCase().trim();
+  const dups = [];
+  rows.forEach((row, idx) => {
+    const rut = kommoGet(row, mapping, 'rut');
+    const email = kommoGet(row, mapping, 'email');
+    const rutN = norm(rut);
+    const emailN = normEmail(email);
+    if(!rutN && !emailN) return;
+    const existing = CLIENTES_CACHE.find(c => {
+      if(c.asesorId !== uid) return false;
+      if(rutN && norm(c.rut) === rutN) return true;
+      if(emailN && normEmail(c.email) === emailN) return true;
+      return false;
+    });
+    if(existing) dups.push({ rowIdx: idx, existing });
+  });
+  return dups;
+}
+
+/* === API DEL MODAL === */
+function abrirKommoImport(){
+  KOMMO_STATE = null;
+  document.getElementById('kommo-step1').style.display = 'block';
+  document.getElementById('kommo-step2').style.display = 'none';
+  document.getElementById('kommo-step3').style.display = 'none';
+  document.getElementById('kommo-step4').style.display = 'none';
+  document.getElementById('kommo-btn-cancelar').style.display = 'inline-flex';
+  document.getElementById('kommo-btn-volver').style.display = 'none';
+  document.getElementById('kommo-btn-confirmar').style.display = 'none';
+  document.getElementById('kommo-btn-cerrar-ok').style.display = 'none';
+  const fileInput = document.getElementById('kommo-file');
+  if(fileInput) fileInput.value = '';
+  document.getElementById('modal-kommo').classList.add('active');
+}
+
+function cerrarKommoImport(){
+  document.getElementById('modal-kommo').classList.remove('active');
+  KOMMO_STATE = null;
+}
+
+function kommoVolverAStep1(){
+  document.getElementById('kommo-step1').style.display = 'block';
+  document.getElementById('kommo-step2').style.display = 'none';
+  document.getElementById('kommo-btn-volver').style.display = 'none';
+  document.getElementById('kommo-btn-confirmar').style.display = 'none';
+  document.getElementById('kommo-file').value = '';
+  KOMMO_STATE = null;
+}
+
+function procesarArchivoKommo(file){
+  if(!file) return;
+  if(file.size > 10 * 1024 * 1024){ // 10 MB
+    alert('El archivo es muy grande (>10 MB). Divídelo en partes más pequeñas.');
+    return;
+  }
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    try {
+      const text = e.target.result;
+      const parsed = parseCSV(text);
+      if(parsed.rows.length === 0){
+        alert('El archivo está vacío o no contiene datos válidos.');
+        return;
+      }
+      // Auto-detección de mapping
+      const mapping = {};
+      parsed.headers.forEach(h => {
+        const field = kommoDetectarColumna(h);
+        if(field && !Object.values(mapping).includes(field)){ // no asignar mismo field a 2 columnas
+          mapping[h] = field;
+        }
+      });
+      KOMMO_STATE = {
+        filename: file.name,
+        size: file.size,
+        headers: parsed.headers,
+        rows: parsed.rows,
+        mapping,
+        stats: null,
+        duplicados: []
+      };
+      renderKommoPreview();
+    } catch(err){
+      console.error('procesarArchivoKommo:', err);
+      alert('Error procesando el CSV: '+(err.message||err)+'\n\nSi el archivo viene de Excel, prueba guardarlo nuevamente como "CSV UTF-8".');
+    }
+  };
+  reader.onerror = () => { alert('No se pudo leer el archivo.'); };
+  reader.readAsText(file, 'UTF-8');
+}
+
+function cambiarMapeoKommo(headerCsv, nuevoField){
+  if(!KOMMO_STATE) return;
+  // Si nuevoField está vacío → ignorar columna
+  if(!nuevoField){ delete KOMMO_STATE.mapping[headerCsv]; }
+  else {
+    // Quitar el field de cualquier otra columna que lo tuviera (evita duplicado)
+    Object.keys(KOMMO_STATE.mapping).forEach(k => {
+      if(KOMMO_STATE.mapping[k] === nuevoField && k !== headerCsv) delete KOMMO_STATE.mapping[k];
+    });
+    KOMMO_STATE.mapping[headerCsv] = nuevoField;
+  }
+  renderKommoPreview();
+}
+
+function renderKommoPreview(){
+  const s = KOMMO_STATE;
+  if(!s) return;
+
+  // Calcular stats
+  let validas = 0, sinDatos = 0;
+  s.rows.forEach(row => {
+    const v = kommoValidarLead(row, s.mapping);
+    if(v.valid) validas++; else sinDatos++;
+  });
+  s.stats = { total: s.rows.length, validas, sinDatos };
+  s.duplicados = kommoDetectarDuplicados(s.rows, s.mapping);
+
+  // Mapping editor (todas las columnas del CSV, con dropdown)
+  let mappingHTML = '<div style="display:grid; grid-template-columns:repeat(auto-fill, minmax(280px, 1fr)); gap:8px; margin-bottom:6px;">';
+  s.headers.forEach(h => {
+    const current = s.mapping[h] || '';
+    let opts = '<option value="">— ignorar —</option>';
+    KOMMO_FIELDS_ORDER.forEach(f => {
+      opts += '<option value="'+f+'"'+(current===f?' selected':'')+'>'+KOMMO_FIELD_LABELS[f]+'</option>';
+    });
+    const detected = current ? '✓' : '·';
+    const detColor = current ? '#1d7a5f' : 'var(--muted)';
+    mappingHTML += '<div style="background:#fafcfd; padding:8px 10px; border-radius:6px; border:1px solid var(--border-l); display:flex; gap:8px; align-items:center;">'+
+      '<span style="color:'+detColor+'; font-weight:700; width:14px; flex-shrink:0;">'+detected+'</span>'+
+      '<span style="flex:1; font-size:11.5px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; color:var(--text-2);" title="'+escapeHTML(h)+'">'+escapeHTML(h)+'</span>'+
+      '<select onchange="cambiarMapeoKommo(\''+h.replace(/'/g,"\\'")+'\', this.value)" style="font-size:11px; padding:3px 6px; border:1px solid var(--border); border-radius:4px; background:#fff;">'+opts+'</select>'+
+    '</div>';
+  });
+  mappingHTML += '</div>';
+
+  // Stats card
+  const skipDupsChk = s.duplicados.length > 0 ? '<label style="font-size:12px; display:flex; gap:6px; align-items:center; cursor:pointer; margin-top:10px;"><input type="checkbox" id="kommo-skip-dups" checked> Saltar duplicados (recomendado) — los leads coincidentes con tu cartera no se importarán</label>' : '';
+  const statsHTML = '<div style="background:#fafcfd; padding:14px 16px; border-radius:8px; border:1px solid var(--border-l); margin:14px 0;">'+
+    '<div style="font-size:13px; margin-bottom:8px; color:var(--teal); font-weight:600;">📊 Resumen de detección</div>'+
+    '<div style="font-size:12.5px; margin-bottom:5px;">📄 <strong>'+s.stats.total+'</strong> fila'+(s.stats.total===1?'':'s')+' en el archivo</div>'+
+    '<div style="font-size:12.5px; margin-bottom:5px; color:#1d7a5f;">✓ <strong>'+s.stats.validas+'</strong> válida'+(s.stats.validas===1?'':'s')+' (nombre + email o teléfono)</div>'+
+    (s.stats.sinDatos>0 ? '<div style="font-size:12.5px; margin-bottom:5px; color:var(--amber);">⚠ <strong>'+s.stats.sinDatos+'</strong> sin datos suficientes (se omitirán)</div>' : '')+
+    (s.duplicados.length>0 ? '<div style="font-size:12.5px; margin-bottom:5px; color:var(--amber);">⚠ <strong>'+s.duplicados.length+'</strong> posible'+(s.duplicados.length===1?'':'s')+' duplicado'+(s.duplicados.length===1?'':'s')+' (mismo RUT o email en tu cartera)</div>' : '')+
+    skipDupsChk+
+  '</div>';
+
+  // Preview table (primeras 5 filas)
+  const mappedCols = KOMMO_FIELDS_ORDER
+    .filter(f => Object.values(s.mapping).includes(f))
+    .map(f => ({ f, csvCol: Object.keys(s.mapping).find(k => s.mapping[k]===f) }));
+  let tableHTML = '';
+  if(mappedCols.length === 0){
+    tableHTML = '<div style="padding:14px; background:var(--amber-bg); color:var(--amber); border-radius:6px; font-size:12px;">⚠ Aún no hay columnas mapeadas. Asigna al menos "Nombre" y "Email" o "Teléfono".</div>';
+  } else {
+    tableHTML = '<div style="overflow-x:auto; max-width:100%;"><table class="data-table" style="font-size:11.5px; margin:0; min-width:100%;"><thead><tr>';
+    tableHTML += '<th style="width:40px; text-align:center">#</th>';
+    mappedCols.forEach(c => { tableHTML += '<th>'+escapeHTML(KOMMO_FIELD_LABELS[c.f])+'</th>'; });
+    tableHTML += '<th style="width:90px">Estado</th></tr></thead><tbody>';
+    s.rows.slice(0, 8).forEach((row, idx) => {
+      const v = kommoValidarLead(row, s.mapping);
+      const isDup = s.duplicados.some(d => d.rowIdx === idx);
+      const badge = !v.valid ? '<span style="background:var(--amber-bg); color:var(--amber); padding:2px 6px; border-radius:8px; font-size:10px; font-weight:600;">'+v.reason+'</span>'
+                  : (isDup ? '<span style="background:#fef3c7; color:#854d0e; padding:2px 6px; border-radius:8px; font-size:10px; font-weight:600;">duplicado</span>'
+                  : '<span style="background:#dcfce7; color:#166534; padding:2px 6px; border-radius:8px; font-size:10px; font-weight:600;">✓ ok</span>');
+      tableHTML += '<tr><td style="color:var(--muted); text-align:center; font-variant-numeric:tabular-nums;">'+(idx+1)+'</td>';
+      mappedCols.forEach(c => { tableHTML += '<td style="max-width:200px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;" title="'+escapeHTML(row[c.csvCol]||'')+'">'+escapeHTML(row[c.csvCol]||'—')+'</td>'; });
+      tableHTML += '<td>'+badge+'</td></tr>';
+    });
+    tableHTML += '</tbody></table></div>';
+    if(s.rows.length > 8) tableHTML += '<div style="font-size:11px; color:var(--muted); margin-top:6px; text-align:center;">… y '+(s.rows.length-8)+' fila'+(s.rows.length-8===1?'':'s')+' más</div>';
+  }
+
+  document.getElementById('kommo-step2').innerHTML =
+    '<div style="font-size:11.5px; color:var(--muted); margin-bottom:14px;">📄 Archivo: <strong style="color:var(--text)">'+escapeHTML(s.filename)+'</strong> · '+Math.round(s.size/1024)+' KB</div>'+
+    '<h4 style="font-size:13px; margin:0 0 6px; color:var(--teal);">Mapeo de columnas</h4>'+
+    '<p style="font-size:11.5px; color:var(--muted); margin:0 0 10px;">Las columnas del CSV se mapean a campos de Loans4B. Si alguna no está bien detectada, cámbiala con el dropdown.</p>'+
+    mappingHTML +
+    statsHTML +
+    '<h4 style="font-size:13px; margin:14px 0 8px; color:var(--teal);">Vista previa</h4>'+
+    tableHTML;
+
+  document.getElementById('kommo-step1').style.display = 'none';
+  document.getElementById('kommo-step2').style.display = 'block';
+  document.getElementById('kommo-btn-volver').style.display = 'inline-flex';
+
+  // Habilitar/deshabilitar botón confirmar
+  const btnConf = document.getElementById('kommo-btn-confirmar');
+  btnConf.style.display = 'inline-flex';
+  const skip = (document.getElementById('kommo-skip-dups')||{}).checked;
+  const totalAImportar = s.stats.validas - (skip ? s.duplicados.length : 0);
+  btnConf.innerHTML = '<span>＋</span> Importar '+Math.max(0,totalAImportar)+' lead'+(totalAImportar===1?'':'s');
+  btnConf.disabled = totalAImportar <= 0;
+}
+
+async function confirmarImportKommo(){
+  const s = KOMMO_STATE;
+  if(!s){ return; }
+  if(!fbReady() || !CURRENT_USER){ alert('No tienes sesión activa.'); return; }
+
+  const skipDups = (document.getElementById('kommo-skip-dups')||{}).checked;
+  const dupRowIdxs = new Set(s.duplicados.map(d => d.rowIdx));
+
+  // Preparar leads válidos
+  const leads = [];
+  s.rows.forEach((row, idx) => {
+    const v = kommoValidarLead(row, s.mapping);
+    if(!v.valid) return;
+    if(skipDups && dupRowIdxs.has(idx)) return;
+
+    const tipoPersona = kommoInferirTipoPersona(row, s.mapping);
+    const empresa = kommoGet(row, s.mapping, 'empresa');
+    let giro = kommoGet(row, s.mapping, 'giro');
+    if(empresa && tipoPersona === 'juridica' && !giro) giro = empresa;
+
+    const lead = {
+      nombre: kommoGet(row, s.mapping, 'nombre'),
+      rut: kommoGet(row, s.mapping, 'rut'),
+      tipoPersona,
+      giro,
+      email: kommoGet(row, s.mapping, 'email'),
+      telefono: kommoGet(row, s.mapping, 'telefono'),
+      direccion: '',
+      comuna: '',
+      region: 'Metropolitana',
+      rentaLiquida: 0,
+      dicom: 'desconocido',
+      origen: kommoGet(row, s.mapping, 'origen') || 'kommo',
+      observaciones: kommoGet(row, s.mapping, 'observaciones') || ('Importado desde Kommo CSV · '+s.filename),
+      externalIds: { kommo: '' },
+      asesorId: CURRENT_USER.uid,
+      etapa: 'contacto',
+      estadoActual: '',
+      documentos: {},
+      createdAt: nowTs(),
+      updatedAt: nowTs()
+    };
+    leads.push(lead);
+  });
+
+  if(leads.length === 0){
+    alert('No hay leads válidos para importar con los filtros actuales.');
+    return;
+  }
+
+  // UI: mostrar progress
+  document.getElementById('kommo-step2').style.display = 'none';
+  document.getElementById('kommo-step3').style.display = 'block';
+  document.getElementById('kommo-btn-confirmar').style.display = 'none';
+  document.getElementById('kommo-btn-volver').style.display = 'none';
+  document.getElementById('kommo-btn-cancelar').style.display = 'none';
+
+  const BATCH_SIZE = 400; // bajo el límite de 500 de Firestore
+  let imported = 0;
+  let errors = 0;
+  const newDocs = [];
+
+  for(let i = 0; i < leads.length; i += BATCH_SIZE){
+    const chunk = leads.slice(i, i + BATCH_SIZE);
+    try {
+      const batch = fbDb.batch();
+      const refs = chunk.map(() => fbDb.collection('clientes').doc());
+      chunk.forEach((lead, j) => batch.set(refs[j], lead));
+      await batch.commit();
+      imported += chunk.length;
+      refs.forEach((ref, j) => newDocs.push({ id: ref.id, ...chunk[j] }));
+    } catch(e){
+      console.error('importBatch:', e);
+      errors += chunk.length;
+    }
+    const done = imported + errors;
+    const pct = Math.round(done / leads.length * 100);
+    document.getElementById('kommo-progress-bar').style.width = pct + '%';
+    document.getElementById('kommo-progress-text').textContent = done + ' / ' + leads.length + ' (' + pct + '%)';
+  }
+
+  // Update cache + refresh views
+  newDocs.forEach(d => CLIENTES_CACHE.unshift(d));
+  poblarClientePickers();
+  const pipelineView = document.getElementById('view-pipeline');
+  if(pipelineView && pipelineView.classList.contains('active')) renderPipeline();
+  const clientesView = document.getElementById('view-clientes');
+  if(clientesView && clientesView.classList.contains('active')) renderClientes();
+
+  // Mostrar resultado
+  document.getElementById('kommo-step3').style.display = 'none';
+  document.getElementById('kommo-step4').style.display = 'block';
+  const ok = errors === 0 && imported > 0;
+  document.getElementById('kommo-step4').innerHTML =
+    '<div style="text-align:center; padding:28px 20px;">'+
+    '<div style="font-size:54px; margin-bottom:12px;">'+(ok ? '✅' : (imported === 0 ? '❌' : '⚠️'))+'</div>'+
+    '<div style="font-size:17px; font-weight:700; color:var(--teal); margin-bottom:14px;">'+
+    (imported > 0 ? imported+' lead'+(imported===1?'':'s')+' importado'+(imported===1?'':'s')+' correctamente' : 'No se pudo importar ningún lead')+
+    '</div>'+
+    '<div style="display:inline-block; text-align:left; max-width:420px;">'+
+    (errors > 0 ? '<div style="font-size:13px; color:var(--red); margin-top:8px;">⚠ '+errors+' lead'+(errors===1?'':'s')+' con error de Firestore (chequea consola)</div>' : '')+
+    (skipDups && s.duplicados.length > 0 ? '<div style="font-size:13px; color:var(--muted); margin-top:8px;">⏭ '+s.duplicados.length+' duplicado'+(s.duplicados.length===1?'':'s')+' saltado'+(s.duplicados.length===1?'':'s')+' (ya en tu cartera)</div>' : '')+
+    (s.stats.sinDatos > 0 ? '<div style="font-size:13px; color:var(--muted); margin-top:8px;">⏭ '+s.stats.sinDatos+' fila'+(s.stats.sinDatos===1?'':'s')+' sin datos suficientes (sin nombre o sin contacto)</div>' : '')+
+    '</div>'+
+    '<div style="font-size:13px; color:var(--muted); margin-top:20px; line-height:1.5;">Todos los leads importados quedaron en etapa <strong style="color:var(--teal)">Contacto</strong>, vinculados a tu usuario. Anda al <strong>Pipeline</strong> para verlos y empezar a moverlos.</div>'+
+    '</div>';
+  document.getElementById('kommo-btn-cerrar-ok').style.display = 'inline-flex';
+
+  if(imported > 0){
+    mostrarToastAutoCliente('✓ '+imported+' lead'+(imported===1?'':'s')+' importado'+(imported===1?'':'s')+' desde Kommo', 'creado');
+  }
+}
+
+/* === Drag-and-drop para el archivo CSV === */
+(function setupKommoDropzone(){
+  document.addEventListener('DOMContentLoaded', () => {
+    const drop = document.getElementById('kommo-drop-area');
+    if(!drop) return;
+    ['dragover','dragenter'].forEach(ev => drop.addEventListener(ev, e => {
+      e.preventDefault(); e.stopPropagation();
+      drop.style.borderColor = 'var(--green)'; drop.style.background = 'var(--green-bg)';
+    }));
+    ['dragleave','drop'].forEach(ev => drop.addEventListener(ev, e => {
+      e.preventDefault(); e.stopPropagation();
+      drop.style.borderColor = 'var(--border)'; drop.style.background = '#fafcfd';
+    }));
+    drop.addEventListener('drop', e => {
+      const file = e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files[0];
+      if(file) procesarArchivoKommo(file);
+    });
+  });
+  // Si el DOM ya está ready (script defer ya ejecutó), ejecutar manualmente
+  if(document.readyState !== 'loading'){
+    setTimeout(() => {
+      const drop = document.getElementById('kommo-drop-area');
+      if(!drop) return;
+      ['dragover','dragenter'].forEach(ev => drop.addEventListener(ev, e => {
+        e.preventDefault(); e.stopPropagation();
+        drop.style.borderColor = 'var(--green)'; drop.style.background = 'var(--green-bg)';
+      }));
+      ['dragleave','drop'].forEach(ev => drop.addEventListener(ev, e => {
+        e.preventDefault(); e.stopPropagation();
+        drop.style.borderColor = 'var(--border)'; drop.style.background = '#fafcfd';
+      }));
+      drop.addEventListener('drop', e => {
+        const file = e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files[0];
+        if(file) procesarArchivoKommo(file);
+      });
+    }, 100);
+  }
+})();
+
 async function guardarCliente(){
   if(!fbReady()){ alert('Firebase no configurado.'); return; }
   const nombre = document.getElementById('mc-nombre').value.trim();
@@ -3085,7 +3764,7 @@ async function guardarNotaActual(){
   const cliId = CLIENTE_SELECCIONADO_SIM.nv;
   const cli = cliId ? CLIENTES_CACHE.find(c=>c.id===cliId) : null;
   const campos = {};
-  ['nv-nombre','nv-rut','nv-tipo-persona','nv-giro','nv-email','nv-telefono','nv-direccion','nv-comuna','nv-rol','nv-tipo-propiedad','nv-prop-direccion','nv-prop-comuna','nv-prop-region','nv-valor-uf','nv-valor-clp','nv-prop-obs','nv-producto','nv-monto-uf','nv-plazo','nv-tasa','nv-entidad','nv-fecha-otorga','nv-fee-uf','nv-fee-clp','nv-fee-pct','nv-momento-cobro','nv-doc','nv-razon-facturacion','nv-contrato','nv-contrato-estado','nv-contrato-fecha','nv-anexos','nv-asesor-nombre','nv-asesor-contacto','nv-origen-lead','nv-comision','nv-observaciones'].forEach(k=>{ campos[k]=get(k); });
+  ['nv-nombre','nv-rut','nv-tipo-persona','nv-giro','nv-rep-nombre','nv-rep-rut','nv-email','nv-telefono','nv-direccion','nv-comuna','nv-region','nv-rol','nv-tipo-propiedad','nv-prop-direccion','nv-prop-comuna','nv-prop-region','nv-valor-uf','nv-valor-clp','nv-prop-obs','nv-producto','nv-monto-uf','nv-monto-clp','nv-plazo','nv-tasa','nv-fecha-otorga','nv-honorarios-uf','nv-honorarios-clp','nv-fee-uf','nv-fee-clp','nv-fee-pct','nv-gastos-notariales-uf','nv-pago1-desc','nv-pago1-uf','nv-pago1-clp','nv-pago2-desc','nv-pago2-uf','nv-pago2-clp','nv-pago3-desc','nv-pago3-uf','nv-pago3-clp','nv-pago4-desc','nv-pago4-uf','nv-pago4-clp','nv-momento-cobro','nv-doc','nv-razon-facturacion','nv-contrato','nv-contrato-estado','nv-contrato-fecha','nv-anexos','nv-asesor-nombre','nv-asesor-contacto','nv-comision','nv-observaciones'].forEach(k=>{ campos[k]=get(k); });
   const doc = {
     asesorId: CURRENT_USER.uid,
     clienteId: cliId || null,
@@ -3621,6 +4300,12 @@ function navegarANotaVenta(cliId){
       document.getElementById('nv-fee-pct').value = feeL4B ? fmtPct(feeL4B,1) : '';
     }
 
+    // Auto-ajustar honorarios + recalcular pagos
+    nvOnTipoPersonaChange();
+    ['nv-pago1-uf','nv-pago2-uf','nv-pago3-uf','nv-pago4-uf'].forEach(id => {
+      const el = document.getElementById(id); if(el) delete el.dataset.touched;
+    });
+    nvOnInputUF();
     document.getElementById('nv-aviso-vacio').style.display='none';
     document.getElementById('nv-fuente').style.display='flex';
     document.getElementById('nv-fuente-tipo').textContent = (ultimaSim.producto==='hipotecario' ? 'Crédito Hipotecario' : 'Leaseback Inmobiliario') + ' · cargado desde historial';
