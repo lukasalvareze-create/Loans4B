@@ -234,7 +234,11 @@ if(FIREBASE_OK){
   .cliente-picker .cp-ico { font-size:20px; }
   .cliente-picker .cp-text { flex:1; font-size:12.5px; color:var(--text-2); }
   .cliente-picker .cp-text strong { color:var(--teal); }
-  .cliente-picker select { background:#fff; border:1px solid var(--border); border-radius:7px; padding:7px 11px; font-size:12.5px; min-width:220px; }
+  .cliente-picker select { background:#fff; border:1px solid var(--border); border-radius:7px; padding:7px 11px; font-size:12.5px; min-width:240px; }
+  .cliente-picker .cp-wrap { display:flex; flex-direction:column; gap:5px; min-width:240px; }
+  .cliente-picker .cp-search { background:#fff; border:1px solid var(--border); border-radius:7px; padding:6px 10px; font-size:12px; font-family:inherit; transition:border-color 0.15s; }
+  .cliente-picker .cp-search:focus { outline:none; border-color:var(--green); box-shadow:0 0 0 2px rgba(42,160,127,0.15); }
+  .cliente-picker .cp-meta { font-size:10.5px; color:var(--muted); }
   .cliente-picker .btn-clear { background:none; border:none; color:var(--muted); cursor:pointer; font-size:14px; padding:4px 8px; }
   .cliente-picker .btn-clear:hover { color:var(--red); }
 
@@ -630,7 +634,11 @@ if(FIREBASE_OK){
     <div class="cliente-picker">
       <span class="cp-ico">👤</span>
       <div class="cp-text"><strong>Asociar a cliente</strong><br><span style="font-size:11.5px; color:var(--muted)">Opcional: rellena los datos del formulario automáticamente y vincula la simulación a una ficha.</span></div>
-      <select id="cp-leaseback" onchange="onClientePickerChange('leaseback', this)"><option value="">— Sin asociar a cliente —</option></select>
+      <div class="cp-wrap">
+        <input type="text" class="cp-search" id="cp-leaseback-search" placeholder="🔍 Buscar por nombre o RUT…" oninput="filtrarPickerCliente('leaseback', this.value)">
+        <select id="cp-leaseback" onchange="onClientePickerChange('leaseback', this)"><option value="">— Sin asociar a cliente —</option></select>
+        <span class="cp-meta" id="cp-leaseback-meta"></span>
+      </div>
     </div>
     <form id="form-leaseback" onsubmit="event.preventDefault(); calcularLeasebackCompleto();">
       <div class="form-card">
@@ -722,7 +730,11 @@ if(FIREBASE_OK){
     <div class="cliente-picker">
       <span class="cp-ico">👤</span>
       <div class="cp-text"><strong>Asociar a cliente</strong><br><span style="font-size:11.5px; color:var(--muted)">Opcional: rellena los datos del formulario automáticamente y vincula la simulación a una ficha.</span></div>
-      <select id="cp-hipotecario" onchange="onClientePickerChange('hipotecario', this)"><option value="">— Sin asociar a cliente —</option></select>
+      <div class="cp-wrap">
+        <input type="text" class="cp-search" id="cp-hipotecario-search" placeholder="🔍 Buscar por nombre o RUT…" oninput="filtrarPickerCliente('hipotecario', this.value)">
+        <select id="cp-hipotecario" onchange="onClientePickerChange('hipotecario', this)"><option value="">— Sin asociar a cliente —</option></select>
+        <span class="cp-meta" id="cp-hipotecario-meta"></span>
+      </div>
     </div>
     <form id="form-hipotecario" onsubmit="event.preventDefault(); calcularHipotecarioCompleto();">
       <div class="form-card">
@@ -823,7 +835,11 @@ if(FIREBASE_OK){
     <div class="cliente-picker">
       <span class="cp-ico">👤</span>
       <div class="cp-text"><strong>Asociar a cliente</strong><br><span style="font-size:11.5px; color:var(--muted)">Rellena los datos del cliente desde su ficha del CRM.</span></div>
-      <select id="cp-nv" onchange="onClientePickerChange('nv', this)"><option value="">— Sin asociar a cliente —</option></select>
+      <div class="cp-wrap">
+        <input type="text" class="cp-search" id="cp-nv-search" placeholder="🔍 Buscar por nombre o RUT…" oninput="filtrarPickerCliente('nv', this.value)">
+        <select id="cp-nv" onchange="onClientePickerChange('nv', this)"><option value="">— Sin asociar a cliente —</option></select>
+        <span class="cp-meta" id="cp-nv-meta"></span>
+      </div>
     </div>
 
     <div id="nv-aviso-vacio" class="alert amber" style="margin-bottom:18px"><span>ℹ️</span><div>Aún no hay simulación cargada. Genera primero una simulación o asocia un cliente para pre-llenar el formulario. También puedes llenar la nota manualmente desde cero.</div></div>
@@ -1318,6 +1334,12 @@ if(FIREBASE_OK){
     <div style="font-size:11.5px; color:var(--muted); margin-bottom:10px; line-height:1.4;">Arrastra o usa el botón <strong style="color:var(--teal)">→</strong> para avanzar etapa · Pasar a <strong style="color:var(--teal)">Simulación</strong> exige producto asignado.</div>
     <div class="filter-bar">
       <input type="text" id="pl-buscar" class="grow" placeholder="Buscar cliente en el pipeline…" oninput="renderPipeline()">
+      <select id="pl-producto" onchange="renderPipeline()">
+        <option value="todos" selected>Todos los productos</option>
+        <option value="leaseback">Solo Leaseback</option>
+        <option value="hipotecario">Solo Hipotecario</option>
+        <option value="sin">Sin producto asignado</option>
+      </select>
       <select id="pl-asesor" onchange="renderPipeline()">
         <option value="mios" selected>Solo mis clientes</option>
         <option value="todos">Todos los asesores</option>
@@ -3892,12 +3914,45 @@ async function crearAsesor(){
 
 /* === CLIENTE PICKERS === */
 function poblarClientePickers(){
-  const opts = ['<option value="">— Sin asociar a cliente —</option>']
-    .concat(CLIENTES_CACHE.map(c=>'<option value="'+c.id+'">'+escapeHTML(c.nombre)+' · '+escapeHTML(c.rut||'')+'</option>')).join('');
+  // Re-pobla los 3 pickers respetando el filtro de búsqueda activo si lo hay
   ['cp-hipotecario','cp-leaseback','cp-nv'].forEach(id=>{
     const sel = document.getElementById(id);
-    if(sel){ const cur=sel.value; sel.innerHTML=opts; sel.value=cur||''; }
+    if(!sel) return;
+    const cur = sel.value;
+    const searchEl = document.getElementById(id+'-search');
+    const q = (searchEl && searchEl.value) ? searchEl.value.toLowerCase().trim() : '';
+    let html = '<option value="">— Sin asociar a cliente —</option>';
+    let matchCount = 0;
+    CLIENTES_CACHE.forEach(c => {
+      const visible = !q ||
+        (c.nombre||'').toLowerCase().includes(q) ||
+        (c.rut||'').toLowerCase().includes(q) ||
+        (c.email||'').toLowerCase().includes(q);
+      if(visible){
+        html += '<option value="'+c.id+'">'+escapeHTML(c.nombre)+' · '+escapeHTML(c.rut||'')+'</option>';
+        matchCount++;
+      }
+    });
+    sel.innerHTML = html;
+    // Mantener valor si la option sigue ahí
+    if(cur && Array.from(sel.options).some(o => o.value === cur)) sel.value = cur;
+    // Update meta line ("X coincidencias" o "X clientes")
+    const metaEl = document.getElementById(id+'-meta');
+    if(metaEl){
+      if(q){ metaEl.textContent = matchCount+' coincidencia'+(matchCount===1?'':'s')+' · ↓ selecciona del dropdown'; }
+      else { metaEl.textContent = CLIENTES_CACHE.length+' cliente'+(CLIENTES_CACHE.length===1?'':'s')+' en tu cartera'; }
+    }
   });
+}
+
+/* Filtra el picker de un producto específico cuando el usuario escribe en el search input.
+   Internamente delega a poblarClientePickers() para que repueble todos los pickers
+   con el filtro activo. Esto mantiene el comportamiento consistente. */
+function filtrarPickerCliente(producto, query){
+  const searchEl = document.getElementById('cp-'+producto+'-search');
+  if(searchEl && typeof query !== 'undefined') searchEl.value = query;
+  // poblarClientePickers ya lee el valor del search input automáticamente
+  poblarClientePickers();
 }
 
 function onClientePickerChange(producto, selectEl){
@@ -4025,8 +4080,11 @@ function renderPipeline(){
   const q = ((document.getElementById('pl-buscar')||{}).value || '').trim().toLowerCase();
   const uid = CURRENT_USER ? CURRENT_USER.uid : null;
 
+  const filtroProducto = (document.getElementById('pl-producto')||{}).value || 'todos';
   let lista = CLIENTES_CACHE.slice();
   if(filtroAsesor==='mios' && uid) lista = lista.filter(c => c.asesorId === uid);
+  if(filtroProducto === 'sin') lista = lista.filter(c => !c.producto);
+  else if(filtroProducto !== 'todos') lista = lista.filter(c => c.producto === filtroProducto);
   if(q) lista = lista.filter(c =>
     (c.nombre||'').toLowerCase().includes(q) ||
     (c.rut||'').toLowerCase().includes(q) ||
