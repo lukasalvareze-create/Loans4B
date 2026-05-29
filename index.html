@@ -1111,6 +1111,76 @@ if(FIREBASE_OK){
     </div>
   </div>
 
+  <!-- ===== MODAL LEAD RÁPIDO ===== -->
+  <div class="modal-overlay" id="modal-lead-rapido">
+    <div class="modal" style="max-width:500px">
+      <div class="modal-head">
+        <h3>＋ Nuevo lead · captura rápida</h3>
+        <button class="modal-close" onclick="cerrarLeadRapido()">×</button>
+      </div>
+      <div class="modal-body">
+        <p style="font-size:12.5px; color:var(--text-2); margin-bottom:18px; line-height:1.5;">
+          Para capturar leads durante una llamada en segundos. El lead queda en etapa <strong>Contacto</strong>. Los campos no obligatorios los completas después desde la ficha del cliente.
+        </p>
+
+        <div class="form-group" style="margin-bottom:14px">
+          <label>Tipo de persona <span class="req">*</span></label>
+          <div class="radio-group">
+            <label class="radio-pill active" id="lr-rp-natural" onclick="lrSetTipo('natural')"><input type="radio" name="lr-tipo" value="natural" checked> P. Natural</label>
+            <label class="radio-pill" id="lr-rp-juridica" onclick="lrSetTipo('juridica')"><input type="radio" name="lr-tipo" value="juridica"> P. Jurídica</label>
+          </div>
+        </div>
+
+        <div class="form-group" style="margin-bottom:14px">
+          <label id="lr-nombre-label">Nombre completo <span class="req">*</span></label>
+          <input type="text" id="lr-nombre" placeholder="Ej: María Pérez González" autocomplete="off">
+        </div>
+
+        <div class="form-grid" style="margin-bottom:14px">
+          <div class="form-group">
+            <label>RUT <span style="color:var(--muted); font-weight:400">(opcional)</span></label>
+            <input type="text" id="lr-rut" placeholder="12.345.678-9" oninput="formatRUT(this)" autocomplete="off">
+          </div>
+          <div class="form-group">
+            <label>Teléfono <span class="req">*</span></label>
+            <input type="text" id="lr-telefono" placeholder="+56 9 1234 5678" autocomplete="off">
+          </div>
+        </div>
+
+        <div class="form-grid" style="margin-bottom:14px">
+          <div class="form-group">
+            <label>Email <span style="color:var(--muted); font-weight:400">(opcional)</span></label>
+            <input type="email" id="lr-email" placeholder="cliente@email.com" autocomplete="off">
+          </div>
+          <div class="form-group">
+            <label>Origen del lead</label>
+            <select id="lr-origen">
+              <option value="referido">Referido</option>
+              <option value="web">Sitio web</option>
+              <option value="rrss">Redes sociales</option>
+              <option value="kommo">CRM Kommo</option>
+              <option value="cartera">Cartera propia</option>
+              <option value="llamada">Llamada en frío</option>
+              <option value="otro">Otro</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="form-group" style="margin-bottom:6px">
+          <label>Notas rápidas <span style="color:var(--muted); font-weight:400">(opcional)</span></label>
+          <textarea id="lr-notas" rows="2" placeholder="Ej: Pidió simulación para casa en Las Condes · Vence avalúo el viernes." style="background:#fafcfd; border:1px solid var(--border); border-radius:8px; padding:10px 13px; font-size:13px; font-family:inherit; resize:vertical; width:100%"></textarea>
+        </div>
+      </div>
+      <div class="modal-foot" style="display:flex; gap:8px; justify-content:space-between; flex-wrap:wrap">
+        <button class="btn ghost" onclick="cerrarLeadRapido()">Cancelar</button>
+        <div style="display:flex; gap:8px; flex-wrap:wrap">
+          <button class="btn ghost" onclick="guardarLeadRapido(true)" title="Guarda el lead y abre la ficha para completar más datos"><span>📂</span> Guardar y abrir ficha</button>
+          <button class="btn green" id="lr-btn-crear" onclick="guardarLeadRapido(false)"><span>＋</span> Crear lead</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <!-- ===== HISTORIAL ===== -->
   <div class="view" id="view-historial">
     <h1 class="section-title">Historial</h1>
@@ -1177,7 +1247,8 @@ if(FIREBASE_OK){
         <option value="mios" selected>Solo mis clientes</option>
         <option value="todos">Todos los asesores</option>
       </select>
-      <button class="btn green" onclick="abrirClienteModal()"><span>＋</span> Nuevo lead</button>
+      <button class="btn green" onclick="abrirLeadRapido()"><span>＋</span> Nuevo lead</button>
+      <button class="btn ghost" onclick="abrirClienteModal()" title="Crear cliente con todos los campos completos" style="font-size:11.5px">＋ Form completo</button>
     </div>
     <div class="kanban-board" id="pl-board"></div>
   </div>
@@ -2744,6 +2815,124 @@ function abrirClienteModal(id){
 }
 
 function cerrarClienteModal(){ document.getElementById('modal-cliente').classList.remove('active'); }
+
+/* === LEAD RÁPIDO ===
+   Form mínimo para captura veloz durante llamadas.
+   El lead queda en etapa Contacto, sin producto, sin documentos. */
+let LR_TIPO = 'natural';
+
+function lrSetTipo(t){
+  LR_TIPO = t;
+  document.getElementById('lr-rp-natural').classList.toggle('active', t==='natural');
+  document.getElementById('lr-rp-juridica').classList.toggle('active', t==='juridica');
+  const lbl = document.getElementById('lr-nombre-label');
+  if(lbl) lbl.innerHTML = (t==='juridica' ? 'Razón social' : 'Nombre completo') + ' <span class="req">*</span>';
+}
+
+function abrirLeadRapido(){
+  // Reset
+  document.getElementById('lr-nombre').value = '';
+  document.getElementById('lr-rut').value = '';
+  document.getElementById('lr-telefono').value = '';
+  document.getElementById('lr-email').value = '';
+  document.getElementById('lr-origen').value = 'referido';
+  document.getElementById('lr-notas').value = '';
+  lrSetTipo('natural');
+  document.getElementById('modal-lead-rapido').classList.add('active');
+  setTimeout(() => { const el = document.getElementById('lr-nombre'); if(el) el.focus(); }, 100);
+}
+
+function cerrarLeadRapido(){
+  document.getElementById('modal-lead-rapido').classList.remove('active');
+}
+
+async function guardarLeadRapido(abrirFichaTrasGuardar){
+  if(!fbReady()){ alert('Firebase no configurado.'); return; }
+  if(!CURRENT_USER){ alert('Debes iniciar sesión.'); return; }
+
+  const nombre = document.getElementById('lr-nombre').value.trim();
+  const telefono = document.getElementById('lr-telefono').value.trim();
+  if(!nombre){ alert('El nombre es obligatorio.'); document.getElementById('lr-nombre').focus(); return; }
+  if(!telefono){ alert('El teléfono es obligatorio · necesitas poder devolver la llamada.'); document.getElementById('lr-telefono').focus(); return; }
+
+  const rut = document.getElementById('lr-rut').value.trim();
+  const email = document.getElementById('lr-email').value.trim();
+  const origen = document.getElementById('lr-origen').value;
+  const notas = document.getElementById('lr-notas').value.trim();
+
+  // Aviso (no bloqueante) si RUT ya existe para este asesor
+  if(rut){
+    const norm = s => (s||'').replace(/[\s.\-]/g,'').toUpperCase();
+    const rutN = norm(rut);
+    const dup = CLIENTES_CACHE.find(c => norm(c.rut)===rutN && c.asesorId===CURRENT_USER.uid);
+    if(dup){
+      if(!confirm('Ya tienes un cliente con ese RUT: '+dup.nombre+'.\n\n¿Crear el lead de todas formas?\n\n(Click "Cancelar" para abrir la ficha del cliente existente.)')){
+        cerrarLeadRapido();
+        mostrarFichaCliente(dup.id);
+        return;
+      }
+    }
+  }
+
+  const btn = document.getElementById('lr-btn-crear');
+  if(btn){ btn.disabled = true; btn.innerHTML = '<span>⏳</span> Guardando…'; }
+
+  const data = {
+    nombre,
+    rut: rut || '',
+    tipoPersona: LR_TIPO,
+    giro: '',
+    email,
+    telefono,
+    direccion: '',
+    comuna: '',
+    region: 'Metropolitana',
+    rentaLiquida: 0,
+    dicom: 'desconocido',
+    origen,
+    observaciones: notas || 'Captura rápida desde pipeline.',
+    externalIds: { kommo: '' },
+    asesorId: CURRENT_USER.uid,
+    etapa: 'contacto',
+    estadoActual: '',
+    documentos: {},
+    createdAt: nowTs(),
+    updatedAt: nowTs()
+  };
+
+  try{
+    const ref = await fbDb.collection('clientes').add(data);
+    const nuevo = { id: ref.id, ...data };
+    CLIENTES_CACHE.unshift(nuevo);
+    poblarClientePickers();
+    // Si la vista pipeline está activa, re-renderizar para mostrar la nueva card
+    const pipelineView = document.getElementById('view-pipeline');
+    if(pipelineView && pipelineView.classList.contains('active')) renderPipeline();
+    // Si la vista clientes está activa, re-renderizar la tabla
+    const clientesView = document.getElementById('view-clientes');
+    if(clientesView && clientesView.classList.contains('active')) renderClientes();
+    mostrarToastAutoCliente('✓ Lead creado · '+nombre+' en etapa Contacto', 'creado');
+    cerrarLeadRapido();
+    if(abrirFichaTrasGuardar){
+      setTimeout(() => mostrarFichaCliente(ref.id), 200);
+    }
+  } catch(e){
+    console.error('guardarLeadRapido:', e);
+    alert('Error guardando lead: '+(e.message||e));
+  } finally {
+    if(btn){ btn.disabled = false; btn.innerHTML = '<span>＋</span> Crear lead'; }
+  }
+}
+
+/* === Atajos de teclado: Enter en el form lo guarda === */
+(function setupLeadRapidoKeyboard(){
+  document.addEventListener('keydown', e => {
+    const modal = document.getElementById('modal-lead-rapido');
+    if(!modal || !modal.classList.contains('active')) return;
+    if(e.key === 'Escape'){ cerrarLeadRapido(); e.preventDefault(); }
+    if(e.key === 'Enter' && (e.ctrlKey || e.metaKey)){ guardarLeadRapido(false); e.preventDefault(); }
+  });
+})();
 
 async function guardarCliente(){
   if(!fbReady()){ alert('Firebase no configurado.'); return; }
