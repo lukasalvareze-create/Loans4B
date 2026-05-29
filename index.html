@@ -261,21 +261,29 @@ if(FIREBASE_OK){
 
   /* ===== v9 · PIPELINE / TAREAS / REPORTES / FICHA DETALLE ===== */
   /* Pipeline kanban */
-  .kanban-board { display:grid; grid-template-columns:repeat(4, minmax(240px,1fr)); gap:14px; }
-  .kanban-col { background:#fff; border:1px solid var(--border-l); border-radius:12px; padding:10px; min-height:280px; box-shadow:var(--shadow); display:flex; flex-direction:column; gap:8px; }
-  .kanban-col-head { display:flex; align-items:center; gap:8px; padding:8px 6px 10px; border-bottom:1px solid var(--border-l); }
-  .kanban-col-head .dot { width:9px; height:9px; border-radius:50%; flex-shrink:0; }
-  .kanban-col-head .t { font-size:12px; font-weight:700; color:var(--teal); text-transform:uppercase; letter-spacing:0.5px; flex:1; }
-  .kanban-col-head .c { background:var(--bg); color:var(--text-2); font-size:11px; font-weight:600; padding:2px 8px; border-radius:12px; }
-  .kanban-col-body { flex:1; display:flex; flex-direction:column; gap:8px; overflow-y:auto; max-height:520px; }
-  .kanban-card { background:#fafcfd; border:1px solid var(--border-l); border-left:3px solid var(--green); border-radius:8px; padding:10px 12px; cursor:grab; transition:all 0.18s; user-select:none; }
-  .kanban-card:hover { background:#f1f6f8; box-shadow:var(--shadow); transform:translateX(2px); }
+  /* Pipeline: scroll horizontal con columnas de ancho fijo */
+  .kanban-board { display:flex; gap:10px; overflow-x:auto; overflow-y:hidden; padding:4px 4px 12px; scroll-snap-type:x proximity; }
+  .kanban-board::-webkit-scrollbar { height:10px; }
+  .kanban-board::-webkit-scrollbar-track { background:var(--bg); border-radius:6px; }
+  .kanban-board::-webkit-scrollbar-thumb { background:var(--border); border-radius:6px; }
+  .kanban-board::-webkit-scrollbar-thumb:hover { background:var(--muted); }
+  .kanban-col { flex:0 0 240px; max-width:240px; background:#fff; border:1px solid var(--border-l); border-radius:10px; padding:8px; box-shadow:var(--shadow); display:flex; flex-direction:column; gap:6px; min-height:340px; scroll-snap-align:start; }
+  .kanban-col-head { display:flex; align-items:center; gap:8px; padding:6px 4px 8px; border-bottom:1px solid var(--border-l); }
+  .kanban-col-head .kc-tit { font-size:11px; font-weight:700; color:var(--teal); text-transform:uppercase; letter-spacing:0.5px; flex:1; }
+  .kanban-col-head .kc-count { background:var(--bg); color:var(--text-2); font-size:10.5px; font-weight:600; padding:2px 7px; border-radius:10px; }
+  .kanban-col-body { flex:1; display:flex; flex-direction:column; gap:6px; overflow-y:auto; max-height:62vh; padding:2px; }
+  /* Tarjetas compactas */
+  .kanban-card { background:#fafcfd; border:1px solid var(--border-l); border-left:3px solid var(--green); border-radius:6px; padding:7px 9px; cursor:grab; transition:all 0.15s; user-select:none; }
+  .kanban-card:hover { background:#f1f6f8; box-shadow:var(--shadow); }
   .kanban-card:active { cursor:grabbing; }
-  .kanban-card.dragging { opacity:0.4; box-shadow:0 8px 20px rgba(10,61,74,0.18); transform:scale(0.97); }
-  .kanban-col-body.drop-target { background:rgba(42,160,127,0.10); border-radius:8px; outline:2px dashed var(--green); outline-offset:-4px; }
-  .kc-prod-tag { display:inline-block; margin-top:6px; padding:3px 9px; background:#fef3c7; color:#854d0e; border:1px solid #fde68a; border-radius:10px; font-size:10.5px; font-weight:600; }
-  .kc-rechazo { margin-top:6px; padding:5px 9px; background:#fdeaea; color:#b52a2a; border:1px solid #f7c8c8; border-radius:6px; font-size:10.5px; line-height:1.4; }
-  .kc-next-btn { margin-top:9px; width:100%; background:transparent; border:1px solid var(--border); color:var(--teal); padding:6px 8px; border-radius:6px; font-size:11.5px; font-weight:600; cursor:pointer; transition:all 0.15s; font-family:inherit; }
+  .kanban-card.dragging { opacity:0.4; box-shadow:0 8px 20px rgba(10,61,74,0.18); transform:scale(0.96); }
+  .kanban-col-body.drop-target { background:rgba(42,160,127,0.10); border-radius:6px; outline:2px dashed var(--green); outline-offset:-3px; }
+  .kc-nom { font-size:11.5px; font-weight:600; color:var(--text); line-height:1.3; }
+  .kc-meta { font-size:10px; color:var(--muted); margin-top:2px; display:flex; align-items:center; gap:6px; flex-wrap:wrap; font-variant-numeric:tabular-nums; }
+  .kc-estado { font-size:10px; color:var(--muted); font-style:italic; margin-top:4px; line-height:1.3; }
+  .kc-prod-tag { display:inline-block; padding:2px 7px; background:#fef3c7; color:#854d0e; border:1px solid #fde68a; border-radius:8px; font-size:9.5px; font-weight:600; }
+  .kc-rechazo { margin-top:4px; padding:4px 7px; background:#fdeaea; color:#b52a2a; border:1px solid #f7c8c8; border-radius:4px; font-size:10px; line-height:1.35; }
+  .kc-next-btn { margin-top:6px; width:100%; background:transparent; border:1px solid var(--border); color:var(--teal); padding:4px 6px; border-radius:5px; font-size:10.5px; font-weight:600; cursor:pointer; transition:all 0.15s; font-family:inherit; }
   .kc-next-btn:hover { background:var(--green); color:#fff; border-color:var(--green); }
   .prod-card { background:#fff; border:2px solid var(--border); border-radius:12px; padding:18px 16px; text-align:left; cursor:pointer; transition:all 0.18s; display:flex; flex-direction:column; gap:8px; font-family:inherit; }
   .prod-card:hover { border-color:var(--green); background:var(--green-bg); transform:translateY(-1px); box-shadow:var(--shadow); }
@@ -287,8 +295,7 @@ if(FIREBASE_OK){
   .kanban-card .meta { display:flex; gap:6px; margin-top:6px; flex-wrap:wrap; }
   .kanban-card .meta span { font-size:10px; padding:2px 6px; background:#fff; border:1px solid var(--border-l); border-radius:10px; color:var(--text-2); }
   .kanban-card .est { font-size:11px; color:var(--muted); margin-top:6px; line-height:1.4; font-style:italic; }
-  @media (max-width:1180px) { .kanban-board { grid-template-columns:repeat(2, 1fr); } }
-  @media (max-width:760px)  { .kanban-board { grid-template-columns:1fr; } }
+
 
   /* Ficha cliente detalle */
   .cd-grid { display:grid; grid-template-columns:2fr 1fr; gap:22px; }
@@ -1307,9 +1314,8 @@ if(FIREBASE_OK){
   </div>
 
   <!-- ===== PIPELINE KANBAN ===== -->
-  <div class="view" id="view-pipeline">
-    <h1 class="section-title">Pipeline Comercial</h1>
-    <p class="section-sub">Tablero kanban del embudo. Arrastra una tarjeta o usa el botón <strong>→</strong> para avanzar de etapa. Al pasar un lead a <strong>Simulación</strong> se te pedirá asignar un producto (Leaseback o Hipotecario).</p>
+  <div class="view" id="view-pipeline" style="max-width:none; padding-top:14px;">
+    <div style="font-size:11.5px; color:var(--muted); margin-bottom:10px; line-height:1.4;">Arrastra o usa el botón <strong style="color:var(--teal)">→</strong> para avanzar etapa · Pasar a <strong style="color:var(--teal)">Simulación</strong> exige producto asignado.</div>
     <div class="filter-bar">
       <input type="text" id="pl-buscar" class="grow" placeholder="Buscar cliente en el pipeline…" oninput="renderPipeline()">
       <select id="pl-asesor" onchange="renderPipeline()">
@@ -1534,10 +1540,19 @@ if(FIREBASE_OK){
     </div>
 
     <div class="kpi-row">
-      <div class="kpi-card"><div class="lbl">Total actividades</div><div class="val" id="kpi-total-act">0</div><div class="sub" id="kpi-total-act-sub">leads del período</div></div>
-      <div class="kpi-card green"><div class="lbl">Simulaciones</div><div class="val" id="kpi-sims">0</div><div class="sub" id="kpi-sims-sub">enviadas en el período</div></div>
-      <div class="kpi-card blue"><div class="lbl">Efectividad</div><div class="val" id="kpi-efec">0%</div><div class="sub" id="kpi-efec-sub">activos vs rechazos</div></div>
-      <div class="kpi-card amber"><div class="lbl">Tasa cierre</div><div class="val" id="kpi-cierre">0%</div><div class="sub" id="kpi-cierre-sub">contratos enviados</div></div>
+      <div class="kpi-card"><div class="lbl">Prospectos</div><div class="val" id="kpi-prospectos">0</div><div class="sub" id="kpi-prospectos-sub">leads del período</div></div>
+      <div class="kpi-card green"><div class="lbl">Simulaciones</div><div class="val" id="kpi-sims-funnel">0</div><div class="sub" id="kpi-sims-funnel-sub">— conversión</div></div>
+      <div class="kpi-card blue"><div class="lbl">Notas de Venta</div><div class="val" id="kpi-nv-funnel">0</div><div class="sub" id="kpi-nv-funnel-sub">— conversión</div></div>
+      <div class="kpi-card amber"><div class="lbl">Contratos</div><div class="val" id="kpi-contratos">0</div><div class="sub" id="kpi-contratos-sub">— tasa de cierre</div></div>
+    </div>
+
+    <!-- Embudo de conversión (visualiza la cascada Prospecto → Contacto → Sim → NV → Contrato) -->
+    <div id="rp-embudo-wrap" style="margin-top:14px; margin-bottom:18px;">
+      <div style="font-size:11px; color:var(--muted); text-transform:uppercase; letter-spacing:0.6px; font-weight:600; margin-bottom:8px;">📊 Embudo de conversión</div>
+      <div id="rp-embudo" style="display:flex; gap:6px; align-items:stretch; flex-wrap:wrap;">
+        <!-- generado por JS -->
+      </div>
+      <div id="rp-embudo-meta" style="font-size:11.5px; color:var(--muted); margin-top:8px; line-height:1.5;"></div>
     </div>
 
     <!-- Bloques por asesor con tabla detallada (estilo reporte jefatura) -->
@@ -1610,7 +1625,8 @@ const VIEW_TITLES = {
 
 /* === ETAPAS DEL PIPELINE === */
 const ETAPAS = [
-  { id:'contacto',   label:'Contacto',      color:'#1a6aa0', desc:'Lead capturado, sin producto asignado' },
+  { id:'prospecto',  label:'Prospecto',     color:'#94a4af', desc:'Lead capturado, sin contacto aún' },
+  { id:'contacto',   label:'Contacto',      color:'#1a6aa0', desc:'Primer contacto realizado' },
   { id:'simulacion', label:'Simulación',    color:'#a05c10', desc:'Producto asignado, simulación en curso' },
   { id:'notaventa',  label:'Nota de Venta', color:'#2aa07f', desc:'Nota de Venta emitida' },
   { id:'contrato',   label:'Contrato',      color:'#0a3d4a', desc:'Contrato enviado / firmado por el cliente' },
@@ -3102,7 +3118,7 @@ async function guardarLeadRapido(abrirFichaTrasGuardar){
     observaciones: notas || 'Captura rápida desde pipeline.',
     externalIds: { kommo: '' },
     asesorId: CURRENT_USER.uid,
-    etapa: 'contacto',
+    etapa: 'prospecto',
     estadoActual: '',
     documentos: {},
     createdAt: nowTs(),
@@ -3497,7 +3513,7 @@ async function confirmarImportKommo(){
       observaciones: kommoGet(row, s.mapping, 'observaciones') || ('Importado desde Kommo CSV · '+s.filename),
       externalIds: { kommo: '' },
       asesorId: CURRENT_USER.uid,
-      etapa: 'contacto',
+      etapa: 'prospecto',
       estadoActual: '',
       documentos: {},
       createdAt: nowTs(),
@@ -3639,7 +3655,7 @@ async function guardarCliente(){
   };
   try{
     if(id){ await fbDb.collection('clientes').doc(id).update(data); }
-    else { data.asesorId = CURRENT_USER.uid; data.createdAt = nowTs(); data.etapa = 'contacto'; data.estadoActual = ''; data.documentos = {}; await fbDb.collection('clientes').add(data); }
+    else { data.asesorId = CURRENT_USER.uid; data.createdAt = nowTs(); data.etapa = 'prospecto'; data.estadoActual = ''; data.documentos = {}; await fbDb.collection('clientes').add(data); }
     cerrarClienteModal();
     await cargarClientes();
   }catch(e){ console.error('guardarCliente error:',e); alert('Error guardando: '+(e.message||e)); }
@@ -4021,7 +4037,7 @@ function renderPipeline(){
   ETAPAS.forEach(e => grupos[e.id] = []);
   lista.forEach(c => {
     // Defensa: cualquier etapa desconocida (de la versión anterior con 8 etapas) cae a 'contacto'
-    const eId = (ETAPAS.find(et => et.id === c.etapa)) ? c.etapa : 'contacto';
+    const eId = (ETAPAS.find(et => et.id === c.etapa)) ? c.etapa : 'prospecto';
     grupos[eId].push(c);
   });
 
@@ -4051,17 +4067,14 @@ function renderPipeline(){
       items.forEach(c => {
         const estado = c.estadoActual ? '<div class="kc-estado">'+escapeHTML(c.estadoActual)+'</div>' : '';
         const razon = (c.etapa==='rechazo' && c.razonRechazo) ? '<div class="kc-rechazo">⚠ '+escapeHTML(c.razonRechazo)+'</div>' : '';
-        const upd = c.updatedAt ? fmtTimestamp(c.updatedAt) : '—';
-        const prodTag = c.producto ? '<span class="kc-prod-tag">🏷️ '+escapeHTML(prodLabel(c.producto))+'</span>' : '';
+        const prodTag = c.producto ? '<span class="kc-prod-tag">'+escapeHTML(prodLabel(c.producto))+'</span>' : '';
         // No mostrar botón → en columna rechazo (es una vía sin retorno natural)
         const nextBtn = (nextEtapa && c.etapa !== 'rechazo') ? '<button class="kc-next-btn" onclick="event.stopPropagation(); avanzarEtapaCliente(\''+c.id+'\')" title="Avanzar a '+escapeHTML(nextEtapa.label)+'">→ '+escapeHTML(nextEtapa.label)+'</button>' : '';
         html += '<div class="kanban-card" draggable="true" data-cli="'+c.id+'" onclick="mostrarFichaCliente(\''+c.id+'\')">';
         html += '<div class="kc-nom">'+escapeHTML(c.nombre||'(sin nombre)')+'</div>';
-        html += '<div class="kc-rut">'+escapeHTML(c.rut||'—')+'</div>';
-        html += prodTag;
+        html += '<div class="kc-meta"><span>'+escapeHTML(c.rut||'—')+'</span>'+(prodTag?prodTag:'')+'</div>';
         html += razon;
         html += estado;
-        html += '<div class="kc-foot"><span>👤 '+escapeHTML(asesorNombrePorId(c.asesorId))+'</span><span>'+upd+'</span></div>';
         html += nextBtn;
         html += '</div>';
       });
@@ -4836,7 +4849,7 @@ function computeKPIs(desde, hasta, asesorFiltro){
 
 /* === Helpers de reportes mejorados === */
 function reporteEstadoDeCliente(c, sims){
-  // Map etapa → ESTADO del reporte (sigue el formato del PDF de Lukas)
+  // Map etapa → ESTADO del reporte
   if(c.etapa === 'rechazo') return 'RECHAZO';
   if(c.etapa === 'contrato') return 'CONTRATO';
   if(c.etapa === 'notaventa') return 'NOTA DE VENTA';
@@ -4844,11 +4857,13 @@ function reporteEstadoDeCliente(c, sims){
     const tieneSim = sims.some(s => s.clienteId === c.id);
     return tieneSim ? 'SIM ENVIADA' : 'EVALUANDO';
   }
-  return 'CONTACTADO';
+  if(c.etapa === 'contacto') return 'CONTACTADO';
+  return 'PROSPECTO';
 }
 
 function reporteEstadoBadgeColor(estado){
   return ({
+    'PROSPECTO':    { bg:'#f1f5f9', fg:'#475569' },
     'CONTACTADO':   { bg:'#dbeafe', fg:'#1e40af' },
     'EVALUANDO':    { bg:'#e0e7ff', fg:'#3730a3' },
     'SIM ENVIADA':  { bg:'#fef3c7', fg:'#854d0e' },
@@ -4879,8 +4894,7 @@ function renderReporte(){
   const asesorFiltro = (document.getElementById('rp-asesor')||{}).value || 'todos';
   const k = computeKPIs(desde, hasta, asesorFiltro);
 
-  // === Universo de clientes "activos del período" ===
-  // Total activos = clientes creados o actualizados dentro del período (incluye rechazos)
+  // === Universo de clientes "del período" ===
   const inRange = d => d && d>=desde && d<=hasta;
   const matchAs = uid => asesorFiltro==='todos' || uid===asesorFiltro;
   const clientesPeriodo = CLIENTES_CACHE.filter(c => {
@@ -4888,21 +4902,65 @@ function renderReporte(){
     const ts = dateOf(c) || tsToDate(c.updatedAt);
     return inRange(ts);
   });
-  const totalAct  = clientesPeriodo.length;
-  const rechazos  = clientesPeriodo.filter(c => c.etapa === 'rechazo').length;
-  const contratos = clientesPeriodo.filter(c => c.etapa === 'contrato').length;
-  const efec = totalAct ? Math.round(((totalAct - rechazos)/totalAct)*100) : 0;
-  const cierre = totalAct ? Math.round((contratos/totalAct)*100) : 0;
 
-  // === KPIs principales ===
-  document.getElementById('kpi-total-act').textContent = totalAct;
-  document.getElementById('kpi-sims').textContent = k.sims.length;
-  document.getElementById('kpi-efec').textContent = efec+'%';
-  document.getElementById('kpi-cierre').textContent = cierre+'%';
-  document.getElementById('kpi-total-act-sub').textContent = (totalAct - rechazos)+' activos · '+rechazos+' rechazo'+(rechazos===1?'':'s');
-  document.getElementById('kpi-sims-sub').textContent = 'enviadas en el período';
-  document.getElementById('kpi-efec-sub').textContent = (totalAct - rechazos)+' / '+totalAct+' leads no rechazados';
-  document.getElementById('kpi-cierre-sub').textContent = contratos+' contrato'+(contratos===1?'':'s')+' enviados';
+  // === Embudo: clientes por etapa MÁS AVANZADA alcanzada ===
+  // Para que el embudo sea monotónicamente decreciente, un cliente cuenta solo en su etapa actual
+  // (los que pasaron por etapas anteriores ya quedaron representados en su avance final)
+  const prospectos = clientesPeriodo.length; // total
+  const rechazos   = clientesPeriodo.filter(c => c.etapa === 'rechazo').length;
+  // Etapas alcanzadas: clientes que están EN o PASARON esa etapa (asumimos que su etapa actual es la más avanzada)
+  const enEtapaOMas = (etapaId) => {
+    const orden = ['prospecto','contacto','simulacion','notaventa','contrato'];
+    const idxObj = orden.indexOf(etapaId);
+    return clientesPeriodo.filter(c => {
+      if(c.etapa === 'rechazo') return false; // los rechazados no cuentan en avance
+      const idxC = orden.indexOf(c.etapa||'prospecto');
+      return idxC >= idxObj;
+    }).length;
+  };
+  const contactados = enEtapaOMas('contacto');
+  const simulados   = enEtapaOMas('simulacion');
+  const notasVenta  = enEtapaOMas('notaventa');
+  const contratos   = enEtapaOMas('contrato');
+  const efec = prospectos ? Math.round(((prospectos - rechazos)/prospectos)*100) : 0;
+  const tasaCierre = prospectos ? Math.round((contratos/prospectos)*100) : 0;
+  const pct = (a,b) => b > 0 ? Math.round((a/b)*100) : 0;
+
+  // === KPIs principales (4 cards): Prospectos · Sims · NV · Contratos ===
+  document.getElementById('kpi-prospectos').textContent = prospectos;
+  document.getElementById('kpi-prospectos-sub').textContent = rechazos>0 ? (rechazos+' rechazado'+(rechazos===1?'':'s')+' · Efectividad '+efec+'%') : 'leads totales del período';
+  document.getElementById('kpi-sims-funnel').textContent = simulados;
+  document.getElementById('kpi-sims-funnel-sub').textContent = prospectos>0 ? (pct(simulados,prospectos)+'% conversión desde prospectos') : '—';
+  document.getElementById('kpi-nv-funnel').textContent = notasVenta;
+  document.getElementById('kpi-nv-funnel-sub').textContent = prospectos>0 ? (pct(notasVenta,prospectos)+'% conversión · '+pct(notasVenta,simulados)+'% desde sims') : '—';
+  document.getElementById('kpi-contratos').textContent = contratos;
+  document.getElementById('kpi-contratos-sub').textContent = prospectos>0 ? (tasaCierre+'% tasa de cierre') : '—';
+
+  // === Embudo visual ===
+  const embudoSteps = [
+    { lbl:'Prospecto',  val:prospectos,  color:'#94a4af', pct:null },
+    { lbl:'Contacto',   val:contactados, color:'#1a6aa0', pct:pct(contactados,prospectos) },
+    { lbl:'Simulación', val:simulados,   color:'#a05c10', pct:pct(simulados,prospectos) },
+    { lbl:'Nota Venta', val:notasVenta,  color:'#2aa07f', pct:pct(notasVenta,prospectos) },
+    { lbl:'Contrato',   val:contratos,   color:'#0a3d4a', pct:pct(contratos,prospectos) }
+  ];
+  const embudoEl = document.getElementById('rp-embudo');
+  if(embudoEl){
+    let h = '';
+    embudoSteps.forEach((s, i) => {
+      if(i>0) h += '<div style="display:flex; align-items:center; color:var(--muted); font-size:14px; padding:0 2px;">→</div>';
+      h += '<div style="flex:1; min-width:90px; background:'+s.color+'; color:#fff; padding:10px 12px; border-radius:8px; text-align:center; line-height:1.2;">';
+      h += '<div style="font-size:9.5px; text-transform:uppercase; letter-spacing:0.5px; opacity:0.9; font-weight:600;">'+s.lbl+'</div>';
+      h += '<div style="font-size:22px; font-weight:800; margin-top:2px; font-variant-numeric:tabular-nums;">'+s.val+'</div>';
+      h += '<div style="font-size:10px; opacity:0.92; margin-top:1px; font-variant-numeric:tabular-nums;">'+(s.pct!==null?s.pct+'%':'—')+'</div>';
+      h += '</div>';
+    });
+    embudoEl.innerHTML = h;
+  }
+  const embudoMeta = document.getElementById('rp-embudo-meta');
+  if(embudoMeta){
+    embudoMeta.innerHTML = 'Cada % es la conversión desde Prospectos. Efectividad global: <strong>'+efec+'%</strong> (sin rechazos)' + (rechazos>0 ? ' · '+rechazos+' rechazado'+(rechazos===1?'':'s') : '') + '.';
+  }
 
   // === Bloques por asesor con tabla detallada ===
   const blocks = document.getElementById('rp-blocks-asesor');
@@ -5060,13 +5118,51 @@ function descargarReportePDF(){
   const efec = totalAct ? Math.round(((totalAct - rechazos)/totalAct)*100) : 0;
   const cierre = totalAct ? Math.round((contratos/totalAct)*100) : 0;
 
-  // === KPI header (4 cards) ===
-  const kpiHTML = '<div style="display:grid; grid-template-columns:repeat(4,1fr); gap:8px; margin:12px 0 18px;">' +
-    '<div style="border:1px solid #e5e7eb; border-radius:8px; padding:10px 12px; background:#fafcfd"><div style="font-size:9px; color:#6c757d; text-transform:uppercase; letter-spacing:0.6px; font-weight:600">Total actividades</div><div style="font-size:26px; font-weight:800; color:#0a3d4a; margin-top:2px">'+totalAct+'</div><div style="font-size:9.5px; color:#6c757d; margin-top:2px">'+(totalAct-rechazos)+' activos · '+rechazos+' rechazo'+(rechazos===1?'':'s')+'</div></div>' +
-    '<div style="border:1px solid #e5e7eb; border-radius:8px; padding:10px 12px; background:#fafcfd"><div style="font-size:9px; color:#6c757d; text-transform:uppercase; letter-spacing:0.6px; font-weight:600">Simulaciones</div><div style="font-size:26px; font-weight:800; color:#2aa07f; margin-top:2px">'+k.sims.length+'</div><div style="font-size:9.5px; color:#6c757d; margin-top:2px">enviadas en el período</div></div>' +
-    '<div style="border:1px solid #e5e7eb; border-radius:8px; padding:10px 12px; background:#fafcfd"><div style="font-size:9px; color:#6c757d; text-transform:uppercase; letter-spacing:0.6px; font-weight:600">Efectividad</div><div style="font-size:26px; font-weight:800; color:#1d7a5f; margin-top:2px">'+efec+'%</div><div style="font-size:9.5px; color:#6c757d; margin-top:2px">'+(totalAct-rechazos)+' / '+totalAct+' sin rechazo</div></div>' +
-    '<div style="border:1px solid #e5e7eb; border-radius:8px; padding:10px 12px; background:#fafcfd"><div style="font-size:9px; color:#6c757d; text-transform:uppercase; letter-spacing:0.6px; font-weight:600">Tasa cierre</div><div style="font-size:26px; font-weight:800; color:#a05c10; margin-top:2px">'+cierre+'%</div><div style="font-size:9.5px; color:#6c757d; margin-top:2px">'+contratos+' contrato'+(contratos===1?'':'s')+' enviados</div></div>' +
+  // === Recalcular el embudo para el PDF (mismo cálculo que renderReporte) ===
+  const ordenEt = ['prospecto','contacto','simulacion','notaventa','contrato'];
+  const enEtapaOMasPDF = (etapaId) => {
+    const idxObj = ordenEt.indexOf(etapaId);
+    return clientesPeriodo.filter(c => {
+      if(c.etapa === 'rechazo') return false;
+      const idxC = ordenEt.indexOf(c.etapa||'prospecto');
+      return idxC >= idxObj;
+    }).length;
+  };
+  const prospectosPDF  = clientesPeriodo.length;
+  const contactadosPDF = enEtapaOMasPDF('contacto');
+  const simuladosPDF   = enEtapaOMasPDF('simulacion');
+  const notasVPDF      = enEtapaOMasPDF('notaventa');
+  const contratosPDF   = enEtapaOMasPDF('contrato');
+  const pctPDF = (a,b) => b > 0 ? Math.round((a/b)*100) : 0;
+  const efecPDF = prospectosPDF ? Math.round(((prospectosPDF - rechazos)/prospectosPDF)*100) : 0;
+  const cierrePDF = prospectosPDF ? pctPDF(contratosPDF,prospectosPDF) : 0;
+
+  // === KPI cards (4): Prospectos · Sims · NV · Contratos ===
+  const kpiHTML = '<div style="display:grid; grid-template-columns:repeat(4,1fr); gap:8px; margin:12px 0 14px;">' +
+    '<div style="border:1px solid #e5e7eb; border-radius:8px; padding:10px 12px; background:#fafcfd"><div style="font-size:9px; color:#6c757d; text-transform:uppercase; letter-spacing:0.6px; font-weight:600">Prospectos</div><div style="font-size:26px; font-weight:800; color:#0a3d4a; margin-top:2px">'+prospectosPDF+'</div><div style="font-size:9.5px; color:#6c757d; margin-top:2px">'+(rechazos>0 ? rechazos+' rechazo'+(rechazos===1?'':'s')+' · Efectividad '+efecPDF+'%' : 'leads totales')+'</div></div>' +
+    '<div style="border:1px solid #e5e7eb; border-radius:8px; padding:10px 12px; background:#fafcfd"><div style="font-size:9px; color:#6c757d; text-transform:uppercase; letter-spacing:0.6px; font-weight:600">Simulaciones</div><div style="font-size:26px; font-weight:800; color:#2aa07f; margin-top:2px">'+simuladosPDF+'</div><div style="font-size:9.5px; color:#6c757d; margin-top:2px">'+pctPDF(simuladosPDF,prospectosPDF)+'% conversión desde prospectos</div></div>' +
+    '<div style="border:1px solid #e5e7eb; border-radius:8px; padding:10px 12px; background:#fafcfd"><div style="font-size:9px; color:#6c757d; text-transform:uppercase; letter-spacing:0.6px; font-weight:600">Notas de Venta</div><div style="font-size:26px; font-weight:800; color:#1a6aa0; margin-top:2px">'+notasVPDF+'</div><div style="font-size:9.5px; color:#6c757d; margin-top:2px">'+pctPDF(notasVPDF,prospectosPDF)+'% · '+pctPDF(notasVPDF,simuladosPDF)+'% desde sims</div></div>' +
+    '<div style="border:1px solid #e5e7eb; border-radius:8px; padding:10px 12px; background:#fafcfd"><div style="font-size:9px; color:#6c757d; text-transform:uppercase; letter-spacing:0.6px; font-weight:600">Tasa de cierre</div><div style="font-size:26px; font-weight:800; color:#a05c10; margin-top:2px">'+cierrePDF+'%</div><div style="font-size:9.5px; color:#6c757d; margin-top:2px">'+contratosPDF+' contrato'+(contratosPDF===1?'':'s')+' enviados</div></div>' +
   '</div>';
+
+  // === Embudo visual (5 etapas) ===
+  const embudoSteps = [
+    { lbl:'Prospecto',  val:prospectosPDF,  color:'#94a4af', pct:null },
+    { lbl:'Contacto',   val:contactadosPDF, color:'#1a6aa0', pct:pctPDF(contactadosPDF,prospectosPDF) },
+    { lbl:'Simulación', val:simuladosPDF,   color:'#a05c10', pct:pctPDF(simuladosPDF,prospectosPDF) },
+    { lbl:'Nota Venta', val:notasVPDF,      color:'#2aa07f', pct:pctPDF(notasVPDF,prospectosPDF) },
+    { lbl:'Contrato',   val:contratosPDF,   color:'#0a3d4a', pct:pctPDF(contratosPDF,prospectosPDF) }
+  ];
+  let embudoHTMLpdf = '<div style="margin-bottom:14px;"><div style="font-size:9.5px; color:#6c757d; text-transform:uppercase; letter-spacing:0.5px; font-weight:600; margin-bottom:6px;">📊 Embudo de conversión</div><div style="display:flex; gap:4px; align-items:stretch;">';
+  embudoSteps.forEach((s,i) => {
+    if(i>0) embudoHTMLpdf += '<div style="display:flex; align-items:center; color:#94a3b8; font-size:14px; padding:0 2px;">→</div>';
+    embudoHTMLpdf += '<div style="flex:1; background:'+s.color+'; color:#fff; padding:9px 6px; border-radius:6px; text-align:center; line-height:1.15;">';
+    embudoHTMLpdf += '<div style="font-size:8px; text-transform:uppercase; letter-spacing:0.4px; opacity:0.9; font-weight:600;">'+s.lbl+'</div>';
+    embudoHTMLpdf += '<div style="font-size:18px; font-weight:800; margin-top:1px; font-variant-numeric:tabular-nums;">'+s.val+'</div>';
+    embudoHTMLpdf += '<div style="font-size:9px; opacity:0.92; font-variant-numeric:tabular-nums;">'+(s.pct!==null?s.pct+'%':'—')+'</div>';
+    embudoHTMLpdf += '</div>';
+  });
+  embudoHTMLpdf += '</div></div>';
 
   // === Bloques por asesor (replicando el PDF de Lukas) ===
   const byAsesor = {};
@@ -5156,6 +5252,7 @@ function descargarReportePDF(){
     '<div style="font-size:10.5px; color:#6c757d; margin-bottom:6px;">'+escapeHTML(subtituloDoc)+'</div>' +
     '<div style="font-size:10.5px; color:#6c757d; margin-bottom:6px;">Período: <strong style="color:#0a3d4a">'+escapeHTML(tituloRango)+'</strong> · Filtro asesor: <strong>'+escapeHTML(asesNomFiltro)+'</strong> · Generado el '+fmtTimestamp(new Date())+'</div>' +
     kpiHTML +
+    embudoHTMLpdf +
     bloquesHTML +
     (notasHTML ? '<h2 style="font-family:Inter,sans-serif; font-size:13px; color:#0a3d4a; margin:18px 0 6px; font-weight:700;">📌 Notas del día</h2>' + notasHTML : '') +
     '<div style="font-size:9.5px; color:#6c757d; margin-top:18px; padding:10px 12px; background:#fafcfd; border:1px solid #e5e7eb; border-radius:6px; line-height:1.5;"><strong>Cómo se calculan los indicadores:</strong> Efectividad = (Actividades − Rechazos) / Total Actividades. Tasa de Cierre = Contratos enviados / Total Actividades. UF simulado considera el monto financiado de las simulaciones del período.</div>' +
