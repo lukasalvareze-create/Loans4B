@@ -289,6 +289,10 @@ if(FIREBASE_OK){
   .kc-rechazo { margin-top:4px; padding:4px 7px; background:#fdeaea; color:#b52a2a; border:1px solid #f7c8c8; border-radius:4px; font-size:10px; line-height:1.35; }
   .kc-next-btn { margin-top:6px; width:100%; background:transparent; border:1px solid var(--border); color:var(--teal); padding:4px 6px; border-radius:5px; font-size:10.5px; font-weight:600; cursor:pointer; transition:all 0.15s; font-family:inherit; }
   .kc-next-btn:hover { background:var(--green); color:#fff; border-color:var(--green); }
+  /* Tabs de Reportes */
+  .rp-tab { background:transparent; border:none; color:var(--muted); padding:9px 16px; cursor:pointer; font-family:inherit; font-size:13px; font-weight:600; border-bottom:2px solid transparent; margin-bottom:-2px; transition:all 0.15s; }
+  .rp-tab:hover { color:var(--text); background:rgba(0,0,0,0.02); }
+  .rp-tab.rp-tab-active { color:var(--teal); border-bottom-color:var(--green); }
   .prod-card { background:#fff; border:2px solid var(--border); border-radius:12px; padding:18px 16px; text-align:left; cursor:pointer; transition:all 0.18s; display:flex; flex-direction:column; gap:8px; font-family:inherit; }
   .prod-card:hover { border-color:var(--green); background:var(--green-bg); transform:translateY(-1px); box-shadow:var(--shadow); }
   .prod-card .prod-ico { font-size:26px; }
@@ -1543,8 +1547,8 @@ if(FIREBASE_OK){
   </div>
 
   <div class="view" id="view-reportes">
-    <h1 class="section-title">Reporte Diario · Equipo Comercial</h1>
-    <p class="section-sub">Resumen ejecutivo por asesor para entrega a jefatura. Total actividades, efectividad, tasa de cierre, detalle por asesor y notas del día. Click en <strong>Descargar PDF</strong> al final del día.</p>
+    <h1 class="section-title">Reportes</h1>
+    <p class="section-sub">Dos vistas: <strong>Ejecutiva</strong> (rápida de leer, para jefatura) y <strong>Detallada</strong> (resumen por asesor con valores de operación, uso interno).</p>
     <div class="filter-bar">
       <label id="rp-fecha-wrap" style="font-size:12.5px; color:var(--text-2); font-weight:600; display:flex; align-items:center; gap:8px">Fecha <input type="date" id="rp-fecha" onchange="renderReporte()"></label>
       <select id="rp-rango" onchange="onCambioRangoReporte()">
@@ -1558,40 +1562,68 @@ if(FIREBASE_OK){
       <select id="rp-asesor" onchange="renderReporte()">
         <option value="todos" selected>Todo el equipo</option>
       </select>
-      <button class="btn green" onclick="descargarReportePDF()" style="margin-left:auto"><span>📥</span> Descargar PDF</button>
     </div>
 
-    <div class="kpi-row">
-      <div class="kpi-card"><div class="lbl">Prospectos</div><div class="val" id="kpi-prospectos">0</div><div class="sub" id="kpi-prospectos-sub">leads del período</div></div>
-      <div class="kpi-card green"><div class="lbl">Simulaciones</div><div class="val" id="kpi-sims-funnel">0</div><div class="sub" id="kpi-sims-funnel-sub">— conversión</div></div>
-      <div class="kpi-card blue"><div class="lbl">Notas de Venta</div><div class="val" id="kpi-nv-funnel">0</div><div class="sub" id="kpi-nv-funnel-sub">— conversión</div></div>
-      <div class="kpi-card amber"><div class="lbl">Contratos</div><div class="val" id="kpi-contratos">0</div><div class="sub" id="kpi-contratos-sub">— tasa de cierre</div></div>
+    <!-- TABS: Vista Ejecutiva / Resumen por Asesor -->
+    <div class="rp-tabs" style="display:flex; gap:4px; border-bottom:2px solid var(--border-l); margin:8px 0 16px;">
+      <button id="rp-tab-ejec" class="rp-tab rp-tab-active" onclick="cambiarModoReporte('ejecutivo')">📊 Vista Ejecutiva</button>
+      <button id="rp-tab-detal" class="rp-tab" onclick="cambiarModoReporte('detallado')">📋 Resumen por Asesor</button>
+      <div style="flex:1"></div>
+      <button class="btn green" id="rp-btn-pdf" onclick="descargarReporteActualPDF()" style="margin-bottom:6px;"><span>📥</span> Descargar PDF</button>
     </div>
 
-    <!-- Embudo de conversión (visualiza la cascada Prospecto → Contacto → Sim → NV → Contrato) -->
-    <div id="rp-embudo-wrap" style="margin-top:14px; margin-bottom:18px;">
-      <div style="font-size:11px; color:var(--muted); text-transform:uppercase; letter-spacing:0.6px; font-weight:600; margin-bottom:8px;">📊 Embudo de conversión</div>
-      <div id="rp-embudo" style="display:flex; gap:6px; align-items:stretch; flex-wrap:wrap;">
-        <!-- generado por JS -->
+    <!-- ============================================ -->
+    <!-- MODO EJECUTIVO — vista compacta para jefatura -->
+    <!-- ============================================ -->
+    <div id="rp-modo-ejecutivo">
+      <div class="kpi-row">
+        <div class="kpi-card"><div class="lbl">Prospectos</div><div class="val" id="kpi-prospectos">0</div><div class="sub" id="kpi-prospectos-sub">leads del período</div></div>
+        <div class="kpi-card green"><div class="lbl">Simulaciones</div><div class="val" id="kpi-sims-funnel">0</div><div class="sub" id="kpi-sims-funnel-sub">— conversión</div></div>
+        <div class="kpi-card blue"><div class="lbl">Notas de Venta</div><div class="val" id="kpi-nv-funnel">0</div><div class="sub" id="kpi-nv-funnel-sub">— conversión</div></div>
+        <div class="kpi-card amber"><div class="lbl">Contratos</div><div class="val" id="kpi-contratos">0</div><div class="sub" id="kpi-contratos-sub">— tasa de cierre</div></div>
       </div>
-      <div id="rp-embudo-meta" style="font-size:11.5px; color:var(--muted); margin-top:8px; line-height:1.5;"></div>
-    </div>
 
-    <!-- Bloques por asesor con tabla detallada (estilo reporte jefatura) -->
-    <div id="rp-blocks-asesor" style="margin-bottom:18px"></div>
+      <!-- Embudo de conversión visual -->
+      <div id="rp-embudo-wrap" style="margin-top:14px; margin-bottom:18px;">
+        <div style="font-size:11px; color:var(--muted); text-transform:uppercase; letter-spacing:0.6px; font-weight:600; margin-bottom:8px;">📊 Embudo de conversión</div>
+        <div id="rp-embudo" style="display:flex; gap:6px; align-items:stretch; flex-wrap:wrap;"></div>
+        <div id="rp-embudo-meta" style="font-size:11.5px; color:var(--muted); margin-top:8px; line-height:1.5;"></div>
+      </div>
 
-    <!-- Notas del día — highlights automáticos -->
-    <div class="cd-card" style="margin-bottom:18px">
-      <div class="cd-card-head"><h3>📌 Notas del día</h3></div>
-      <div class="cd-card-body" id="rp-notas-dia">
-        <div style="font-size:13px; color:var(--muted)">Cargando…</div>
+      <!-- Gráfico SVG comparativo entre asesores -->
+      <div class="cd-card" style="margin-bottom:18px">
+        <div class="cd-card-head"><h3>📈 Productividad por asesor</h3></div>
+        <div class="cd-card-body" id="rp-grafico-asesores"><div style="font-size:13px; color:var(--muted)">Cargando…</div></div>
+      </div>
+
+      <!-- Tabla resumen 1 fila por asesor -->
+      <div class="cd-card" style="margin-bottom:18px">
+        <div class="cd-card-head"><h3>👥 Resumen del equipo</h3></div>
+        <div class="cd-card-body" style="padding:0;">
+          <div id="rp-tabla-resumen-wrap" style="overflow-x:auto;"></div>
+        </div>
+      </div>
+
+      <!-- Notas del día — highlights -->
+      <div class="cd-card" style="margin-bottom:18px">
+        <div class="cd-card-head"><h3>📌 Notas del día</h3></div>
+        <div class="cd-card-body" id="rp-notas-dia">
+          <div style="font-size:13px; color:var(--muted)">Cargando…</div>
+        </div>
       </div>
     </div>
 
-    <div class="cd-card">
-      <div class="cd-card-head"><h3>📜 Actividad cronológica del período</h3></div>
-      <div class="cd-card-body">
-        <div id="rp-cronologia" class="timeline"></div>
+    <!-- ============================================ -->
+    <!-- MODO DETALLADO — bloques por asesor con clientes y valores de operación -->
+    <!-- ============================================ -->
+    <div id="rp-modo-detallado" style="display:none;">
+      <div id="rp-blocks-asesor" style="margin-bottom:18px"></div>
+
+      <div class="cd-card">
+        <div class="cd-card-head"><h3>📜 Actividad cronológica del período</h3></div>
+        <div class="cd-card-body">
+          <div id="rp-cronologia" class="timeline"></div>
+        </div>
       </div>
     </div>
   </div>
@@ -1706,7 +1738,7 @@ function showView(name){
   try{
     if(name==='pipeline')  renderPipeline();
     if(name==='tareas')    renderTareas();
-    if(name==='reportes')  { setDefaultReportDate(); poblarAsesorReporte(); renderReporte(); }
+    if(name==='reportes')  { setDefaultReportDate(); poblarAsesorReporte(); renderReporte(); cambiarModoReporte(typeof RP_MODO !== 'undefined' ? RP_MODO : 'ejecutivo'); }
     if(name==='lider')     { poblarAsesorLider(); renderLider(); }
   }catch(e){ console.warn('showView dispatch:', e); }
   window.scrollTo(0,0);
@@ -4964,15 +4996,15 @@ function renderReporte(){
   // === Embudo: clientes por etapa MÁS AVANZADA alcanzada ===
   // Para que el embudo sea monotónicamente decreciente, un cliente cuenta solo en su etapa actual
   // (los que pasaron por etapas anteriores ya quedaron representados en su avance final)
+  const ordenEtapas = ['prospecto','contacto','simulacion','notaventa','contrato'];
   const prospectos = clientesPeriodo.length; // total
   const rechazos   = clientesPeriodo.filter(c => c.etapa === 'rechazo').length;
   // Etapas alcanzadas: clientes que están EN o PASARON esa etapa (asumimos que su etapa actual es la más avanzada)
   const enEtapaOMas = (etapaId) => {
-    const orden = ['prospecto','contacto','simulacion','notaventa','contrato'];
-    const idxObj = orden.indexOf(etapaId);
+    const idxObj = ordenEtapas.indexOf(etapaId);
     return clientesPeriodo.filter(c => {
       if(c.etapa === 'rechazo') return false; // los rechazados no cuentan en avance
-      const idxC = orden.indexOf(c.etapa||'prospecto');
+      const idxC = ordenEtapas.indexOf(c.etapa||'prospecto');
       return idxC >= idxObj;
     }).length;
   };
@@ -5134,6 +5166,25 @@ function renderReporte(){
     ).join('');
   }
 
+  // === NUEVO: Tabla resumen + Gráfico SVG para modo ejecutivo ===
+  const rowsAsResumen = asesores.map(([uid, a]) => {
+    const idxRows = ordenEtapas.indexOf;
+    return {
+      uid,
+      nombre: a.nombre,
+      prospectos: a.clientes.length,
+      contactados: a.clientes.filter(c => c.etapa!=='rechazo' && ['contacto','simulacion','notaventa','contrato'].includes(c.etapa)).length,
+      simulados:   a.clientes.filter(c => ['simulacion','notaventa','contrato'].includes(c.etapa)).length,
+      notasV:      a.clientes.filter(c => ['notaventa','contrato'].includes(c.etapa)).length,
+      contratos:   a.contratos,
+      rechazos:    a.rechazos,
+      ufSim:       a.ufSim,
+      efec:        a.clientes.length ? Math.round(((a.clientes.length - a.rechazos)/a.clientes.length)*100) : 0
+    };
+  }).sort((a,b) => b.prospectos - a.prospectos);
+  renderTablaResumenAsesores(rowsAsResumen);
+  renderGraficoAsesoresSVG(rowsAsResumen);
+
   const eventos = [];
   k.clientesNuevos.forEach(c => eventos.push({ t:'cliente', when: dateOf(c), nom: c.nombre, ases: asesorNombrePorId(c.asesorId), extra:'Cliente nuevo · '+(c.rut||'') }));
   k.sims.forEach(s => eventos.push({ t:'sim', when: dateOf(s), nom: (s.producto==='hipotecario'?'Hipotecario':'Leaseback'), ases: asesorNombrePorId(s.asesorId), extra: fmtUF(getMontoUF(s))+' · '+(s.clienteNombre||'sin cliente') }));
@@ -5153,6 +5204,251 @@ function renderReporte(){
       '<div class="tl-text">'+escapeHTML(e.nom)+' — <span style="color:var(--muted)">'+escapeHTML(e.extra)+'</span></div>' +
       '</div></div>';
   }).join('');
+}
+
+/* === Modo del reporte (ejecutivo / detallado) === */
+let RP_MODO = 'ejecutivo';
+function cambiarModoReporte(modo){
+  RP_MODO = modo;
+  const tEjec = document.getElementById('rp-tab-ejec');
+  const tDetal = document.getElementById('rp-tab-detal');
+  const cEjec = document.getElementById('rp-modo-ejecutivo');
+  const cDetal = document.getElementById('rp-modo-detallado');
+  if(tEjec) tEjec.classList.toggle('rp-tab-active', modo === 'ejecutivo');
+  if(tDetal) tDetal.classList.toggle('rp-tab-active', modo === 'detallado');
+  if(cEjec) cEjec.style.display = modo === 'ejecutivo' ? '' : 'none';
+  if(cDetal) cDetal.style.display = modo === 'detallado' ? '' : 'none';
+  // El botón de descarga PDF cambia label según modo
+  const btnPdf = document.getElementById('rp-btn-pdf');
+  if(btnPdf) btnPdf.innerHTML = '<span>📥</span> Descargar PDF '+(modo === 'ejecutivo' ? 'Ejecutivo' : 'Detallado');
+}
+
+/* === Dispatcher del botón de PDF: llama al PDF que corresponda al modo activo === */
+function descargarReporteActualPDF(){
+  if(RP_MODO === 'ejecutivo') descargarReporteEjecutivoPDF();
+  else descargarReportePDF();
+}
+
+/* === Render: tabla resumen 1 fila por asesor (modo ejecutivo) === */
+function renderTablaResumenAsesores(rows){
+  // rows = [{nombre, prospectos, contactados, simulados, notasV, contratos, rechazos, ufSim, efec}]
+  const cont = document.getElementById('rp-tabla-resumen-wrap');
+  if(!cont) return;
+  if(!rows.length){
+    cont.innerHTML = '<div style="padding:24px; text-align:center; color:var(--muted);">Sin asesores con actividad en el período.</div>';
+    return;
+  }
+  let h = '<table class="data-table" style="margin:0; font-size:12.5px;"><thead><tr>'+
+    '<th>Asesor</th>'+
+    '<th class="num">Prospectos</th>'+
+    '<th class="num">Contactados</th>'+
+    '<th class="num">Sims</th>'+
+    '<th class="num">NV</th>'+
+    '<th class="num">Contratos</th>'+
+    '<th class="num">Efec %</th>'+
+  '</tr></thead><tbody>';
+  rows.forEach(r => {
+    h += '<tr>'+
+      '<td><strong>'+escapeHTML(r.nombre)+'</strong>'+(r.rechazos>0?'<div style="font-size:10.5px; color:var(--red);">'+r.rechazos+' rechazo'+(r.rechazos===1?'':'s')+'</div>':'')+'</td>'+
+      '<td class="num"><strong style="color:var(--teal)">'+r.prospectos+'</strong></td>'+
+      '<td class="num">'+r.contactados+'</td>'+
+      '<td class="num">'+r.simulados+'</td>'+
+      '<td class="num">'+r.notasV+'</td>'+
+      '<td class="num"><strong style="color:var(--green)">'+r.contratos+'</strong></td>'+
+      '<td class="num">'+r.efec+'%</td>'+
+    '</tr>';
+  });
+  h += '</tbody></table>';
+  cont.innerHTML = h;
+}
+
+/* === Render: gráfico SVG de barras horizontales comparando asesores ===
+   Cada asesor tiene 2 barras: Prospectos (gris) + Contratos (teal). */
+function renderGraficoAsesoresSVG(rows){
+  const cont = document.getElementById('rp-grafico-asesores');
+  if(!cont) return;
+  if(!rows.length){
+    cont.innerHTML = '<div style="font-size:13px; color:var(--muted)">Sin datos para graficar en este período.</div>';
+    return;
+  }
+  // Ordenar por prospectos descendente
+  const data = rows.slice().sort((a,b) => b.prospectos - a.prospectos);
+  const maxVal = Math.max.apply(null, data.map(r => r.prospectos).concat([1]));
+  const rowH = 36;       // altura por asesor
+  const barH = 12;       // altura de cada barra
+  const labelW = 130;    // ancho columna nombre asesor
+  const valueW = 60;     // ancho de "12 prospectos" al final de la barra
+  const chartW = 620;    // ancho total visible deseado
+  const innerW = chartW - labelW - valueW - 20;
+  const h = data.length * rowH + 36;
+  let svg = '<svg viewBox="0 0 '+chartW+' '+h+'" style="width:100%; max-width:'+chartW+'px; display:block; margin:0 auto;" xmlns="http://www.w3.org/2000/svg">';
+  // Leyenda arriba
+  svg += '<g transform="translate('+labelW+', 8)">';
+  svg += '<rect x="0" y="0" width="11" height="11" fill="#94a4af" rx="2"/>';
+  svg += '<text x="16" y="10" font-family="Inter, sans-serif" font-size="11" fill="#475569">Prospectos</text>';
+  svg += '<rect x="100" y="0" width="11" height="11" fill="#0a3d4a" rx="2"/>';
+  svg += '<text x="116" y="10" font-family="Inter, sans-serif" font-size="11" fill="#0a3d4a">Contratos cerrados</text>';
+  svg += '</g>';
+  // Filas
+  data.forEach((r, i) => {
+    const y = 32 + i * rowH;
+    const wProsp = maxVal > 0 ? (r.prospectos / maxVal) * innerW : 0;
+    const wContr = maxVal > 0 ? (r.contratos / maxVal) * innerW : 0;
+    const nomCorto = r.nombre.length > 22 ? r.nombre.substring(0, 22) + '…' : r.nombre;
+    // Nombre asesor (izquierda)
+    svg += '<text x="'+(labelW-8)+'" y="'+(y+barH)+'" font-family="Inter, sans-serif" font-size="11.5" fill="#1a2730" text-anchor="end" font-weight="600">'+escapeHTML(nomCorto)+'</text>';
+    // Fondo de la pista
+    svg += '<rect x="'+labelW+'" y="'+y+'" width="'+innerW+'" height="'+barH+'" fill="#f1f5f9" rx="3"/>';
+    // Barra de prospectos
+    svg += '<rect x="'+labelW+'" y="'+y+'" width="'+wProsp+'" height="'+barH+'" fill="#94a4af" rx="3"/>';
+    // Barra de contratos (más delgada, encima en otra fila)
+    svg += '<rect x="'+labelW+'" y="'+(y+barH+3)+'" width="'+wContr+'" height="6" fill="#0a3d4a" rx="2"/>';
+    // Valores a la derecha
+    svg += '<text x="'+(labelW+innerW+8)+'" y="'+(y+barH)+'" font-family="Inter, sans-serif" font-size="11" fill="#475569" font-variant-numeric="tabular-nums">'+r.prospectos+' prospectos</text>';
+    svg += '<text x="'+(labelW+innerW+8)+'" y="'+(y+barH+13)+'" font-family="Inter, sans-serif" font-size="10.5" fill="#0a3d4a" font-weight="700" font-variant-numeric="tabular-nums">'+r.contratos+' contratos</text>';
+  });
+  svg += '</svg>';
+  cont.innerHTML = svg;
+}
+
+/* === PDF Ejecutivo (1 página): KPIs + embudo + gráfico + tabla resumen + notas === */
+function descargarReporteEjecutivoPDF(){
+  const { desde, hasta, rango } = getReporteRange();
+  const asesorFiltro = (document.getElementById('rp-asesor')||{}).value || 'todos';
+  const k = computeKPIs(desde, hasta, asesorFiltro);
+  const tituloRango = rango==='dia' ? fmtFecha(desde) : (fmtFecha(desde)+' al '+fmtFecha(hasta));
+  const asesNomFiltro = asesorFiltro==='todos' ? 'Todo el equipo' : asesorNombrePorId(asesorFiltro);
+
+  const inRange = d => d && d>=desde && d<=hasta;
+  const matchAs = uid => asesorFiltro==='todos' || uid===asesorFiltro;
+  const clientesPeriodo = CLIENTES_CACHE.filter(c => {
+    if(!matchAs(c.asesorId)) return false;
+    const ts = dateOf(c) || tsToDate(c.updatedAt);
+    return inRange(ts);
+  });
+
+  const ordenEt = ['prospecto','contacto','simulacion','notaventa','contrato'];
+  const enEtapaOMasEjec = (etapaId) => {
+    const idxObj = ordenEt.indexOf(etapaId);
+    return clientesPeriodo.filter(c => {
+      if(c.etapa === 'rechazo') return false;
+      const idxC = ordenEt.indexOf(c.etapa||'prospecto');
+      return idxC >= idxObj;
+    }).length;
+  };
+  const prospectos = clientesPeriodo.length;
+  const rechazos = clientesPeriodo.filter(c=>c.etapa==='rechazo').length;
+  const contactados = enEtapaOMasEjec('contacto');
+  const simulados = enEtapaOMasEjec('simulacion');
+  const notasV = enEtapaOMasEjec('notaventa');
+  const contratos = enEtapaOMasEjec('contrato');
+  const pctP = (a,b) => b > 0 ? Math.round((a/b)*100) : 0;
+  const efec = prospectos ? Math.round(((prospectos - rechazos)/prospectos)*100) : 0;
+  const cierre = pctP(contratos, prospectos);
+
+  // KPIs (4 cards)
+  const kpiHTML = '<div style="display:grid; grid-template-columns:repeat(4,1fr); gap:8px; margin:10px 0 14px;">' +
+    '<div style="border:1px solid #e5e7eb; border-radius:8px; padding:10px 12px; background:#fafcfd"><div style="font-size:9px; color:#6c757d; text-transform:uppercase; letter-spacing:0.6px; font-weight:600">Prospectos</div><div style="font-size:26px; font-weight:800; color:#0a3d4a; margin-top:2px">'+prospectos+'</div><div style="font-size:9.5px; color:#6c757d; margin-top:2px">'+(rechazos>0 ? rechazos+' rechazo'+(rechazos===1?'':'s')+' · Efectividad '+efec+'%' : 'leads totales · Efec '+efec+'%')+'</div></div>' +
+    '<div style="border:1px solid #e5e7eb; border-radius:8px; padding:10px 12px; background:#fafcfd"><div style="font-size:9px; color:#6c757d; text-transform:uppercase; letter-spacing:0.6px; font-weight:600">Simulaciones</div><div style="font-size:26px; font-weight:800; color:#2aa07f; margin-top:2px">'+simulados+'</div><div style="font-size:9.5px; color:#6c757d; margin-top:2px">'+pctP(simulados,prospectos)+'% conversión</div></div>' +
+    '<div style="border:1px solid #e5e7eb; border-radius:8px; padding:10px 12px; background:#fafcfd"><div style="font-size:9px; color:#6c757d; text-transform:uppercase; letter-spacing:0.6px; font-weight:600">Notas de Venta</div><div style="font-size:26px; font-weight:800; color:#1a6aa0; margin-top:2px">'+notasV+'</div><div style="font-size:9.5px; color:#6c757d; margin-top:2px">'+pctP(notasV,prospectos)+'% conversión</div></div>' +
+    '<div style="border:1px solid #e5e7eb; border-radius:8px; padding:10px 12px; background:#fafcfd"><div style="font-size:9px; color:#6c757d; text-transform:uppercase; letter-spacing:0.6px; font-weight:600">Tasa de cierre</div><div style="font-size:26px; font-weight:800; color:#a05c10; margin-top:2px">'+cierre+'%</div><div style="font-size:9.5px; color:#6c757d; margin-top:2px">'+contratos+' contrato'+(contratos===1?'':'s')+' enviados</div></div>' +
+  '</div>';
+
+  // Embudo
+  const embudoSteps = [
+    { lbl:'Prospecto',  val:prospectos,  color:'#94a4af', pct:null },
+    { lbl:'Contacto',   val:contactados, color:'#1a6aa0', pct:pctP(contactados,prospectos) },
+    { lbl:'Simulación', val:simulados,   color:'#a05c10', pct:pctP(simulados,prospectos) },
+    { lbl:'Nota Venta', val:notasV,      color:'#2aa07f', pct:pctP(notasV,prospectos) },
+    { lbl:'Contrato',   val:contratos,   color:'#0a3d4a', pct:pctP(contratos,prospectos) }
+  ];
+  let embudoHTML = '<div style="margin-bottom:14px;"><div style="font-size:9.5px; color:#6c757d; text-transform:uppercase; letter-spacing:0.5px; font-weight:600; margin-bottom:6px;">📊 Embudo de conversión</div><div style="display:flex; gap:4px; align-items:stretch;">';
+  embudoSteps.forEach((s,i) => {
+    if(i>0) embudoHTML += '<div style="display:flex; align-items:center; color:#94a3b8; font-size:14px; padding:0 2px;">→</div>';
+    embudoHTML += '<div style="flex:1; background:'+s.color+'; color:#fff; padding:9px 6px; border-radius:6px; text-align:center; line-height:1.15;">';
+    embudoHTML += '<div style="font-size:8px; text-transform:uppercase; letter-spacing:0.4px; opacity:0.9; font-weight:600;">'+s.lbl+'</div>';
+    embudoHTML += '<div style="font-size:18px; font-weight:800; margin-top:1px; font-variant-numeric:tabular-nums;">'+s.val+'</div>';
+    embudoHTML += '<div style="font-size:9px; opacity:0.92; font-variant-numeric:tabular-nums;">'+(s.pct!==null?s.pct+'%':'—')+'</div>';
+    embudoHTML += '</div>';
+  });
+  embudoHTML += '</div></div>';
+
+  // Tabla resumen + Gráfico SVG por asesor
+  const byAsesor = {};
+  clientesPeriodo.forEach(c => {
+    const uid = c.asesorId || '';
+    if(!byAsesor[uid]) byAsesor[uid] = { uid, nombre: asesorNombrePorId(uid), prospectos:0, contactados:0, simulados:0, notasV:0, contratos:0, rechazos:0, ufSim:0 };
+    byAsesor[uid].prospectos++;
+    const idxC = ordenEt.indexOf(c.etapa||'prospecto');
+    if(c.etapa !== 'rechazo'){
+      if(idxC >= ordenEt.indexOf('contacto'))    byAsesor[uid].contactados++;
+      if(idxC >= ordenEt.indexOf('simulacion'))  byAsesor[uid].simulados++;
+      if(idxC >= ordenEt.indexOf('notaventa'))   byAsesor[uid].notasV++;
+      if(idxC >= ordenEt.indexOf('contrato'))    byAsesor[uid].contratos++;
+    }
+    if(c.etapa === 'rechazo') byAsesor[uid].rechazos++;
+  });
+  k.sims.forEach(s => { const uid = s.asesorId || ''; if(byAsesor[uid]) byAsesor[uid].ufSim += getMontoUF(s); });
+  const rowsAs = Object.values(byAsesor).map(a => ({...a, efec: a.prospectos ? Math.round(((a.prospectos - a.rechazos)/a.prospectos)*100) : 0})).sort((a,b)=>b.prospectos-a.prospectos);
+
+  let tablaResHTML = '';
+  if(rowsAs.length){
+    tablaResHTML = '<div style="margin-bottom:14px;"><div style="font-size:9.5px; color:#6c757d; text-transform:uppercase; letter-spacing:0.5px; font-weight:600; margin-bottom:6px;">👥 Resumen del equipo</div>'+
+      '<table style="width:100%; border-collapse:collapse; font-size:10.5px;">'+
+      '<thead><tr style="background:#0a3d4a; color:#fff;">'+
+        '<th style="padding:6px 8px; text-align:left;">Asesor</th>'+
+        '<th style="padding:6px 8px; text-align:right;">Prospectos</th>'+
+        '<th style="padding:6px 8px; text-align:right;">Contactados</th>'+
+        '<th style="padding:6px 8px; text-align:right;">Sims</th>'+
+        '<th style="padding:6px 8px; text-align:right;">NV</th>'+
+        '<th style="padding:6px 8px; text-align:right;">Contratos</th>'+
+        '<th style="padding:6px 8px; text-align:right;">Efec %</th>'+
+      '</tr></thead><tbody>';
+    rowsAs.forEach(r => {
+      tablaResHTML += '<tr style="border-bottom:1px solid #e5e7eb;">'+
+        '<td style="padding:6px 8px;"><strong>'+escapeHTML(r.nombre)+'</strong>'+(r.rechazos>0?' <span style="color:#b52a2a; font-size:9.5px;">('+r.rechazos+' rechazo'+(r.rechazos===1?'':'s')+')</span>':'')+'</td>'+
+        '<td style="padding:6px 8px; text-align:right; font-variant-numeric:tabular-nums; color:#0a3d4a; font-weight:700;">'+r.prospectos+'</td>'+
+        '<td style="padding:6px 8px; text-align:right; font-variant-numeric:tabular-nums;">'+r.contactados+'</td>'+
+        '<td style="padding:6px 8px; text-align:right; font-variant-numeric:tabular-nums;">'+r.simulados+'</td>'+
+        '<td style="padding:6px 8px; text-align:right; font-variant-numeric:tabular-nums;">'+r.notasV+'</td>'+
+        '<td style="padding:6px 8px; text-align:right; font-variant-numeric:tabular-nums; color:#2aa07f; font-weight:700;">'+r.contratos+'</td>'+
+        '<td style="padding:6px 8px; text-align:right; font-variant-numeric:tabular-nums;">'+r.efec+'%</td>'+
+      '</tr>';
+    });
+    tablaResHTML += '</tbody></table></div>';
+  }
+
+  // Notas del día
+  const notasDia = [];
+  const topSim = k.sims.slice().sort((a,b)=>getMontoUF(b)-getMontoUF(a))[0];
+  if(topSim) notasDia.push({ t:'Top simulación del período', d:(topSim.clienteNombre||'Cliente sin nombre')+' · capital '+fmtUF(getMontoUF(topSim))+' (~'+fmtCLP(getMontoUF(topSim)*UF_VALOR)+') · '+asesorNombrePorId(topSim.asesorId) });
+  const enContrato = clientesPeriodo.filter(c=>c.etapa==='contrato').sort((a,b)=>((tsToDate(b.updatedAt)||new Date(0)).getTime()-(tsToDate(a.updatedAt)||new Date(0)).getTime()));
+  if(enContrato.length){ const c = enContrato[0]; notasDia.push({ t:'Contrato más reciente', d:(c.nombre||'Cliente')+' ('+asesorNombrePorId(c.asesorId)+')' }); }
+  const rechazosArr = clientesPeriodo.filter(c=>c.etapa==='rechazo');
+  if(rechazosArr.length) notasDia.push({ t:'Rechazos ('+rechazosArr.length+')', d:rechazosArr.slice(0,4).map(c => (c.nombre||'?')+(c.razonRechazo?' — '+c.razonRechazo:'')).join(' · ') });
+  let notasHTML = '';
+  if(notasDia.length){
+    notasHTML = '<div style="margin-top:6px; background:#fafcfd; border:1px solid #e5e7eb; border-radius:8px; padding:10px 14px;">' +
+      '<div style="font-size:9.5px; color:#6c757d; text-transform:uppercase; letter-spacing:0.5px; font-weight:600; margin-bottom:4px;">📌 Notas del día</div>'+
+      notasDia.map(n => '<div style="padding:4px 0; font-size:10.5px; line-height:1.45;"><strong style="color:#0a3d4a">'+escapeHTML(n.t)+':</strong> <span style="color:#3a4a55">'+escapeHTML(n.d)+'</span></div>').join('') +
+    '</div>';
+  }
+
+  const cfg = cargarConfig() || {};
+  const idCot = generarIdCot();
+  const cuerpo =
+    pdfHeader(cfg, 'Reporte Ejecutivo · '+tituloRango, idCot) +
+    '<h1 style="font-family:Inter,sans-serif; font-size:17px; color:#0a3d4a; margin:10px 0 2px; font-weight:700;">Reporte Ejecutivo · Equipo Comercial</h1>' +
+    '<div style="font-size:10.5px; color:#6c757d; margin-bottom:8px;">'+escapeHTML((cfg.empresa||'Asesorías Loans4B SpA')+' · Generado por '+(CURRENT_PROFILE?CURRENT_PROFILE.nombre:'(asesor)'))+'</div>' +
+    '<div style="font-size:10.5px; color:#6c757d; margin-bottom:4px;">Período: <strong style="color:#0a3d4a">'+escapeHTML(tituloRango)+'</strong> · Filtro: <strong>'+escapeHTML(asesNomFiltro)+'</strong> · Generado el '+fmtTimestamp(new Date())+'</div>' +
+    kpiHTML +
+    embudoHTML +
+    tablaResHTML +
+    notasHTML +
+    '<div style="font-size:9pt; color:#6c757d; margin-top:14px; padding:9px 12px; background:#fafcfd; border:1px solid #e5e7eb; border-radius:6px; line-height:1.5;"><strong>Indicadores:</strong> Efectividad = (Prospectos − Rechazos) / Prospectos. Tasa de cierre = Contratos / Prospectos. Cada % de conversión es respecto al total de prospectos.</div>' +
+    pdfFooter(cfg);
+
+  generarPDF(cuerpo, 'Reporte_Ejecutivo_'+(rango==='dia'?fmtFecha(desde).replace(/\//g,'-'):'periodo'));
 }
 
 function descargarReportePDF(){
