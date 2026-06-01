@@ -1042,6 +1042,53 @@ if(FIREBASE_OK){
   </div>
 
   <!-- ===== MIS CLIENTES ===== -->
+  <!-- ===== CONVERSOR UF / CLP ===== -->
+  <div class="view" id="view-conversor">
+    <h1 class="section-title">Conversor UF / CLP</h1>
+    <p class="section-sub">Herramienta de conversión bidireccional. Escribe en cualquiera de los dos campos y el otro se calcula automáticamente.</p>
+
+    <div class="conv-table-card">
+      <h3>Valores actuales del mercado</h3>
+      <div class="form-grid" style="padding:0 24px 18px;">
+        <div class="form-group">
+          <label>Valor UF</label>
+          <div style="background:var(--green-bg); border:1px solid #c9ebde; border-radius:8px; padding:14px 18px;">
+            <div style="font-size:24px; font-weight:800; color:var(--teal);" id="conv-uf-display">—</div>
+            <div style="font-size:11px; color:var(--muted); margin-top:4px;">Actualizado: <span id="conv-uf-fecha">—</span> · Fuente: mindicador.cl</div>
+          </div>
+        </div>
+        <div class="form-group">
+          <label>Valor USD observado</label>
+          <div style="background:#eef5fb; border:1px solid #cfe0ee; border-radius:8px; padding:14px 18px;">
+            <div style="font-size:24px; font-weight:800; color:#1a5a90;" id="conv-usd-display">—</div>
+            <div style="font-size:11px; color:var(--muted); margin-top:4px;">Actualizado: <span id="conv-usd-fecha">—</span> · Fuente: mindicador.cl</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="conv-table-card" style="margin-top:18px;">
+      <h3>Conversor bidireccional UF ↔ CLP</h3>
+      <div class="form-grid" style="padding:0 24px 24px;">
+        <div class="form-group">
+          <label>Monto en UF</label>
+          <input type="number" id="conv-uf" placeholder="Ej: 2.500" step="0.01" oninput="convDeUF()" style="font-size:18px; padding:12px 16px; font-weight:600; color:var(--teal); background:#fff; border:2px solid var(--green); border-radius:8px;">
+        </div>
+        <div class="form-group">
+          <label>Equivalente en CLP</label>
+          <input type="text" id="conv-clp" placeholder="Ej: 100.200.000" oninput="convDeCLP()" style="font-size:18px; padding:12px 16px; font-weight:600; color:var(--teal); background:#fff; border:2px solid var(--green); border-radius:8px;">
+        </div>
+      </div>
+      <div style="padding:0 24px 18px; font-size:12px; color:var(--muted); line-height:1.5;">
+        💡 <strong>Tip:</strong> Escribe en cualquiera de los dos campos. El cálculo es instantáneo y usa el valor UF de hoy. El campo CLP acepta formato con puntos (ej: 100.200.000) o sin formato (100200000).
+      </div>
+    </div>
+
+    <div style="margin-top:18px; padding:14px 18px; background:#fafcfd; border:1px solid var(--border-l); border-radius:8px; font-size:12.5px; color:var(--text-2); line-height:1.55;">
+      ℹ️ La UF y el USD se actualizan automáticamente al cargar la app. Si los valores se ven desactualizados, refresca la página con <strong>Ctrl+F5</strong>.
+    </div>
+  </div>
+
   <div class="view" id="view-clientes">
     <h1 class="section-title">Mis Clientes</h1>
     <p class="section-sub">Ficha única por cliente. La información se comparte entre asesores y queda asociada a simulaciones y notas de venta. Estructura compatible con Kommo para futura sincronización.</p>
@@ -1380,6 +1427,7 @@ if(FIREBASE_OK){
         <span class="lbl" style="margin-left:14px">Estado actual</span>
         <input type="text" id="cd-estado-input" placeholder="Texto breve del estado actual…" style="background:rgba(255,255,255,0.12); color:#fff; border:1px solid rgba(255,255,255,0.25); border-radius:6px; padding:6px 10px; font-size:12px; font-family:inherit; min-width:260px;" onchange="guardarEstadoActual()">
         <button class="btn ghost" onclick="abrirClienteModal(CD_ID)" style="margin-left:auto"><span>✏️</span> Editar ficha</button>
+        <button class="btn ghost" onclick="eliminarClienteActual()" style="color:#fdc6c6; border-color:rgba(255,255,255,0.25); background:transparent;" title="Eliminar este cliente permanentemente"><span>🗑</span> Eliminar</button>
       </div>
     </div>
 
@@ -1576,27 +1624,73 @@ if(FIREBASE_OK){
     <!-- MODO EJECUTIVO — vista compacta para jefatura -->
     <!-- ============================================ -->
     <div id="rp-modo-ejecutivo">
-      <div class="kpi-row">
-        <div class="kpi-card"><div class="lbl">Prospectos</div><div class="val" id="kpi-prospectos">0</div><div class="sub" id="kpi-prospectos-sub">leads del período</div></div>
-        <div class="kpi-card green"><div class="lbl">Simulaciones</div><div class="val" id="kpi-sims-funnel">0</div><div class="sub" id="kpi-sims-funnel-sub">— conversión</div></div>
-        <div class="kpi-card blue"><div class="lbl">Notas de Venta</div><div class="val" id="kpi-nv-funnel">0</div><div class="sub" id="kpi-nv-funnel-sub">— conversión</div></div>
-        <div class="kpi-card amber"><div class="lbl">Contratos</div><div class="val" id="kpi-contratos">0</div><div class="sub" id="kpi-contratos-sub">— tasa de cierre</div></div>
+
+      <!-- 📌 RESUMEN EJECUTIVO -->
+      <div class="cd-card" style="margin-bottom:14px; border-left:4px solid var(--green);">
+        <div class="cd-card-head"><h3>📌 Resumen Ejecutivo del período</h3></div>
+        <div class="cd-card-body" id="rp-resumen-ejec">
+          <div style="font-size:13px; color:var(--muted)">Cargando…</div>
+        </div>
       </div>
 
-      <!-- Embudo de conversión visual -->
+      <!-- 🎯 PROGRESO HACIA META MENSUAL -->
+      <div class="cd-card" style="margin-bottom:14px;">
+        <div class="cd-card-head" style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px;">
+          <h3>🎯 Progreso hacia meta mensual</h3>
+          <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
+            <label style="font-size:11.5px; color:var(--muted); display:flex; align-items:center; gap:5px;">Meta individual:
+              <input type="number" id="rp-meta-ind" step="1000000" style="width:130px; padding:4px 8px; border:1px solid var(--border); border-radius:4px; font-size:11.5px; font-variant-numeric:tabular-nums; font-family:inherit;" onchange="onCambioMetaReporte()">
+              <span style="color:var(--muted)">CLP</span>
+            </label>
+            <label style="font-size:11.5px; color:var(--muted); display:flex; align-items:center; gap:5px;">Meta grupal:
+              <input type="number" id="rp-meta-grupal" step="1000000" style="width:130px; padding:4px 8px; border:1px solid var(--border); border-radius:4px; font-size:11.5px; font-variant-numeric:tabular-nums; font-family:inherit;" onchange="onCambioMetaReporte()">
+              <span style="color:var(--muted)">CLP</span>
+            </label>
+          </div>
+        </div>
+        <div class="cd-card-body" id="rp-progreso-meta">
+          <div style="font-size:13px; color:var(--muted)">Cargando…</div>
+        </div>
+      </div>
+
+      <!-- 4 KPI CARDS principales -->
+      <div class="kpi-row">
+        <div class="kpi-card"><div class="lbl">Ingresos L4B</div><div class="val" id="kpi-ingresos">$0</div><div class="sub" id="kpi-ingresos-sub">— del período</div></div>
+        <div class="kpi-card green"><div class="lbl">Ticket promedio</div><div class="val" id="kpi-ticket">$0</div><div class="sub" id="kpi-ticket-sub">por contrato cerrado</div></div>
+        <div class="kpi-card blue"><div class="lbl">Tasa de cierre</div><div class="val" id="kpi-tasa-cierre">0%</div><div class="sub" id="kpi-tasa-cierre-sub">prospecto → contrato</div></div>
+        <div class="kpi-card amber"><div class="lbl">Ciclo de ventas</div><div class="val" id="kpi-ciclo">0 d</div><div class="sub" id="kpi-ciclo-sub">días promedio</div></div>
+      </div>
+
+      <!-- 📊 COMPARATIVA CON PERÍODO ANTERIOR -->
+      <div class="cd-card" style="margin-top:14px; margin-bottom:14px;">
+        <div class="cd-card-head"><h3>📊 Comparativa con período anterior</h3></div>
+        <div class="cd-card-body" id="rp-comparativa">
+          <div style="font-size:13px; color:var(--muted)">Cargando…</div>
+        </div>
+      </div>
+
+      <!-- 📊 EMBUDO de conversión visual -->
       <div id="rp-embudo-wrap" style="margin-top:14px; margin-bottom:18px;">
         <div style="font-size:11px; color:var(--muted); text-transform:uppercase; letter-spacing:0.6px; font-weight:600; margin-bottom:8px;">📊 Embudo de conversión</div>
         <div id="rp-embudo" style="display:flex; gap:6px; align-items:stretch; flex-wrap:wrap;"></div>
         <div id="rp-embudo-meta" style="font-size:11.5px; color:var(--muted); margin-top:8px; line-height:1.5;"></div>
       </div>
 
-      <!-- Gráfico SVG comparativo entre asesores -->
+      <!-- 🏷️ ANÁLISIS POR PRODUCTO -->
+      <div class="cd-card" style="margin-bottom:18px">
+        <div class="cd-card-head"><h3>🏷️ Análisis por producto</h3></div>
+        <div class="cd-card-body" id="rp-por-producto">
+          <div style="font-size:13px; color:var(--muted)">Cargando…</div>
+        </div>
+      </div>
+
+      <!-- 📈 PRODUCTIVIDAD por asesor (gráfico SVG) -->
       <div class="cd-card" style="margin-bottom:18px">
         <div class="cd-card-head"><h3>📈 Productividad por asesor</h3></div>
         <div class="cd-card-body" id="rp-grafico-asesores"><div style="font-size:13px; color:var(--muted)">Cargando…</div></div>
       </div>
 
-      <!-- Tabla resumen 1 fila por asesor -->
+      <!-- 👥 RESUMEN DEL EQUIPO (tabla con ingresos y avance vs meta) -->
       <div class="cd-card" style="margin-bottom:18px">
         <div class="cd-card-head"><h3>👥 Resumen del equipo</h3></div>
         <div class="cd-card-body" style="padding:0;">
@@ -1604,7 +1698,15 @@ if(FIREBASE_OK){
         </div>
       </div>
 
-      <!-- Notas del día — highlights -->
+      <!-- 💡 CONCLUSIONES Y PRÓXIMOS PASOS -->
+      <div class="cd-card" style="margin-bottom:18px; border-left:4px solid var(--amber);">
+        <div class="cd-card-head"><h3>💡 Conclusiones y próximos pasos</h3></div>
+        <div class="cd-card-body" id="rp-conclusiones">
+          <div style="font-size:13px; color:var(--muted)">Cargando…</div>
+        </div>
+      </div>
+
+      <!-- 📌 NOTAS del día -->
       <div class="cd-card" style="margin-bottom:18px">
         <div class="cd-card-head"><h3>📌 Notas del día</h3></div>
         <div class="cd-card-body" id="rp-notas-dia">
@@ -3051,7 +3153,7 @@ function renderClientes(){
       '<td><div style="font-size:12px">'+escapeHTML(c.email||'—')+'</div><div style="font-size:11px;color:var(--muted)">'+escapeHTML(c.telefono||'')+'</div></td>'+
       '<td><span style="font-size:12px">'+escapeHTML(asesorNombrePorId(c.asesorId))+'</span></td>'+
       '<td><span style="font-size:11.5px;color:var(--muted)">'+fmtTimestamp(c.updatedAt||c.createdAt)+'</span></td>'+
-      '<td class="actions" onclick="event.stopPropagation()"><button class="btn ghost" style="padding:5px 10px; font-size:11px" onclick="abrirClienteModal(\''+c.id+'\')">✏️ Editar</button></td>'+
+      '<td class="actions" onclick="event.stopPropagation()"><button class="btn ghost" style="padding:5px 10px; font-size:11px; margin-right:4px;" onclick="abrirClienteModal(\''+c.id+'\')">✏️ Editar</button><button class="btn ghost" style="padding:5px 8px; font-size:11px; color:#b52a2a;" onclick="eliminarClienteDesdeTabla(\''+c.id+'\')" title="Eliminar este cliente">🗑</button></td>'+
     '</tr>';
   }).join('');
 }
@@ -3094,6 +3196,69 @@ function abrirClienteModal(id){
 }
 
 function cerrarClienteModal(){ document.getElementById('modal-cliente').classList.remove('active'); }
+
+/* === ELIMINAR CLIENTE ===
+   Doble confirmación: primero confirm(), luego prompt() pidiendo escribir
+   exactamente el nombre del cliente. Esto es deliberado para prevenir
+   eliminaciones accidentales (Lukas pidió que no se confundan reales con prueba).
+   - Borra el doc cliente de Firestore
+   - Actualiza CLIENTES_CACHE
+   - Re-renderiza la vista activa (Mis Clientes, Pipeline, etc.)
+   - Las simulaciones/notas asociadas quedan en Firestore como huérfanas
+     (se mostrarán con "Cliente: (eliminado)" en el historial, no se rompen) */
+async function eliminarClienteCore(cliId){
+  if(!fbReady()){ alert('Firebase no configurado.'); return false; }
+  if(!CURRENT_USER){ alert('Debes iniciar sesión.'); return false; }
+  const c = CLIENTES_CACHE.find(x => x.id === cliId);
+  if(!c){ alert('Cliente no encontrado.'); return false; }
+  // Primera confirmación
+  if(!confirm('¿Eliminar el cliente "'+(c.nombre||'(sin nombre)')+'"?\n\nEsto NO se puede deshacer. Sus simulaciones y notas de venta quedarán en el historial pero sin cliente asociado.')) return false;
+  // Segunda confirmación: pedir escribir el nombre
+  const conf = prompt('Para confirmar, escribe exactamente el nombre del cliente:\n\n"'+c.nombre+'"');
+  if(conf === null) return false; // cancelado
+  if(conf.trim() !== (c.nombre||'').trim()){
+    alert('El nombre no coincide. Eliminación cancelada por seguridad.');
+    return false;
+  }
+  try {
+    await fbDb.collection('clientes').doc(cliId).delete();
+    // Limpiar de CACHE
+    const idx = CLIENTES_CACHE.findIndex(x => x.id === cliId);
+    if(idx >= 0) CLIENTES_CACHE.splice(idx, 1);
+    // Limpiar de CLIENTE_SELECCIONADO_SIM si estaba seleccionado en alguno
+    Object.keys(CLIENTE_SELECCIONADO_SIM).forEach(k => {
+      if(CLIENTE_SELECCIONADO_SIM[k] === cliId) CLIENTE_SELECCIONADO_SIM[k] = null;
+    });
+    poblarClientePickers();
+    mostrarToastAutoCliente('✓ Cliente eliminado · '+c.nombre, 'creado');
+    return true;
+  } catch(e){
+    console.error('eliminarClienteCore:', e);
+    alert('Error eliminando cliente: '+(e.message||e));
+    return false;
+  }
+}
+
+/* Llamado desde la ficha cliente. Si éxito, volver a Mis Clientes. */
+async function eliminarClienteActual(){
+  if(!CD_ID) return;
+  const ok = await eliminarClienteCore(CD_ID);
+  if(ok){
+    CD_ID = null;
+    showView('clientes');
+  }
+}
+
+/* Llamado desde la tabla Mis Clientes (ícono papelera). Re-renderiza la tabla. */
+async function eliminarClienteDesdeTabla(cliId){
+  const ok = await eliminarClienteCore(cliId);
+  if(ok){
+    renderClientes();
+    // Si la vista pipeline también está activa, re-renderizar
+    const pv = document.getElementById('view-pipeline');
+    if(pv && pv.classList.contains('active')) renderPipeline();
+  }
+}
 
 /* === LEAD RÁPIDO ===
    Form mínimo para captura veloz durante llamadas.
@@ -4979,6 +5144,177 @@ function reporteDetalleDeCliente(c, sims){
   return parts.length ? parts.join(' · ') : '—';
 }
 
+/* === HELPERS REPORTE EJECUTIVO ===
+   Métricas avanzadas: ingresos, ticket, ciclo, comparativa, etc. */
+
+/* Ingreso L4B en CLP de una simulación (fee del 3% del monto financiado) */
+function ingresoSimCLP(s){
+  if(!s || !s.resultados) return 0;
+  const feeUF = s.resultados.honorariosUF || s.resultados.feeL4BUF || 0;
+  return feeUF * UF_VALOR;
+}
+
+/* Volumen financiado bruto en CLP de una simulación */
+function volumenSimCLP(s){
+  if(!s || !s.inputs) return 0;
+  const v = s.producto === 'hipotecario'
+    ? (s.inputs.financiarUF || 0)
+    : ((s.inputs.valorUF || 0) * (s.inputs.pctCV || 0) / 100);
+  return v * UF_VALOR;
+}
+
+/* Ciclo de ventas en días (createdAt → updatedAt para los clientes en 'contrato') */
+function calcularCicloDias(clientes){
+  const cerrados = clientes.filter(c => c.etapa === 'contrato');
+  if(cerrados.length === 0) return 0;
+  const dias = cerrados.map(c => {
+    const ini = tsToDate(c.createdAt);
+    const fin = tsToDate(c.updatedAt);
+    if(!ini || !fin) return 0;
+    return Math.max(0, (fin - ini) / (1000*60*60*24));
+  }).filter(d => d > 0);
+  if(dias.length === 0) return 0;
+  return dias.reduce((a,b) => a+b, 0) / dias.length;
+}
+
+/* Período inmediatamente anterior con mismo length */
+function rangoAnterior(desde, hasta){
+  const dur = hasta.getTime() - desde.getTime();
+  const antHasta = new Date(desde.getTime() - 1);
+  const antDesde = new Date(antHasta.getTime() - dur);
+  antDesde.setHours(0,0,0,0);
+  antHasta.setHours(23,59,59,999);
+  return { desde: antDesde, hasta: antHasta };
+}
+
+/* Cálculo completo de KPIs para reportes (ejecutivo + detallado) */
+function calcularKPIsReporte(clientesPeriodo, sims){
+  const ordenEt = ['prospecto','contacto','simulacion','notaventa','contrato'];
+  const enEtapa = (idMin) => {
+    const idx = ordenEt.indexOf(idMin);
+    return clientesPeriodo.filter(c => {
+      if(c.etapa === 'rechazo') return false;
+      const ic = ordenEt.indexOf(c.etapa || 'prospecto');
+      return ic >= idx;
+    }).length;
+  };
+  const prospectos = clientesPeriodo.length;
+  const contactados = enEtapa('contacto');
+  const simulados = enEtapa('simulacion');
+  const notasV = enEtapa('notaventa');
+  const contratos = enEtapa('contrato');
+  const rechazos = clientesPeriodo.filter(c => c.etapa === 'rechazo').length;
+  // Sims asociadas a clientes cerrados
+  const idsContrato = new Set(clientesPeriodo.filter(c => c.etapa === 'contrato').map(c => c.id));
+  const simsCerradas = sims.filter(s => idsContrato.has(s.clienteId));
+  // Tomar SOLO la última sim por cliente (no contar duplicados)
+  const lastByCliente = {};
+  simsCerradas.forEach(s => {
+    const cid = s.clienteId;
+    if(!lastByCliente[cid] || (s.fechaSort && lastByCliente[cid].fechaSort && s.fechaSort > lastByCliente[cid].fechaSort)){
+      lastByCliente[cid] = s;
+    }
+  });
+  const simsUnicas = Object.values(lastByCliente);
+  const ingreso = simsUnicas.reduce((sum, s) => sum + ingresoSimCLP(s), 0);
+  const volumen = simsUnicas.reduce((sum, s) => sum + volumenSimCLP(s), 0);
+  const ticketProm = contratos > 0 ? ingreso / contratos : 0;
+  const tasaCierre = prospectos > 0 ? (contratos / prospectos) : 0;
+  const ciclo = calcularCicloDias(clientesPeriodo);
+  // Por producto
+  const porProducto = { leaseback: { ops:0, ingreso:0, volumen:0 }, hipotecario: { ops:0, ingreso:0, volumen:0 } };
+  simsUnicas.forEach(s => {
+    const p = s.producto;
+    if(porProducto[p]){
+      porProducto[p].ops++;
+      porProducto[p].ingreso += ingresoSimCLP(s);
+      porProducto[p].volumen += volumenSimCLP(s);
+    }
+  });
+  return { prospectos, contactados, simulados, notasV, contratos, rechazos,
+           ingreso, volumen, ticketProm, tasaCierre, ciclo, porProducto,
+           simsUnicas };
+}
+
+/* Cargar/guardar meta de localStorage */
+function getMetaIndividual(){ const v = parseInt(localStorage.getItem('l4b_meta_ind'),10); return (v && v>0) ? v : 20000000; }
+function getMetaGrupal(){ const v = parseInt(localStorage.getItem('l4b_meta_grupal'),10); return (v && v>0) ? v : 120000000; }
+function onCambioMetaReporte(){
+  const ind = parseInt((document.getElementById('rp-meta-ind')||{}).value, 10);
+  const gru = parseInt((document.getElementById('rp-meta-grupal')||{}).value, 10);
+  if(ind && ind > 0) localStorage.setItem('l4b_meta_ind', String(ind));
+  if(gru && gru > 0) localStorage.setItem('l4b_meta_grupal', String(gru));
+  renderReporte();
+}
+
+/* Generar texto del resumen ejecutivo (viñetas) */
+function generarResumenEjec(k, kAnt, meta){
+  const lines = [];
+  const pctMeta = meta > 0 ? (k.ingreso / meta * 100) : 0;
+  const metaIcon = pctMeta >= 100 ? '✅' : (pctMeta >= 75 ? '🟢' : (pctMeta >= 50 ? '🟡' : '🔴'));
+  lines.push(metaIcon+' Ingresos del período: <strong style="color:var(--teal)">'+fmtCLP(k.ingreso)+'</strong> ('+pctMeta.toFixed(1)+'% de la meta de '+fmtCLP(meta)+')');
+  lines.push('📦 <strong>'+k.contratos+'</strong> contrato'+(k.contratos===1?'':'s')+' cerrado'+(k.contratos===1?'':'s')+' · Ticket promedio: <strong>'+fmtCLP(k.ticketProm)+'</strong>');
+  lines.push('📈 Tasa de cierre: <strong>'+(k.tasaCierre*100).toFixed(1)+'%</strong> · Ciclo de ventas promedio: <strong>'+k.ciclo.toFixed(1)+' días</strong>');
+  if(kAnt && kAnt.prospectos > 0){
+    const deltaIng = kAnt.ingreso > 0 ? ((k.ingreso - kAnt.ingreso)/kAnt.ingreso*100) : 0;
+    const arr = deltaIng >= 0 ? '↑' : '↓';
+    const col = deltaIng >= 0 ? 'var(--green)' : 'var(--red)';
+    lines.push('🔄 Vs período anterior: <strong style="color:'+col+'">'+arr+' '+Math.abs(deltaIng).toFixed(1)+'%</strong> en ingresos · '+(k.prospectos >= kAnt.prospectos ? '↑' : '↓')+' '+Math.abs(k.prospectos - kAnt.prospectos)+' prospectos');
+  }
+  return lines;
+}
+
+/* Generar conclusiones automáticas */
+function generarConclusiones(k, asesoresStats){
+  const out = [];
+  // Top performer
+  const topAs = asesoresStats.filter(a => a.contratos > 0).sort((a,b) => b.ingreso - a.ingreso)[0];
+  if(topAs){
+    out.push({ icon:'🏆', color:'#1d7a5f', txt: 'Top performer: <strong>'+escapeHTML(topAs.nombre)+'</strong> con '+fmtCLP(topAs.ingreso)+' de ingresos generados ('+topAs.contratos+' contrato'+(topAs.contratos===1?'':'s')+').' });
+  }
+  // Producto estrella
+  const productos = Object.entries(k.porProducto).filter(([_, p]) => p.ops > 0).sort((a,b) => b[1].ingreso - a[1].ingreso);
+  if(productos.length > 0){
+    const [topProdName, topProdData] = productos[0];
+    out.push({ icon:'🏷️', color:'#0a3d4a', txt: 'Producto que más generó: <strong>'+(topProdName==='leaseback'?'Leaseback Inmobiliario':'Crédito Hipotecario')+'</strong> con '+fmtCLP(topProdData.ingreso)+' en ingresos ('+topProdData.ops+' operación'+(topProdData.ops===1?'':'es')+').' });
+  }
+  // Cuello de botella
+  const stages = [
+    { name:'Prospecto → Contacto', count:k.prospectos, next:k.contactados },
+    { name:'Contacto → Simulación', count:k.contactados, next:k.simulados },
+    { name:'Simulación → Nota Venta', count:k.simulados, next:k.notasV },
+    { name:'Nota Venta → Contrato', count:k.notasV, next:k.contratos }
+  ];
+  const dropoffs = stages
+    .filter(s => s.count > 0)
+    .map(s => ({...s, drop: 1 - s.next/s.count}))
+    .sort((a,b) => b.drop - a.drop);
+  if(dropoffs.length > 0 && dropoffs[0].drop > 0.3){
+    const cb = dropoffs[0];
+    out.push({ icon:'⚠️', color:'#a05c10', txt: 'Cuello de botella detectado en <strong>'+cb.name+'</strong>: se pierde '+(cb.drop*100).toFixed(0)+'% de los leads en este paso. Revisar proceso o capacitación.' });
+  }
+  // Rechazos
+  if(k.rechazos > 0 && k.prospectos > 0){
+    const tasaRech = k.rechazos / k.prospectos * 100;
+    if(tasaRech > 20){
+      out.push({ icon:'⚠️', color:'#b52a2a', txt: 'Tasa de rechazo del '+tasaRech.toFixed(1)+'% ('+k.rechazos+' rechazo'+(k.rechazos===1?'':'s')+'). Analizar las razones registradas para detectar patrones.' });
+    }
+  }
+  // Ciclo
+  if(k.ciclo > 30 && k.contratos > 0){
+    out.push({ icon:'💡', color:'#1a6aa0', txt: 'Ciclo de ventas: '+k.ciclo.toFixed(1)+' días en promedio. Evaluar follow-ups automáticos en Simulación y Nota de Venta para acelerar.' });
+  }
+  // Refuerzo positivo si no hay nada negativo
+  if(out.filter(o => o.icon === '⚠️').length === 0 && k.contratos > 0){
+    out.push({ icon:'✅', color:'#1d7a5f', txt: 'Sin cuellos de botella significativos detectados. Mantener el ritmo de trabajo y revisar oportunidades de optimización.' });
+  }
+  // Si no hay ningún contrato, mensaje específico
+  if(k.contratos === 0 && k.prospectos > 0){
+    out.push({ icon:'🎯', color:'#a05c10', txt: 'Aún sin contratos cerrados en el período. Foco: acelerar leads en etapas Simulación y Nota de Venta para llegar a Contrato.' });
+  }
+  return out;
+}
+
 function renderReporte(){
   const { desde, hasta, rango } = getReporteRange();
   const asesorFiltro = (document.getElementById('rp-asesor')||{}).value || 'todos';
@@ -5166,9 +5502,129 @@ function renderReporte(){
     ).join('');
   }
 
-  // === NUEVO: Tabla resumen + Gráfico SVG para modo ejecutivo ===
+  // === Cálculo de KPIs avanzados para Reporte Ejecutivo ===
+  const kpisEjec = calcularKPIsReporte(clientesPeriodo, k.sims);
+  // Período anterior para comparativa
+  const ant = rangoAnterior(desde, hasta);
+  const clientesAnt = CLIENTES_CACHE.filter(c => {
+    if(!matchAs(c.asesorId)) return false;
+    const ts = dateOf(c) || tsToDate(c.updatedAt);
+    return ts && ts >= ant.desde && ts <= ant.hasta;
+  });
+  const simsAnt = HISTORIAL_CACHE.filter(h => h._tipo==='simulacion' && matchAs(h.asesorId) && h.fechaSort && h.fechaSort >= ant.desde && h.fechaSort <= ant.hasta);
+  const kpisAnt = calcularKPIsReporte(clientesAnt, simsAnt);
+
+  // === Meta (individual vs grupal según filtro) ===
+  const metaInd = getMetaIndividual();
+  const metaGru = getMetaGrupal();
+  const elMetaInd = document.getElementById('rp-meta-ind');
+  const elMetaGru = document.getElementById('rp-meta-grupal');
+  if(elMetaInd && !elMetaInd.value) elMetaInd.value = metaInd;
+  if(elMetaGru && !elMetaGru.value) elMetaGru.value = metaGru;
+  const metaAplicada = asesorFiltro === 'todos' ? metaGru : metaInd;
+  const tipoMetaLbl = asesorFiltro === 'todos' ? 'grupal' : 'individual';
+
+  // === KPI cards ===
+  const elIng = document.getElementById('kpi-ingresos'); if(elIng) elIng.textContent = fmtCLP(kpisEjec.ingreso);
+  const elIngS = document.getElementById('kpi-ingresos-sub'); if(elIngS) elIngS.textContent = (metaAplicada > 0 ? Math.round(kpisEjec.ingreso/metaAplicada*100)+'% de meta '+tipoMetaLbl : '— del período');
+  const elTic = document.getElementById('kpi-ticket'); if(elTic) elTic.textContent = fmtCLP(kpisEjec.ticketProm);
+  const elTicS = document.getElementById('kpi-ticket-sub'); if(elTicS) elTicS.textContent = kpisEjec.contratos>0 ? 'sobre '+kpisEjec.contratos+' contrato'+(kpisEjec.contratos===1?'':'s') : 'sin contratos aún';
+  const elTC = document.getElementById('kpi-tasa-cierre'); if(elTC) elTC.textContent = (kpisEjec.tasaCierre*100).toFixed(1)+'%';
+  const elTCS = document.getElementById('kpi-tasa-cierre-sub'); if(elTCS) elTCS.textContent = kpisEjec.contratos+' / '+kpisEjec.prospectos+' prospectos cerrados';
+  const elCic = document.getElementById('kpi-ciclo'); if(elCic) elCic.textContent = kpisEjec.ciclo>0 ? kpisEjec.ciclo.toFixed(1)+' d' : '—';
+  const elCicS = document.getElementById('kpi-ciclo-sub'); if(elCicS) elCicS.textContent = kpisEjec.ciclo>0 ? 'días promedio · createdAt → contrato' : 'sin datos suficientes';
+
+  // === Resumen Ejecutivo (viñetas) ===
+  const resumenEl = document.getElementById('rp-resumen-ejec');
+  if(resumenEl){
+    const lineas = generarResumenEjec(kpisEjec, kpisAnt, metaAplicada);
+    resumenEl.innerHTML = '<ul style="margin:0; padding:0; list-style:none; font-size:13px; line-height:1.7;">'+
+      lineas.map(l => '<li style="padding:4px 0; border-bottom:1px dashed var(--border-l);">'+l+'</li>').join('')+
+    '</ul>';
+  }
+
+  // === Progreso hacia meta (barra visual SVG) ===
+  const progresoEl = document.getElementById('rp-progreso-meta');
+  if(progresoEl){
+    const pct = metaAplicada > 0 ? Math.min(100, (kpisEjec.ingreso/metaAplicada)*100) : 0;
+    const restante = Math.max(0, metaAplicada - kpisEjec.ingreso);
+    const colorBarra = pct >= 100 ? '#1d7a5f' : (pct >= 75 ? '#2aa07f' : (pct >= 50 ? '#a05c10' : '#b52a2a'));
+    progresoEl.innerHTML =
+      '<div style="display:flex; justify-content:space-between; margin-bottom:8px; font-size:12.5px;">'+
+        '<span style="color:var(--text-2)">Meta '+tipoMetaLbl+': <strong>'+fmtCLP(metaAplicada)+'</strong></span>'+
+        '<span style="color:'+colorBarra+'; font-weight:700;">'+pct.toFixed(1)+'% · '+fmtCLP(kpisEjec.ingreso)+'</span>'+
+      '</div>'+
+      '<div style="background:var(--bg); border:1px solid var(--border-l); border-radius:8px; height:32px; position:relative; overflow:hidden;">'+
+        '<div style="background:linear-gradient(90deg, '+colorBarra+', '+colorBarra+'cc); height:100%; width:'+pct.toFixed(1)+'%; transition:width 0.6s ease; display:flex; align-items:center; justify-content:flex-end; padding-right:10px; color:#fff; font-size:11px; font-weight:700;">'+(pct >= 10 ? pct.toFixed(0)+'%' : '')+'</div>'+
+      '</div>'+
+      '<div style="margin-top:8px; font-size:11.5px; color:var(--muted);">'+
+        (pct >= 100 ? '🎉 Meta superada por '+fmtCLP(kpisEjec.ingreso - metaAplicada) : 'Faltan <strong>'+fmtCLP(restante)+'</strong> para alcanzar la meta')+
+      '</div>';
+  }
+
+  // === Comparativa con período anterior ===
+  const compEl = document.getElementById('rp-comparativa');
+  if(compEl){
+    const delta = (curr, prev) => {
+      if(prev <= 0) return curr > 0 ? 100 : 0;
+      return ((curr - prev) / prev) * 100;
+    };
+    const cardComp = (lbl, curr, prev, fmt) => {
+      const d = delta(curr, prev);
+      const arr = d >= 0 ? '↑' : '↓';
+      const col = d >= 0 ? '#1d7a5f' : '#b52a2a';
+      const fmtV = fmt || (v => v);
+      return '<div style="background:#fafcfd; border:1px solid var(--border-l); border-radius:8px; padding:10px 12px;">'+
+        '<div style="font-size:10px; color:var(--muted); text-transform:uppercase; letter-spacing:0.5px; font-weight:600;">'+lbl+'</div>'+
+        '<div style="font-size:16px; font-weight:700; color:var(--text); margin-top:2px; font-variant-numeric:tabular-nums;">'+fmtV(curr)+'</div>'+
+        '<div style="font-size:11px; color:'+col+'; font-weight:600; margin-top:2px;">'+arr+' '+Math.abs(d).toFixed(1)+'% <span style="color:var(--muted); font-weight:400;">vs '+fmtV(prev)+'</span></div>'+
+      '</div>';
+    };
+    const ant = kpisAnt;
+    compEl.innerHTML = '<div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(150px, 1fr)); gap:10px;">'+
+      cardComp('Ingresos', kpisEjec.ingreso, ant.ingreso, fmtCLP)+
+      cardComp('Prospectos', kpisEjec.prospectos, ant.prospectos)+
+      cardComp('Contratos', kpisEjec.contratos, ant.contratos)+
+      cardComp('Tasa cierre', kpisEjec.tasaCierre*100, ant.tasaCierre*100, v => v.toFixed(1)+'%')+
+    '</div>'+
+    '<div style="font-size:11px; color:var(--muted); margin-top:8px;">Período anterior: '+fmtFecha(ant.desde||new Date())+' al '+fmtFecha(ant.hasta||new Date())+'</div>';
+  }
+
+  // === Análisis por producto ===
+  const prodEl = document.getElementById('rp-por-producto');
+  if(prodEl){
+    const cardProd = (nombre, p, color) => {
+      const tickProm = p.ops > 0 ? p.ingreso / p.ops : 0;
+      return '<div style="background:linear-gradient(180deg, '+color+'0c, transparent); border:1px solid '+color+'40; border-radius:10px; padding:14px 16px; flex:1; min-width:220px;">'+
+        '<div style="font-size:11.5px; color:'+color+'; text-transform:uppercase; letter-spacing:0.5px; font-weight:700; margin-bottom:6px;">'+nombre+'</div>'+
+        '<div style="display:grid; grid-template-columns:1fr 1fr; gap:8px; font-size:12px;">'+
+          '<div><div style="color:var(--muted); font-size:10px; text-transform:uppercase; letter-spacing:0.3px;">Operaciones</div><div style="font-size:20px; font-weight:800; color:var(--text); font-variant-numeric:tabular-nums;">'+p.ops+'</div></div>'+
+          '<div><div style="color:var(--muted); font-size:10px; text-transform:uppercase; letter-spacing:0.3px;">Ticket promedio</div><div style="font-size:15px; font-weight:700; color:var(--text); font-variant-numeric:tabular-nums;">'+fmtCLP(tickProm)+'</div></div>'+
+          '<div style="grid-column:span 2"><div style="color:var(--muted); font-size:10px; text-transform:uppercase; letter-spacing:0.3px;">Ingresos generados</div><div style="font-size:17px; font-weight:800; color:'+color+'; font-variant-numeric:tabular-nums;">'+fmtCLP(p.ingreso)+'</div></div>'+
+          '<div style="grid-column:span 2"><div style="color:var(--muted); font-size:10px; text-transform:uppercase; letter-spacing:0.3px;">Volumen financiado</div><div style="font-size:12.5px; color:var(--text-2); font-variant-numeric:tabular-nums;">'+fmtCLP(p.volumen)+'</div></div>'+
+        '</div>'+
+      '</div>';
+    };
+    prodEl.innerHTML = '<div style="display:flex; gap:12px; flex-wrap:wrap;">'+
+      cardProd('🏠 Leaseback Inmobiliario', kpisEjec.porProducto.leaseback, '#a05c10')+
+      cardProd('💼 Crédito Hipotecario', kpisEjec.porProducto.hipotecario, '#1d7a5f')+
+    '</div>'+
+    (kpisEjec.contratos === 0 ? '<div style="margin-top:10px; font-size:11.5px; color:var(--muted);">Sin operaciones cerradas en el período. Los datos aparecerán cuando haya contratos.</div>' : '');
+  }
+
+  // === NUEVO: Tabla resumen + Gráfico SVG (con ingresos y avance vs meta) ===
   const rowsAsResumen = asesores.map(([uid, a]) => {
-    const idxRows = ordenEtapas.indexOf;
+    // Ingreso del asesor: sims únicas por cliente cerrado
+    const idsContrAs = new Set(a.clientes.filter(c => c.etapa === 'contrato').map(c => c.id));
+    const simsAsCerradas = k.sims.filter(s => s.asesorId === uid && idsContrAs.has(s.clienteId));
+    const lastByCli = {};
+    simsAsCerradas.forEach(s => {
+      const cid = s.clienteId;
+      if(!lastByCli[cid] || (s.fechaSort && lastByCli[cid].fechaSort && s.fechaSort > lastByCli[cid].fechaSort)){
+        lastByCli[cid] = s;
+      }
+    });
+    const ingresoAs = Object.values(lastByCli).reduce((sum, s) => sum + ingresoSimCLP(s), 0);
     return {
       uid,
       nombre: a.nombre,
@@ -5179,11 +5635,24 @@ function renderReporte(){
       contratos:   a.contratos,
       rechazos:    a.rechazos,
       ufSim:       a.ufSim,
-      efec:        a.clientes.length ? Math.round(((a.clientes.length - a.rechazos)/a.clientes.length)*100) : 0
+      ingreso:     ingresoAs,
+      efec:        a.clientes.length ? Math.round(((a.clientes.length - a.rechazos)/a.clientes.length)*100) : 0,
+      pctMeta:     metaInd > 0 ? Math.round(ingresoAs/metaInd*100) : 0
     };
-  }).sort((a,b) => b.prospectos - a.prospectos);
+  }).sort((a,b) => b.ingreso - a.ingreso);
   renderTablaResumenAsesores(rowsAsResumen);
   renderGraficoAsesoresSVG(rowsAsResumen);
+
+  // === Conclusiones automáticas ===
+  const conclEl = document.getElementById('rp-conclusiones');
+  if(conclEl){
+    const concls = generarConclusiones(kpisEjec, rowsAsResumen);
+    if(concls.length === 0){
+      conclEl.innerHTML = '<div style="font-size:13px; color:var(--muted)">Sin actividad suficiente para generar conclusiones.</div>';
+    } else {
+      conclEl.innerHTML = concls.map(c => '<div style="padding:9px 0; border-bottom:1px dashed var(--border-l); font-size:13px; line-height:1.6; display:flex; gap:10px;"><span style="font-size:18px; flex-shrink:0;">'+c.icon+'</span><span style="color:'+c.color+';">'+c.txt+'</span></div>').join('');
+    }
+  }
 
   const eventos = [];
   k.clientesNuevos.forEach(c => eventos.push({ t:'cliente', when: dateOf(c), nom: c.nombre, ases: asesorNombrePorId(c.asesorId), extra:'Cliente nuevo · '+(c.rut||'') }));
@@ -5231,30 +5700,35 @@ function descargarReporteActualPDF(){
 
 /* === Render: tabla resumen 1 fila por asesor (modo ejecutivo) === */
 function renderTablaResumenAsesores(rows){
-  // rows = [{nombre, prospectos, contactados, simulados, notasV, contratos, rechazos, ufSim, efec}]
   const cont = document.getElementById('rp-tabla-resumen-wrap');
   if(!cont) return;
   if(!rows.length){
     cont.innerHTML = '<div style="padding:24px; text-align:center; color:var(--muted);">Sin asesores con actividad en el período.</div>';
     return;
   }
-  let h = '<table class="data-table" style="margin:0; font-size:12.5px;"><thead><tr>'+
+  let h = '<table class="data-table" style="margin:0; font-size:12px;"><thead><tr>'+
     '<th>Asesor</th>'+
-    '<th class="num">Prospectos</th>'+
-    '<th class="num">Contactados</th>'+
+    '<th class="num">Prosp.</th>'+
+    '<th class="num">Contac.</th>'+
     '<th class="num">Sims</th>'+
     '<th class="num">NV</th>'+
-    '<th class="num">Contratos</th>'+
+    '<th class="num">Contr.</th>'+
+    '<th class="num">Ingresos L4B</th>'+
+    '<th class="num">% Meta</th>'+
     '<th class="num">Efec %</th>'+
   '</tr></thead><tbody>';
   rows.forEach(r => {
+    const pctMeta = typeof r.pctMeta === 'number' ? r.pctMeta : 0;
+    const pctMetaColor = pctMeta >= 100 ? 'var(--green)' : (pctMeta >= 75 ? '#1d7a5f' : (pctMeta >= 50 ? 'var(--amber)' : 'var(--red)'));
     h += '<tr>'+
       '<td><strong>'+escapeHTML(r.nombre)+'</strong>'+(r.rechazos>0?'<div style="font-size:10.5px; color:var(--red);">'+r.rechazos+' rechazo'+(r.rechazos===1?'':'s')+'</div>':'')+'</td>'+
-      '<td class="num"><strong style="color:var(--teal)">'+r.prospectos+'</strong></td>'+
+      '<td class="num">'+r.prospectos+'</td>'+
       '<td class="num">'+r.contactados+'</td>'+
       '<td class="num">'+r.simulados+'</td>'+
       '<td class="num">'+r.notasV+'</td>'+
       '<td class="num"><strong style="color:var(--green)">'+r.contratos+'</strong></td>'+
+      '<td class="num" style="font-variant-numeric:tabular-nums;"><strong style="color:var(--teal)">'+fmtCLP(r.ingreso||0)+'</strong></td>'+
+      '<td class="num"><strong style="color:'+pctMetaColor+';">'+pctMeta+'%</strong></td>'+
       '<td class="num">'+r.efec+'%</td>'+
     '</tr>';
   });
@@ -5311,7 +5785,7 @@ function renderGraficoAsesoresSVG(rows){
   cont.innerHTML = svg;
 }
 
-/* === PDF Ejecutivo (1 página): KPIs + embudo + gráfico + tabla resumen + notas === */
+/* === PDF Ejecutivo: Resumen, Meta, KPIs, Comparativa, Embudo, Productos, Equipo, Conclusiones === */
 function descargarReporteEjecutivoPDF(){
   const { desde, hasta, rango } = getReporteRange();
   const asesorFiltro = (document.getElementById('rp-asesor')||{}).value || 'todos';
@@ -5346,13 +5820,74 @@ function descargarReporteEjecutivoPDF(){
   const efec = prospectos ? Math.round(((prospectos - rechazos)/prospectos)*100) : 0;
   const cierre = pctP(contratos, prospectos);
 
-  // KPIs (4 cards)
+  // KPI principal: 4 cards (Ingresos, Ticket, Tasa cierre, Ciclo)
+  const pctMetaPDF = metaAplPDF > 0 ? Math.round(kpisEjecPDF.ingreso/metaAplPDF*100) : 0;
   const kpiHTML = '<div style="display:grid; grid-template-columns:repeat(4,1fr); gap:8px; margin:10px 0 14px;">' +
-    '<div style="border:1px solid #e5e7eb; border-radius:8px; padding:10px 12px; background:#fafcfd"><div style="font-size:9px; color:#6c757d; text-transform:uppercase; letter-spacing:0.6px; font-weight:600">Prospectos</div><div style="font-size:26px; font-weight:800; color:#0a3d4a; margin-top:2px">'+prospectos+'</div><div style="font-size:9.5px; color:#6c757d; margin-top:2px">'+(rechazos>0 ? rechazos+' rechazo'+(rechazos===1?'':'s')+' · Efectividad '+efec+'%' : 'leads totales · Efec '+efec+'%')+'</div></div>' +
-    '<div style="border:1px solid #e5e7eb; border-radius:8px; padding:10px 12px; background:#fafcfd"><div style="font-size:9px; color:#6c757d; text-transform:uppercase; letter-spacing:0.6px; font-weight:600">Simulaciones</div><div style="font-size:26px; font-weight:800; color:#2aa07f; margin-top:2px">'+simulados+'</div><div style="font-size:9.5px; color:#6c757d; margin-top:2px">'+pctP(simulados,prospectos)+'% conversión</div></div>' +
-    '<div style="border:1px solid #e5e7eb; border-radius:8px; padding:10px 12px; background:#fafcfd"><div style="font-size:9px; color:#6c757d; text-transform:uppercase; letter-spacing:0.6px; font-weight:600">Notas de Venta</div><div style="font-size:26px; font-weight:800; color:#1a6aa0; margin-top:2px">'+notasV+'</div><div style="font-size:9.5px; color:#6c757d; margin-top:2px">'+pctP(notasV,prospectos)+'% conversión</div></div>' +
-    '<div style="border:1px solid #e5e7eb; border-radius:8px; padding:10px 12px; background:#fafcfd"><div style="font-size:9px; color:#6c757d; text-transform:uppercase; letter-spacing:0.6px; font-weight:600">Tasa de cierre</div><div style="font-size:26px; font-weight:800; color:#a05c10; margin-top:2px">'+cierre+'%</div><div style="font-size:9.5px; color:#6c757d; margin-top:2px">'+contratos+' contrato'+(contratos===1?'':'s')+' enviados</div></div>' +
+    '<div style="border:1px solid #e5e7eb; border-radius:8px; padding:10px 12px; background:#fafcfd"><div style="font-size:9px; color:#6c757d; text-transform:uppercase; letter-spacing:0.6px; font-weight:600">Ingresos L4B</div><div style="font-size:22px; font-weight:800; color:#0a3d4a; margin-top:2px">'+fmtCLP(kpisEjecPDF.ingreso)+'</div><div style="font-size:9.5px; color:#6c757d; margin-top:2px">'+pctMetaPDF+'% de meta '+tipoMetaPDF+'</div></div>' +
+    '<div style="border:1px solid #e5e7eb; border-radius:8px; padding:10px 12px; background:#fafcfd"><div style="font-size:9px; color:#6c757d; text-transform:uppercase; letter-spacing:0.6px; font-weight:600">Ticket promedio</div><div style="font-size:22px; font-weight:800; color:#2aa07f; margin-top:2px">'+fmtCLP(kpisEjecPDF.ticketProm)+'</div><div style="font-size:9.5px; color:#6c757d; margin-top:2px">'+kpisEjecPDF.contratos+' contrato'+(kpisEjecPDF.contratos===1?'':'s')+' cerrado'+(kpisEjecPDF.contratos===1?'':'s')+'</div></div>' +
+    '<div style="border:1px solid #e5e7eb; border-radius:8px; padding:10px 12px; background:#fafcfd"><div style="font-size:9px; color:#6c757d; text-transform:uppercase; letter-spacing:0.6px; font-weight:600">Tasa de cierre</div><div style="font-size:22px; font-weight:800; color:#1a6aa0; margin-top:2px">'+(kpisEjecPDF.tasaCierre*100).toFixed(1)+'%</div><div style="font-size:9.5px; color:#6c757d; margin-top:2px">'+kpisEjecPDF.contratos+' / '+kpisEjecPDF.prospectos+' prospectos</div></div>' +
+    '<div style="border:1px solid #e5e7eb; border-radius:8px; padding:10px 12px; background:#fafcfd"><div style="font-size:9px; color:#6c757d; text-transform:uppercase; letter-spacing:0.6px; font-weight:600">Ciclo de ventas</div><div style="font-size:22px; font-weight:800; color:#a05c10; margin-top:2px">'+(kpisEjecPDF.ciclo>0?kpisEjecPDF.ciclo.toFixed(1)+' d':'—')+'</div><div style="font-size:9.5px; color:#6c757d; margin-top:2px">días promedio · createdAt → contrato</div></div>' +
   '</div>';
+
+  // Resumen ejecutivo (viñetas)
+  const lineas = generarResumenEjec(kpisEjecPDF, kpisAntPDF, metaAplPDF);
+  const resumenPDF = '<div style="background:#fafcfd; border-left:4px solid #2aa07f; border-radius:6px; padding:10px 14px; margin-bottom:12px;">'+
+    '<div style="font-size:10.5px; color:#0a3d4a; font-weight:700; text-transform:uppercase; letter-spacing:0.5px; margin-bottom:6px;">📌 Resumen Ejecutivo</div>'+
+    '<ul style="margin:0; padding:0; list-style:none; font-size:10pt; line-height:1.6;">'+
+      lineas.map(l => '<li style="padding:2px 0;">• '+l+'</li>').join('')+
+    '</ul>'+
+  '</div>';
+
+  // Progreso meta (barra)
+  const colorMeta = pctMetaPDF >= 100 ? '#1d7a5f' : (pctMetaPDF >= 75 ? '#2aa07f' : (pctMetaPDF >= 50 ? '#a05c10' : '#b52a2a'));
+  const progresoPDF = '<div style="margin-bottom:12px;">'+
+    '<div style="font-size:9.5px; color:#6c757d; text-transform:uppercase; letter-spacing:0.5px; font-weight:600; margin-bottom:5px;">🎯 Progreso meta '+tipoMetaPDF+' · '+fmtCLP(metaAplPDF)+'</div>'+
+    '<div style="background:#f3f6f8; border:1px solid #e5e7eb; border-radius:6px; height:22px; position:relative; overflow:hidden;">'+
+      '<div style="background:'+colorMeta+'; height:100%; width:'+Math.min(100,pctMetaPDF)+'%; display:flex; align-items:center; justify-content:flex-end; padding-right:8px; color:#fff; font-size:10px; font-weight:700;">'+(pctMetaPDF>=10?pctMetaPDF+'%':'')+'</div>'+
+    '</div>'+
+    '<div style="font-size:9.5px; color:#6c757d; margin-top:4px;">Avance: <strong style="color:#0a3d4a">'+fmtCLP(kpisEjecPDF.ingreso)+'</strong> de '+fmtCLP(metaAplPDF)+(pctMetaPDF<100?' · Restante: '+fmtCLP(Math.max(0,metaAplPDF-kpisEjecPDF.ingreso)):' · 🎉 Meta superada')+'</div>'+
+  '</div>';
+
+  // Comparativa con período anterior (4 mini cards)
+  const deltaC = (a,b) => b <= 0 ? (a>0?100:0) : ((a-b)/b)*100;
+  const compCard = (lbl, curr, prev, fmt) => {
+    const d = deltaC(curr, prev);
+    const arr = d >= 0 ? '↑' : '↓';
+    const col = d >= 0 ? '#1d7a5f' : '#b52a2a';
+    const fv = fmt || (v => v);
+    return '<div style="background:#fafcfd; border:1px solid #e5e7eb; border-radius:6px; padding:8px 10px;"><div style="font-size:8.5px; color:#6c757d; text-transform:uppercase; letter-spacing:0.5px; font-weight:600;">'+lbl+'</div><div style="font-size:14px; font-weight:700; color:#1a2730; margin-top:1px; font-variant-numeric:tabular-nums;">'+fv(curr)+'</div><div style="font-size:9.5px; color:'+col+'; font-weight:600; margin-top:1px;">'+arr+' '+Math.abs(d).toFixed(1)+'% <span style="color:#6c757d; font-weight:400;">vs '+fv(prev)+'</span></div></div>';
+  };
+  const comparativaPDF = '<div style="margin-bottom:12px;"><div style="font-size:9.5px; color:#6c757d; text-transform:uppercase; letter-spacing:0.5px; font-weight:600; margin-bottom:5px;">📊 Comparativa con período anterior</div>'+
+    '<div style="display:grid; grid-template-columns:repeat(4,1fr); gap:6px;">'+
+      compCard('Ingresos', kpisEjecPDF.ingreso, kpisAntPDF.ingreso, fmtCLP)+
+      compCard('Prospectos', kpisEjecPDF.prospectos, kpisAntPDF.prospectos)+
+      compCard('Contratos', kpisEjecPDF.contratos, kpisAntPDF.contratos)+
+      compCard('Tasa cierre', kpisEjecPDF.tasaCierre*100, kpisAntPDF.tasaCierre*100, v => v.toFixed(1)+'%')+
+    '</div></div>';
+
+  // Análisis por producto (2 cards)
+  const cardProdPDF = (nombre, p, color) => {
+    const tickProm = p.ops > 0 ? p.ingreso / p.ops : 0;
+    return '<div style="border:1px solid '+color+'40; background:'+color+'08; border-radius:6px; padding:8px 10px; flex:1;">'+
+      '<div style="font-size:9.5px; color:'+color+'; text-transform:uppercase; letter-spacing:0.4px; font-weight:700; margin-bottom:3px;">'+nombre+'</div>'+
+      '<div style="font-size:11pt; color:#1a2730; line-height:1.5;"><strong style="color:'+color+'">'+fmtCLP(p.ingreso)+'</strong> · '+p.ops+' op'+(p.ops===1?'':'s')+' · Ticket prom. '+fmtCLP(tickProm)+'</div>'+
+    '</div>';
+  };
+  const productoHTML = '<div style="margin-bottom:12px;"><div style="font-size:9.5px; color:#6c757d; text-transform:uppercase; letter-spacing:0.5px; font-weight:600; margin-bottom:5px;">🏷️ Análisis por producto</div>'+
+    '<div style="display:flex; gap:8px;">'+
+      cardProdPDF('🏠 Leaseback', kpisEjecPDF.porProducto.leaseback, '#a05c10')+
+      cardProdPDF('💼 Hipotecario', kpisEjecPDF.porProducto.hipotecario, '#1d7a5f')+
+    '</div></div>';
+
+  // Conclusiones automáticas
+  const conclList = generarConclusiones(kpisEjecPDF, rowsAs);
+  let conclHTMLpdf = '';
+  if(conclList.length){
+    conclHTMLpdf = '<div style="margin-bottom:12px; background:#fdf3e0; border-left:3px solid #a05c10; border-radius:6px; padding:9px 12px;">'+
+      '<div style="font-size:9.5px; color:#a05c10; text-transform:uppercase; letter-spacing:0.5px; font-weight:700; margin-bottom:5px;">💡 Conclusiones y próximos pasos</div>'+
+      conclList.map(c => '<div style="padding:3px 0; font-size:10pt; line-height:1.5; color:#1a2730;">'+c.icon+' <span style="color:'+c.color+';">'+c.txt+'</span></div>').join('')+
+    '</div>';
+  }
 
   // Embudo
   const embudoSteps = [
@@ -5373,46 +5908,78 @@ function descargarReporteEjecutivoPDF(){
   });
   embudoHTML += '</div></div>';
 
-  // Tabla resumen + Gráfico SVG por asesor
+  // KPIs avanzados (mismo cálculo que la vista)
+  const kpisEjecPDF = calcularKPIsReporte(clientesPeriodo, k.sims);
+  const antPDF = rangoAnterior(desde, hasta);
+  const clientesAntPDF = CLIENTES_CACHE.filter(c => {
+    if(!matchAs(c.asesorId)) return false;
+    const ts = dateOf(c) || tsToDate(c.updatedAt);
+    return ts && ts >= antPDF.desde && ts <= antPDF.hasta;
+  });
+  const simsAntPDF = HISTORIAL_CACHE.filter(h => h._tipo==='simulacion' && matchAs(h.asesorId) && h.fechaSort && h.fechaSort >= antPDF.desde && h.fechaSort <= antPDF.hasta);
+  const kpisAntPDF = calcularKPIsReporte(clientesAntPDF, simsAntPDF);
+  const metaIndPDF = getMetaIndividual();
+  const metaGruPDF = getMetaGrupal();
+  const metaAplPDF = asesorFiltro === 'todos' ? metaGruPDF : metaIndPDF;
+  const tipoMetaPDF = asesorFiltro === 'todos' ? 'grupal' : 'individual';
+
+  // Tabla resumen + Gráfico SVG por asesor (con ingresos)
   const byAsesor = {};
   clientesPeriodo.forEach(c => {
     const uid = c.asesorId || '';
-    if(!byAsesor[uid]) byAsesor[uid] = { uid, nombre: asesorNombrePorId(uid), prospectos:0, contactados:0, simulados:0, notasV:0, contratos:0, rechazos:0, ufSim:0 };
+    if(!byAsesor[uid]) byAsesor[uid] = { uid, nombre: asesorNombrePorId(uid), prospectos:0, contactados:0, simulados:0, notasV:0, contratos:0, rechazos:0, ufSim:0, ingreso:0, clientesContrato:[] };
     byAsesor[uid].prospectos++;
     const idxC = ordenEt.indexOf(c.etapa||'prospecto');
     if(c.etapa !== 'rechazo'){
       if(idxC >= ordenEt.indexOf('contacto'))    byAsesor[uid].contactados++;
       if(idxC >= ordenEt.indexOf('simulacion'))  byAsesor[uid].simulados++;
       if(idxC >= ordenEt.indexOf('notaventa'))   byAsesor[uid].notasV++;
-      if(idxC >= ordenEt.indexOf('contrato'))    byAsesor[uid].contratos++;
+      if(idxC >= ordenEt.indexOf('contrato'))   { byAsesor[uid].contratos++; byAsesor[uid].clientesContrato.push(c.id); }
     }
     if(c.etapa === 'rechazo') byAsesor[uid].rechazos++;
   });
   k.sims.forEach(s => { const uid = s.asesorId || ''; if(byAsesor[uid]) byAsesor[uid].ufSim += getMontoUF(s); });
-  const rowsAs = Object.values(byAsesor).map(a => ({...a, efec: a.prospectos ? Math.round(((a.prospectos - a.rechazos)/a.prospectos)*100) : 0})).sort((a,b)=>b.prospectos-a.prospectos);
+  // Calcular ingreso por asesor (sims únicas por cliente cerrado)
+  Object.values(byAsesor).forEach(a => {
+    const ids = new Set(a.clientesContrato);
+    const sims = k.sims.filter(s => s.asesorId === a.uid && ids.has(s.clienteId));
+    const lastByCli = {};
+    sims.forEach(s => {
+      const cid = s.clienteId;
+      if(!lastByCli[cid] || (s.fechaSort && lastByCli[cid].fechaSort && s.fechaSort > lastByCli[cid].fechaSort)){
+        lastByCli[cid] = s;
+      }
+    });
+    a.ingreso = Object.values(lastByCli).reduce((sum, s) => sum + ingresoSimCLP(s), 0);
+    a.pctMeta = metaIndPDF > 0 ? Math.round(a.ingreso/metaIndPDF*100) : 0;
+  });
+  const rowsAs = Object.values(byAsesor).map(a => ({...a, efec: a.prospectos ? Math.round(((a.prospectos - a.rechazos)/a.prospectos)*100) : 0})).sort((a,b)=>b.ingreso-a.ingreso);
 
   let tablaResHTML = '';
   if(rowsAs.length){
     tablaResHTML = '<div style="margin-bottom:14px;"><div style="font-size:9.5px; color:#6c757d; text-transform:uppercase; letter-spacing:0.5px; font-weight:600; margin-bottom:6px;">👥 Resumen del equipo</div>'+
-      '<table style="width:100%; border-collapse:collapse; font-size:10.5px;">'+
+      '<table style="width:100%; border-collapse:collapse; font-size:9.5pt;">'+
       '<thead><tr style="background:#0a3d4a; color:#fff;">'+
-        '<th style="padding:6px 8px; text-align:left;">Asesor</th>'+
-        '<th style="padding:6px 8px; text-align:right;">Prospectos</th>'+
-        '<th style="padding:6px 8px; text-align:right;">Contactados</th>'+
-        '<th style="padding:6px 8px; text-align:right;">Sims</th>'+
-        '<th style="padding:6px 8px; text-align:right;">NV</th>'+
-        '<th style="padding:6px 8px; text-align:right;">Contratos</th>'+
-        '<th style="padding:6px 8px; text-align:right;">Efec %</th>'+
+        '<th style="padding:6px 6px; text-align:left;">Asesor</th>'+
+        '<th style="padding:6px 6px; text-align:right;">Prosp.</th>'+
+        '<th style="padding:6px 6px; text-align:right;">Contac.</th>'+
+        '<th style="padding:6px 6px; text-align:right;">Sims</th>'+
+        '<th style="padding:6px 6px; text-align:right;">NV</th>'+
+        '<th style="padding:6px 6px; text-align:right;">Contr.</th>'+
+        '<th style="padding:6px 6px; text-align:right;">Ingresos L4B</th>'+
+        '<th style="padding:6px 6px; text-align:right;">% Meta</th>'+
       '</tr></thead><tbody>';
     rowsAs.forEach(r => {
+      const pctC = r.pctMeta >= 100 ? '#1d7a5f' : (r.pctMeta >= 75 ? '#2aa07f' : (r.pctMeta >= 50 ? '#a05c10' : '#b52a2a'));
       tablaResHTML += '<tr style="border-bottom:1px solid #e5e7eb;">'+
-        '<td style="padding:6px 8px;"><strong>'+escapeHTML(r.nombre)+'</strong>'+(r.rechazos>0?' <span style="color:#b52a2a; font-size:9.5px;">('+r.rechazos+' rechazo'+(r.rechazos===1?'':'s')+')</span>':'')+'</td>'+
-        '<td style="padding:6px 8px; text-align:right; font-variant-numeric:tabular-nums; color:#0a3d4a; font-weight:700;">'+r.prospectos+'</td>'+
-        '<td style="padding:6px 8px; text-align:right; font-variant-numeric:tabular-nums;">'+r.contactados+'</td>'+
-        '<td style="padding:6px 8px; text-align:right; font-variant-numeric:tabular-nums;">'+r.simulados+'</td>'+
-        '<td style="padding:6px 8px; text-align:right; font-variant-numeric:tabular-nums;">'+r.notasV+'</td>'+
-        '<td style="padding:6px 8px; text-align:right; font-variant-numeric:tabular-nums; color:#2aa07f; font-weight:700;">'+r.contratos+'</td>'+
-        '<td style="padding:6px 8px; text-align:right; font-variant-numeric:tabular-nums;">'+r.efec+'%</td>'+
+        '<td style="padding:5px 6px;"><strong>'+escapeHTML(r.nombre)+'</strong>'+(r.rechazos>0?' <span style="color:#b52a2a; font-size:8.5pt;">('+r.rechazos+'r)</span>':'')+'</td>'+
+        '<td style="padding:5px 6px; text-align:right; font-variant-numeric:tabular-nums;">'+r.prospectos+'</td>'+
+        '<td style="padding:5px 6px; text-align:right; font-variant-numeric:tabular-nums;">'+r.contactados+'</td>'+
+        '<td style="padding:5px 6px; text-align:right; font-variant-numeric:tabular-nums;">'+r.simulados+'</td>'+
+        '<td style="padding:5px 6px; text-align:right; font-variant-numeric:tabular-nums;">'+r.notasV+'</td>'+
+        '<td style="padding:5px 6px; text-align:right; font-variant-numeric:tabular-nums; color:#2aa07f; font-weight:700;">'+r.contratos+'</td>'+
+        '<td style="padding:5px 6px; text-align:right; font-variant-numeric:tabular-nums; color:#0a3d4a; font-weight:700;">'+fmtCLP(r.ingreso||0)+'</td>'+
+        '<td style="padding:5px 6px; text-align:right; font-variant-numeric:tabular-nums; color:'+pctC+'; font-weight:700;">'+(r.pctMeta||0)+'%</td>'+
       '</tr>';
     });
     tablaResHTML += '</tbody></table></div>';
@@ -5439,13 +6006,18 @@ function descargarReporteEjecutivoPDF(){
   const cuerpo =
     pdfHeader(cfg, 'Reporte Ejecutivo · '+tituloRango, idCot) +
     '<h1 style="font-family:Inter,sans-serif; font-size:17px; color:#0a3d4a; margin:10px 0 2px; font-weight:700;">Reporte Ejecutivo · Equipo Comercial</h1>' +
-    '<div style="font-size:10.5px; color:#6c757d; margin-bottom:8px;">'+escapeHTML((cfg.empresa||'Asesorías Loans4B SpA')+' · Generado por '+(CURRENT_PROFILE?CURRENT_PROFILE.nombre:'(asesor)'))+'</div>' +
-    '<div style="font-size:10.5px; color:#6c757d; margin-bottom:4px;">Período: <strong style="color:#0a3d4a">'+escapeHTML(tituloRango)+'</strong> · Filtro: <strong>'+escapeHTML(asesNomFiltro)+'</strong> · Generado el '+fmtTimestamp(new Date())+'</div>' +
+    '<div style="font-size:10.5px; color:#6c757d; margin-bottom:4px;">'+escapeHTML((cfg.empresa||'Asesorías Loans4B SpA')+' · Generado por '+(CURRENT_PROFILE?CURRENT_PROFILE.nombre:'(asesor)'))+'</div>' +
+    '<div style="font-size:10.5px; color:#6c757d; margin-bottom:10px;">Período: <strong style="color:#0a3d4a">'+escapeHTML(tituloRango)+'</strong> · Filtro: <strong>'+escapeHTML(asesNomFiltro)+'</strong> · Generado el '+fmtTimestamp(new Date())+'</div>' +
+    resumenPDF +
+    progresoPDF +
     kpiHTML +
+    comparativaPDF +
     embudoHTML +
+    productoHTML +
     tablaResHTML +
+    conclHTMLpdf +
     notasHTML +
-    '<div style="font-size:9pt; color:#6c757d; margin-top:14px; padding:9px 12px; background:#fafcfd; border:1px solid #e5e7eb; border-radius:6px; line-height:1.5;"><strong>Indicadores:</strong> Efectividad = (Prospectos − Rechazos) / Prospectos. Tasa de cierre = Contratos / Prospectos. Cada % de conversión es respecto al total de prospectos.</div>' +
+    '<div style="font-size:8.5pt; color:#6c757d; margin-top:12px; padding:7px 10px; background:#fafcfd; border:1px solid #e5e7eb; border-radius:6px; line-height:1.4;"><strong>Cómo se calculan:</strong> Ingresos L4B = fee del 3% sobre monto financiado de las operaciones con etapa Contrato. Ticket promedio = Ingresos / contratos. Tasa de cierre = Contratos / Prospectos del período. Ciclo de ventas = días promedio desde createdAt hasta updatedAt de los clientes en Contrato. Comparativa: período inmediatamente anterior con misma duración.</div>' +
     pdfFooter(cfg);
 
   generarPDF(cuerpo, 'Reporte_Ejecutivo_'+(rango==='dia'?fmtFecha(desde).replace(/\//g,'-'):'periodo'));
