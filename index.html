@@ -1216,6 +1216,24 @@ if(FIREBASE_OK){
     </div>
   </div>
 
+  <!-- ===== MODAL CONTRATO ===== -->
+  <div class="modal-overlay" id="modal-contrato">
+    <div class="modal" style="max-width:760px; max-height:90vh; display:flex; flex-direction:column;">
+      <div class="modal-head">
+        <h3 id="mct-titulo">Contrato</h3>
+        <button class="modal-close" onclick="cerrarContratoModal()">×</button>
+      </div>
+      <div class="modal-body" id="mct-body" style="overflow-y:auto;">
+        <div style="font-size:13px; color:var(--muted)">Cargando…</div>
+      </div>
+      <div class="modal-foot">
+        <button class="btn ghost" id="mct-btn-cerrar" onclick="cerrarContratoModal()">Cerrar</button>
+        <button class="btn green" id="mct-btn-aprobar" style="display:none" onclick="aprobarContrato()"><span>✅</span> Aprobar y guardar</button>
+        <button class="btn green" id="mct-btn-descargar" style="display:none" onclick="descargarContratoPDF()"><span>📥</span> Descargar PDF</button>
+      </div>
+    </div>
+  </div>
+
   <!-- ===== MODAL LEAD RÁPIDO =====
   <div class="modal-overlay" id="modal-lead-rapido">
     <div class="modal" style="max-width:500px">
@@ -1457,8 +1475,8 @@ if(FIREBASE_OK){
           </div>
         </div>
         <div class="cd-card">
-          <div class="cd-card-head"><h3>📁 Simulaciones y notas de venta</h3></div>
-          <div class="cd-card-body" id="cd-sims"><div style="font-size:13px; color:var(--muted)">Las simulaciones que asocies a este cliente aparecerán aquí.</div></div>
+          <div class="cd-card-head"><h3>📁 Documentos</h3></div>
+          <div class="cd-card-body" id="cd-sims"><div style="font-size:13px; color:var(--muted)">Las simulaciones, notas de venta y contratos asociados aparecerán aquí.</div></div>
         </div>
       </div>
       <div>
@@ -2975,6 +2993,7 @@ let MC_TIPO = 'natural';
 let CLIENTE_SELECCIONADO_SIM = { hipotecario: null, leaseback: null, nv: null };
 /* === v9: estado pipeline / ficha / tareas === */
 let TAREAS_CACHE = [];
+let CONTRATOS_CACHE = [];
 let NOTAS_SEG_CACHE = {};   // clienteId -> [notas]
 let CD_ID = null;            // cliente activo en ficha detalle
 
@@ -3024,7 +3043,7 @@ async function cerrarSesion(){
   try{ await fbAuth.signOut(); }catch(e){ console.error(e); }
   CURRENT_USER=null; CURRENT_PROFILE=null;
   CLIENTES_CACHE=[]; HISTORIAL_CACHE=[]; USERS_CACHE=[];
-  TAREAS_CACHE=[]; NOTAS_SEG_CACHE={}; CD_ID=null;
+  TAREAS_CACHE=[]; CONTRATOS_CACHE=[]; NOTAS_SEG_CACHE={}; CD_ID=null;
   mostrarLogin();
 }
 
@@ -3074,6 +3093,7 @@ function setupAuthListener(){
       cargarClientes();
       cargarHistorial();
       cargarTareas();
+      cargarContratos();
       if(CURRENT_PROFILE && CURRENT_PROFILE.rol==='admin') cargarEquipo();
       if(CURRENT_PROFILE){
         const cfg = cargarConfig() || {};
@@ -4492,6 +4512,17 @@ async function moverEtapaCliente(cliId, nuevaEtapa, desdePipeline){
     if(desdePipeline && nuevaEtapa === 'notaventa'){
       setTimeout(() => navegarANotaVenta(cliId), 150);
     }
+    // === AUTO-TRIGGER: si entra a Contrato desde pipeline, auto-crear el contrato pendiente ===
+    if(desdePipeline && nuevaEtapa === 'contrato'){
+      setTimeout(async () => {
+        const cto = await crearContratoDesdeNV(cliId);
+        if(cto){
+          mostrarToastAutoCliente('✓ Contrato pre-llenado · esperando aprobación del administrador', 'creado');
+          // Refresh ficha si está abierta
+          if(CD_ID === cliId) renderSimsCliente(cliId);
+        }
+      }, 200);
+    }
   } catch(e){
     // Revertir cache si falló
     c.etapa = etapaPrev;
@@ -4903,13 +4934,35 @@ function renderTimeline(clienteId){
 
 function renderSimsCliente(clienteId){
   const cont = document.getElementById('cd-sims'); if(!cont) return;
-  const items = HISTORIAL_CACHE.filter(h => h.clienteId === clienteId);
-  if(items.length===0){
-    cont.innerHTML = '<div style="font-size:13px; color:var(--muted)">Las simulaciones que asocies a este cliente aparecerán aquí.</div>';
+  const sims = HISTORIAL_CACHE.filter(h => h.clienteId === clienteId);
+  const contratos = CONTRATOS_CACHE.filter(c => c.clienteId === clienteId);
+  if(sims.length === 0 && contratos.length === 0){
+    cont.innerHTML = '<div style="font-size:13px; color:var(--muted)">Las simulaciones, notas de venta y contratos asociados aparecerán aquí.</div>';
     return;
   }
   let html = '<div style="display:flex; flex-direction:column; gap:8px">';
-  items.slice(0,20).forEach(h => {
+  // Contratos primero (los más importantes)
+  contratos.forEach(cto => {
+    const idEsc = escapeHTML(cto.id||'');
+    let estadoBadge, estadoColor, estadoTexto;
+    if(cto.estado === 'pendiente_aprobacion'){
+      estadoBadge = '🟡'; estadoColor = '#854d0e'; estadoTexto = 'Pendiente de aprobación';
+    } else if(cto.estado === 'aprobado'){
+      estadoBadge = '✅'; estadoColor = '#166534'; estadoTexto = 'Aprobado · listo para descargar';
+    } else if(cto.estado === 'descargado'){
+      estadoBadge = '📥'; estadoColor = '#1e40af'; estadoTexto = 'Descargado';
+    } else {
+      estadoBadge = '📄'; estadoColor = 'var(--muted)'; estadoTexto = cto.estado||'';
+    }
+    const monto = cto.montoNumeralUF ? fmtUF(cto.montoNumeralUF) : '—';
+    html += '<div onclick="abrirContratoModal(\''+idEsc+'\')" style="border:2px solid '+estadoColor+'40; background:'+estadoColor+'08; border-radius:8px; padding:10px 12px; font-size:12.5px; cursor:pointer; transition:all 0.15s;" onmouseover="this.style.background=\''+estadoColor+'15\'; this.style.transform=\'translateX(2px)\'" onmouseout="this.style.background=\''+estadoColor+'08\'; this.style.transform=\'\'">';
+    html += '<div style="display:flex; justify-content:space-between; gap:10px"><strong style="color:'+estadoColor+'">📄 Contrato Leaseback</strong><span style="color:var(--muted)">'+fmtTimestamp(cto.createdAt)+'</span></div>';
+    html += '<div style="color:'+estadoColor+'; margin-top:3px; font-weight:600;">'+estadoBadge+' '+estadoTexto+' · '+monto+'</div>';
+    html += '<div style="color:'+estadoColor+'; margin-top:5px; font-size:11px;">→ click para ver detalle</div>';
+    html += '</div>';
+  });
+  // Sims y notas de venta
+  sims.slice(0,20).forEach(h => {
     const tipoLabel = h._tipo==='simulacion' ? (h.producto==='hipotecario' ? 'Hipotecario' : 'Leaseback') : 'Nota de Venta';
     const m = getMontoUF(h);
     const monto = m ? fmtUF(m) : '—';
@@ -5050,6 +5103,389 @@ async function cargarTareas(){
     }
     TAREAS_CACHE = snap.docs.map(d => Object.assign({id:d.id}, d.data()));
   } catch(e2){ console.warn('cargarTareas:', e2); TAREAS_CACHE = []; }
+}
+
+/* ============================================================
+   CONTRATOS — Gestión de contratos con flujo de aprobación
+   Estados: pendiente_aprobacion → aprobado → descargado
+   ============================================================ */
+async function cargarContratos(){
+  if(!fbReady() || !CURRENT_USER){ CONTRATOS_CACHE = []; return; }
+  try {
+    let q = fbDb.collection('contratos');
+    if(!esAdmin()) q = q.where('asesorId','==', CURRENT_USER.uid);
+    let snap;
+    try {
+      snap = await q.orderBy('createdAt','desc').limit(500).get();
+    } catch(e1){
+      console.warn('cargarContratos: fallback sin orderBy', e1.message);
+      snap = await q.limit(500).get();
+    }
+    CONTRATOS_CACHE = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+  } catch(e){
+    console.warn('cargarContratos:', e);
+    CONTRATOS_CACHE = [];
+  }
+}
+
+/* Formato fecha literal en español: "29 de abril de 2026" */
+function fmtFechaLiteral(d){
+  if(!d) d = new Date();
+  const meses = ['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre'];
+  return d.getDate()+' de '+meses[d.getMonth()]+' de '+d.getFullYear();
+}
+
+/* Crea un contrato automáticamente desde la última Nota de Venta del cliente.
+   Si ya existe contrato → retorna el existente.
+   Si no hay NV → retorna null con error. */
+async function crearContratoDesdeNV(clienteId){
+  const cliente = CLIENTES_CACHE.find(c => c.id === clienteId);
+  if(!cliente) return null;
+
+  // Solo Leaseback por ahora
+  if(cliente.producto !== 'leaseback'){
+    alert('Por ahora el contrato auto-generado solo está disponible para Leaseback. Para Crédito Hipotecario, contacta al administrador.');
+    return null;
+  }
+
+  // Verificar contrato existente (evita duplicados)
+  const existente = CONTRATOS_CACHE.find(c => c.clienteId === clienteId);
+  if(existente) return existente;
+
+  // Buscar la última Nota de Venta del cliente
+  const nv = HISTORIAL_CACHE
+    .filter(h => h._tipo === 'nota_venta' && h.clienteId === clienteId)
+    .sort((a,b) => ((b.fechaSort && b.fechaSort.getTime ? b.fechaSort.getTime() : 0) - (a.fechaSort && a.fechaSort.getTime ? a.fechaSort.getTime() : 0)))[0];
+
+  if(!nv){
+    alert('Para generar el contrato, primero debes generar y guardar la Nota de Venta de este cliente.\n\nVuelve a la ficha, pasa el lead por Simulación y luego a Nota de Venta antes de moverlo a Contrato.');
+    return null;
+  }
+
+  const campos = nv.campos || {};
+  const tipoPersona = cliente.tipoPersona || 'natural';
+  const esPJ = tipoPersona === 'juridica';
+
+  const contratoData = {
+    clienteId,
+    asesorId: CURRENT_USER.uid,
+    nvId: nv.id || '',
+    producto: 'leaseback',
+    estado: 'pendiente_aprobacion',
+    cliente: {
+      nombre: cliente.nombre || campos['nv-nombre'] || '',
+      rut: cliente.rut || campos['nv-rut'] || '',
+      tipoPersona,
+      giro: cliente.giro || campos['nv-giro'] || '',
+      email: cliente.email || campos['nv-email'] || '',
+      telefono: cliente.telefono || campos['nv-telefono'] || '',
+      direccion: cliente.direccion || campos['nv-direccion'] || '',
+      comuna: cliente.comuna || campos['nv-comuna'] || '',
+      region: campos['nv-region'] || 'Metropolitana',
+      representanteNombre: esPJ ? (campos['nv-rep-nombre'] || '') : '',
+      representanteRut: esPJ ? (campos['nv-rep-rut'] || '') : ''
+    },
+    fechaContrato: fmtFechaLiteral(new Date()),
+    montoNumeralUF: parseFloat(campos['nv-monto-uf']) || nv.montoUF || 0,
+    montoLiteral: '',
+    honorariosPreEvalUF: parseFloat(campos['nv-honorarios-uf']) || (esPJ ? 20 : 10),
+    gastosOperacionalesUF: 0,
+    gastosNotarialesUF: parseFloat(campos['nv-gastos-notariales-uf']) || 66.4,
+    pago3Pct: 1.5,
+    pago4Pct: 1.5,
+    observacionesAdmin: '',
+    createdAt: nowTs(),
+    updatedAt: nowTs(),
+    aprobadoBy: null,
+    aprobadoAt: null,
+    aprobadoNombre: null,
+    descargadoBy: null,
+    descargadoAt: null
+  };
+
+  try {
+    const ref = await fbDb.collection('contratos').add(contratoData);
+    const nuevo = { id: ref.id, ...contratoData };
+    CONTRATOS_CACHE.unshift(nuevo);
+    return nuevo;
+  } catch(e){
+    console.error('crearContratoDesdeNV:', e);
+    alert('Error creando contrato: '+(e.message||e));
+    return null;
+  }
+}
+
+/* Abre el modal de contrato (asesor: solo lectura · admin: editable) */
+function abrirContratoModal(contratoId){
+  const cto = CONTRATOS_CACHE.find(c => c.id === contratoId);
+  if(!cto){ alert('Contrato no encontrado.'); return; }
+  _CONTRATO_ACTIVO = cto;
+  const editable = esAdmin() && cto.estado === 'pendiente_aprobacion';
+  const titulo = cto.estado === 'pendiente_aprobacion'
+    ? '🟡 Contrato pendiente de aprobación'
+    : (cto.estado === 'aprobado' ? '✅ Contrato aprobado' : '📥 Contrato descargado');
+  document.getElementById('mct-titulo').textContent = titulo;
+
+  const c = cto.cliente || {};
+  const esPJ = c.tipoPersona === 'juridica';
+  const dis = editable ? '' : ' readonly';
+  const editStyle = editable ? '' : 'background:var(--bg); color:var(--text-2);';
+
+  let body = '';
+  // Banner según estado
+  if(cto.estado === 'pendiente_aprobacion'){
+    body += '<div style="background:#fef3c7; border:1px solid #fde68a; border-radius:6px; padding:10px 12px; margin-bottom:14px; font-size:12px; color:#854d0e; line-height:1.5;">'+
+      (esAdmin() ? '🔑 <strong>Modo administrador:</strong> revisa los datos, completa los faltantes (monto literal, gastos operacionales) y aprueba con el botón abajo. Una vez aprobado, el asesor podrá descargar el PDF.' : '⏳ Este contrato está esperando aprobación del administrador. Una vez aprobado podrás descargar el PDF.')+
+    '</div>';
+  } else if(cto.estado === 'aprobado'){
+    body += '<div style="background:#dcfce7; border:1px solid #86efac; border-radius:6px; padding:10px 12px; margin-bottom:14px; font-size:12px; color:#166534; line-height:1.5;">✅ <strong>Aprobado</strong> por '+escapeHTML(cto.aprobadoNombre || 'administrador')+' el '+fmtTimestamp(cto.aprobadoAt)+'. Click en <strong>Descargar PDF</strong> abajo.</div>';
+  } else if(cto.estado === 'descargado'){
+    body += '<div style="background:#dbeafe; border:1px solid #93c5fd; border-radius:6px; padding:10px 12px; margin-bottom:14px; font-size:12px; color:#1e40af; line-height:1.5;">📥 <strong>Descargado</strong> el '+fmtTimestamp(cto.descargadoAt)+'. Puedes descargarlo de nuevo si necesitas.</div>';
+  }
+
+  body += '<h4 style="font-size:13px; color:var(--teal); margin:14px 0 8px; text-transform:uppercase; letter-spacing:0.4px;">Datos del cliente (auto-llenados desde NV)</h4>';
+  body += '<div class="form-grid" style="gap:10px;">'+
+    '<div class="form-group"><label>Tipo persona</label><input type="text" value="'+(esPJ?'Jurídica':'Natural')+'" readonly style="background:var(--bg); color:var(--text-2);"></div>'+
+    '<div class="form-group"><label>'+(esPJ?'Razón social':'Nombre completo')+'</label><input type="text" id="mct-nombre" value="'+escapeHTML(c.nombre||'')+'"'+dis+' style="'+editStyle+'"></div>'+
+  '</div>';
+  body += '<div class="form-grid" style="gap:10px; margin-top:8px;">'+
+    '<div class="form-group"><label>RUT</label><input type="text" id="mct-rut" value="'+escapeHTML(c.rut||'')+'"'+dis+' style="'+editStyle+'"></div>'+
+    '<div class="form-group"><label>Correo</label><input type="text" id="mct-email" value="'+escapeHTML(c.email||'')+'"'+dis+' style="'+editStyle+'"></div>'+
+  '</div>';
+  body += '<div class="form-grid-3" style="gap:10px; margin-top:8px;">'+
+    '<div class="form-group"><label>Domicilio</label><input type="text" id="mct-direccion" value="'+escapeHTML(c.direccion||'')+'"'+dis+' style="'+editStyle+'"></div>'+
+    '<div class="form-group"><label>Comuna</label><input type="text" id="mct-comuna" value="'+escapeHTML(c.comuna||'')+'"'+dis+' style="'+editStyle+'"></div>'+
+    '<div class="form-group"><label>Región</label><input type="text" id="mct-region" value="'+escapeHTML(c.region||'')+'"'+dis+' style="'+editStyle+'"></div>'+
+  '</div>';
+  if(esPJ){
+    body += '<div class="form-grid" style="gap:10px; margin-top:8px;">'+
+      '<div class="form-group"><label>Representante legal</label><input type="text" id="mct-rep-nombre" value="'+escapeHTML(c.representanteNombre||'')+'"'+dis+' style="'+editStyle+'"></div>'+
+      '<div class="form-group"><label>RUT representante</label><input type="text" id="mct-rep-rut" value="'+escapeHTML(c.representanteRut||'')+'"'+dis+' style="'+editStyle+'"></div>'+
+    '</div>';
+  }
+
+  body += '<h4 style="font-size:13px; color:var(--teal); margin:18px 0 8px; text-transform:uppercase; letter-spacing:0.4px;">Cláusula primera — objeto</h4>';
+  body += '<div class="form-grid" style="gap:10px;">'+
+    '<div class="form-group"><label>Monto numeral (UF)</label><input type="number" step="0.01" id="mct-monto-uf" value="'+(cto.montoNumeralUF||0)+'"'+dis+' style="'+editStyle+'"></div>'+
+    '<div class="form-group"><label>Monto literal '+(editable?'<span class="req">*</span>':'')+'</label><input type="text" id="mct-monto-literal" value="'+escapeHTML(cto.montoLiteral||'')+'" placeholder="Ej: mil ochocientos treinta y dos unidades de fomento"'+dis+' style="'+editStyle+'"></div>'+
+  '</div>';
+
+  body += '<h4 style="font-size:13px; color:var(--teal); margin:18px 0 8px; text-transform:uppercase; letter-spacing:0.4px;">Cláusula segunda — honorarios y pagos</h4>';
+  body += '<div class="form-grid-3" style="gap:10px;">'+
+    '<div class="form-group"><label>Honorarios pre-eval (UF)</label><input type="number" step="0.01" id="mct-honorarios" value="'+(cto.honorariosPreEvalUF||0)+'"'+dis+' style="'+editStyle+'"></div>'+
+    '<div class="form-group"><label>Gastos operacionales (UF)</label><input type="number" step="0.01" id="mct-gastos-op" value="'+(cto.gastosOperacionalesUF||0)+'"'+dis+' style="'+editStyle+'"></div>'+
+    '<div class="form-group"><label>Gastos notariales (UF)</label><input type="number" step="0.01" id="mct-gastos-not" value="'+(cto.gastosNotarialesUF||0)+'"'+dis+' style="'+editStyle+'"></div>'+
+  '</div>';
+  body += '<div class="form-grid" style="gap:10px; margin-top:8px;">'+
+    '<div class="form-group"><label>Pago 3 (% del crédito aprobado)</label><input type="number" step="0.1" id="mct-pago3" value="'+(cto.pago3Pct||1.5)+'"'+dis+' style="'+editStyle+'"></div>'+
+    '<div class="form-group"><label>Pago 4 (% del crédito aprobado)</label><input type="number" step="0.1" id="mct-pago4" value="'+(cto.pago4Pct||1.5)+'"'+dis+' style="'+editStyle+'"></div>'+
+  '</div>';
+
+  body += '<h4 style="font-size:13px; color:var(--teal); margin:18px 0 8px; text-transform:uppercase; letter-spacing:0.4px;">Observaciones del administrador</h4>';
+  body += '<textarea id="mct-obs" rows="2" placeholder="Notas internas, particularidades, excepciones…" '+dis+' style="width:100%; background:'+(editable?'#fafcfd':'var(--bg)')+'; border:1px solid var(--border); border-radius:8px; padding:8px 12px; font-size:13px; font-family:inherit; resize:vertical;">'+escapeHTML(cto.observacionesAdmin||'')+'</textarea>';
+
+  document.getElementById('mct-body').innerHTML = body;
+
+  // Footer: mostrar/ocultar botones según estado y rol
+  const btnAprobar = document.getElementById('mct-btn-aprobar');
+  const btnDescargar = document.getElementById('mct-btn-descargar');
+  const btnCerrar = document.getElementById('mct-btn-cerrar');
+
+  if(btnAprobar) btnAprobar.style.display = (esAdmin() && cto.estado === 'pendiente_aprobacion') ? 'inline-flex' : 'none';
+  if(btnDescargar) btnDescargar.style.display = (cto.estado === 'aprobado' || cto.estado === 'descargado') ? 'inline-flex' : 'none';
+  if(btnCerrar) btnCerrar.style.display = 'inline-flex';
+
+  document.getElementById('modal-contrato').classList.add('active');
+}
+
+let _CONTRATO_ACTIVO = null;
+
+function cerrarContratoModal(){
+  document.getElementById('modal-contrato').classList.remove('active');
+  _CONTRATO_ACTIVO = null;
+}
+
+async function aprobarContrato(){
+  if(!_CONTRATO_ACTIVO) return;
+  if(!esAdmin()){ alert('Solo el administrador puede aprobar contratos.'); return; }
+  const cto = _CONTRATO_ACTIVO;
+  // Validar campos requeridos
+  const montoLiteral = (document.getElementById('mct-monto-literal')||{}).value || '';
+  if(!montoLiteral.trim()){
+    alert('Debes completar el "monto literal" antes de aprobar (ej: "mil ochocientos treinta y dos unidades de fomento").');
+    document.getElementById('mct-monto-literal').focus();
+    return;
+  }
+  // Capturar cambios del admin
+  const patch = {
+    estado: 'aprobado',
+    aprobadoBy: CURRENT_USER.uid,
+    aprobadoAt: nowTs(),
+    aprobadoNombre: CURRENT_PROFILE ? CURRENT_PROFILE.nombre : '',
+    updatedAt: nowTs(),
+    montoNumeralUF: parseFloat(document.getElementById('mct-monto-uf').value) || 0,
+    montoLiteral: montoLiteral.trim(),
+    honorariosPreEvalUF: parseFloat(document.getElementById('mct-honorarios').value) || 0,
+    gastosOperacionalesUF: parseFloat(document.getElementById('mct-gastos-op').value) || 0,
+    gastosNotarialesUF: parseFloat(document.getElementById('mct-gastos-not').value) || 0,
+    pago3Pct: parseFloat(document.getElementById('mct-pago3').value) || 1.5,
+    pago4Pct: parseFloat(document.getElementById('mct-pago4').value) || 1.5,
+    observacionesAdmin: (document.getElementById('mct-obs')||{}).value || '',
+    cliente: {
+      ...cto.cliente,
+      nombre: (document.getElementById('mct-nombre')||{}).value || cto.cliente.nombre,
+      rut: (document.getElementById('mct-rut')||{}).value || cto.cliente.rut,
+      email: (document.getElementById('mct-email')||{}).value || cto.cliente.email,
+      direccion: (document.getElementById('mct-direccion')||{}).value || cto.cliente.direccion,
+      comuna: (document.getElementById('mct-comuna')||{}).value || cto.cliente.comuna,
+      region: (document.getElementById('mct-region')||{}).value || cto.cliente.region,
+      representanteNombre: (document.getElementById('mct-rep-nombre')||{}).value || cto.cliente.representanteNombre,
+      representanteRut: (document.getElementById('mct-rep-rut')||{}).value || cto.cliente.representanteRut
+    }
+  };
+  try {
+    await fbDb.collection('contratos').doc(cto.id).update(patch);
+    Object.assign(cto, patch);
+    mostrarToastAutoCliente('✓ Contrato aprobado · el asesor ya puede descargarlo', 'creado');
+    cerrarContratoModal();
+    // Refresh ficha cliente si está activa
+    if(CD_ID === cto.clienteId) renderSimsCliente(cto.clienteId);
+  } catch(e){
+    console.error('aprobarContrato:', e);
+    alert('Error aprobando contrato: '+(e.message||e));
+  }
+}
+
+async function descargarContratoPDF(){
+  if(!_CONTRATO_ACTIVO) return;
+  const cto = _CONTRATO_ACTIVO;
+  if(cto.estado === 'pendiente_aprobacion'){
+    alert('Este contrato aún no ha sido aprobado por el administrador.');
+    return;
+  }
+  // Generar HTML del contrato y enviar al PDF
+  const html = generarHTMLContrato(cto);
+  generarPDF(html, 'Contrato Leaseback · '+(cto.cliente.nombre||'cliente'));
+  // Marcar como descargado si era 'aprobado'
+  if(cto.estado === 'aprobado'){
+    try {
+      const patch = {
+        estado: 'descargado',
+        descargadoBy: CURRENT_USER.uid,
+        descargadoAt: nowTs(),
+        updatedAt: nowTs()
+      };
+      await fbDb.collection('contratos').doc(cto.id).update(patch);
+      Object.assign(cto, patch);
+    } catch(e){ console.warn('descargarContratoPDF mark:', e); }
+  }
+}
+
+/* Genera el HTML completo del contrato a partir del objeto cto */
+function generarHTMLContrato(cto){
+  const c = cto.cliente || {};
+  const esPJ = c.tipoPersona === 'juridica';
+  const labelEntidad = esPJ ? 'sociedad' : 'persona natural';
+  const labelDocumento = esPJ ? 'RUT N°' : 'RUT N°';
+
+  const monto = (cto.montoNumeralUF||0).toFixed(2).replace(/\.?0+$/,'');
+  const montoCLP = fmtCLP((cto.montoNumeralUF||0) * UF_VALOR);
+
+  const repBlock = esPJ
+    ? ', debidamente representada por <strong>'+escapeHTML(c.representanteNombre||'[NOMBRE REPRESENTANTE]')+'</strong>, cédula de identidad N° <strong>'+escapeHTML(c.representanteRut||'[RUT REPRESENTANTE]')+'</strong>'
+    : '';
+
+  const honPreEval = (cto.honorariosPreEvalUF||0);
+  const gastosOp = (cto.gastosOperacionalesUF||0);
+  const gastosNot = (cto.gastosNotarialesUF||0);
+  const pago3 = (cto.pago3Pct||1.5);
+  const pago4 = (cto.pago4Pct||1.5);
+  const totalFee = pago3 + pago4;
+
+  const pago1Total = honPreEval + gastosOp;
+
+  return '<div style="font-family:Inter,sans-serif; font-size:11pt; line-height:1.55; color:#1a2730;">'+
+    '<h1 style="text-align:center; font-size:14pt; font-weight:800; color:#0a3d4a; margin:0 0 4px;">CONTRATO DE PRESTACIÓN DE SERVICIOS DE</h1>'+
+    '<h1 style="text-align:center; font-size:14pt; font-weight:800; color:#0a3d4a; margin:0 0 4px;">GESTIÓN DE LEASEBACK</h1>'+
+    '<h2 style="text-align:center; font-size:12pt; font-weight:700; color:#0a3d4a; margin:0 0 18px;">Y/O LEVANTAMIENTO DE CAPITAL (FINANCIAMIENTO)</h2>'+
+
+    '<p>En Santiago de Chile, a <strong>'+escapeHTML(cto.fechaContrato||fmtFechaLiteral(new Date()))+'</strong>, comparecen las siguientes partes:</p>'+
+
+    '<p><strong>I.</strong> <strong>ASESORÍAS LOANS4B SpA</strong>, RUT N° 78.302.775-5, sociedad legalmente constituida conforme a las leyes de la República de Chile, con domicilio en Av. Raúl Labbé 12613, Oficina 231, comuna de Lo Barnechea, Santiago, debidamente representada por Pablo Rivas Marín, cédula nacional de identidad N° 10.860.107-8, y Roberto Pesce Centeno, cédula nacional de identidad N° 26.226.532-3, en su calidad de representantes, correo electrónico info@loans4b.com, en adelante "<strong>LOANS4B</strong>" o "El Prestador".</p>'+
+
+    '<p><strong>II.</strong> <strong>'+escapeHTML(c.nombre||'[CLIENTE]')+'</strong>, '+labelDocumento+' <strong>'+escapeHTML(c.rut||'[RUT]')+'</strong>, '+labelEntidad+' constituida conforme a las leyes de la República de Chile, con domicilio en <strong>'+escapeHTML(c.direccion||'[DOMICILIO]')+'</strong>, comuna de <strong>'+escapeHTML(c.comuna||'[COMUNA]')+'</strong>'+repBlock+', correo electrónico <strong>'+escapeHTML(c.email||'[CORREO]')+'</strong>, en adelante "El Cliente".</p>'+
+
+    '<p>Ambas partes, en adelante conjuntamente referidas como "las Partes", han convenido en celebrar el presente Contrato de Prestación de Servicios de Gestión de Leaseback y/o Levantamiento de Capital, en adelante "el Contrato", el cual se regirá por las siguientes cláusulas:</p>'+
+
+    '<h3 style="font-size:11pt; color:#0a3d4a; margin:14px 0 4px;">CLÁUSULA PRIMERA. OBJETO DEL CONTRATO:</h3>'+
+    '<p>LOANS4B se obliga, por cuenta del Cliente, a prestar servicios de asesoría y gestión especializada con el objeto de identificar, estructurar, postular y facilitar la obtención de un Leaseback y/o Levantamiento de Capital, otorgado por una entidad especializada, cuyo monto meta objetivo ascienda la suma aproximada de <strong>'+monto+' UF ('+escapeHTML(cto.montoLiteral||'[MONTO LITERAL]')+')</strong>, equivalente a <strong>'+montoCLP+'</strong> al valor UF actual.</p>'+
+    '<p>El presente contrato no constituye una obligación de resultado, sino un compromiso profesional de medios y diligencia calificada conforme al estándar de la industria financiera.</p>'+
+
+    '<h3 style="font-size:11pt; color:#0a3d4a; margin:14px 0 4px;">CLÁUSULA SEGUNDA. HONORARIOS Y FORMA DE PAGO:</h3>'+
+    '<p>Como retribución por los servicios descritos en la cláusula anterior, El Cliente pagará a LOANS4B un honorario total equivalente a <strong>'+honPreEval+' UF</strong> por concepto de preevaluación, más un <strong>'+totalFee.toFixed(1)+'%</strong> del monto total del crédito aprobado por concepto de gestión y cierre de la operación.</p>'+
+    '<p>Adicionalmente, y de forma separada a los honorarios antes señalados, el Cliente deberá solventar los gastos propios de la operación (gastos operacionales, notariales y de inscripción ante el Conservador de Bienes Raíces, entre otros).</p>'+
+    '<p>El pago se efectuará según el siguiente desglose:</p>'+
+    '<ul>'+
+      '<li><strong>Pago 1</strong> – Honorario de preevaluación equivalente a '+honPreEval+' UF'+(gastosOp>0?', más '+gastosOp+' UF por concepto de gastos operacionales':'')+', pagaderos al momento de la firma del presente contrato, en calidad de anticipo y habilitación del servicio.</li>'+
+      '<li><strong>Pago 2</strong> – '+gastosNot+' UF por concepto de gastos de notaría e inscripción ante el Conservador de Bienes Raíces (CBR), pagaderos a 10 días corridos desde la firma del presente contrato.</li>'+
+      '<li><strong>Pago 3</strong> – '+pago3+'% del crédito aprobado, pagadero al momento del otorgamiento de la línea solicitada.</li>'+
+      '<li><strong>Pago 4</strong> – '+pago4+'% del crédito aprobado, pagadero contra entrega de la aprobación formal del crédito, acompañada de los contratos correspondientes emitidos por la entidad financiera para firma del Cliente.</li>'+
+    '</ul>'+
+    '<p style="font-size:10pt; color:#3a4a55;">Los honorarios de gestión se desglosan: (1) gestión ante entidades financieras y estructuración de la operación, (2) elaboración y presentación de antecedentes ante la entidad especializada, (3) coordinación de due diligence y tasaciones, (4) seguimiento y cierre de la operación hasta firma de contratos definitivos.</p>'+
+    '<p style="font-size:10pt; color:#3a4a55;">Los pagos deberán efectuarse mediante transferencia bancaria a la cuenta corriente del Banco Santander de Asesorías Loans4B SpA, RUT 78.302.775-5, N° de cuenta 0-000-2778069-5.</p>'+
+
+    '<h3 style="font-size:11pt; color:#0a3d4a; margin:14px 0 4px;">CLÁUSULA TERCERA. INICIO DE GESTIÓN Y CONDICIONES DE DEVOLUCIÓN:</h3>'+
+    '<p>La prestación de los servicios contratados dará inicio una vez verificado el pago íntegro correspondiente al Pago 1, y siempre que el Cliente haya entregado de forma completa, veraz, suficiente y oportuna toda la documentación e información requerida.</p>'+
+    '<p><em>Condiciones de devolución del Pago 1:</em> El Pago 1 tendrá carácter de no reembolsable, salvo en los siguientes casos excepcionales: (a) que LOANS4B no inicie ningún trámite de gestión dentro de los 30 días hábiles siguientes a la recepción completa de la documentación del Cliente; o (b) que LOANS4B incumpla gravemente sus obligaciones esenciales bajo el presente contrato. En ningún caso procederá la devolución si el Cliente desiste voluntariamente del proceso o no entrega la documentación requerida en forma oportuna.</p>'+
+
+    '<h3 style="font-size:11pt; color:#0a3d4a; margin:14px 0 4px;">CLÁUSULA CUARTA. MANDATO:</h3>'+
+    '<p>Por el presente instrumento, El Cliente confiere a LOANS4B un mandato especial y suficiente para que, en su nombre y representación, realice todas las gestiones necesarias para la obtención del financiamiento descrito. Este mandato comprende presentar antecedentes ante instituciones financieras, solicitar informes de tasación y estudios de títulos, negociar condiciones generales sujeto a aprobación final del Cliente, y coordinar reuniones, visitas a inmuebles y trámites operativos.</p>'+
+    '<p><strong>El presente mandato no faculta a LOANS4B para comprometer patrimonialmente al Cliente, suscribir contratos definitivos en su nombre, ni ejecutar actos jurídicos vinculantes sin su consentimiento expreso y por escrito.</strong></p>'+
+    '<p><em>Irrevocabilidad:</em> Una vez que la entidad financiera haya aprobado formalmente el financiamiento objeto de este contrato, el presente mandato se volverá irrevocable, no pudiendo el Cliente revocarlo ni impedir el cobro de los honorarios establecidos en la Cláusula Segunda.</p>'+
+
+    '<h3 style="font-size:11pt; color:#0a3d4a; margin:14px 0 4px;">CLÁUSULA QUINTA. NO CAPTACIÓN DIRECTA:</h3>'+
+    '<p>Mientras el presente Contrato se encuentre vigente, El Cliente se obliga a no contactar directamente, ni por interpuesta persona, a las instituciones o inversionistas que LOANS4B le presente o identifique en el marco de este contrato, con el propósito de cerrar la operación sin la intervención de LOANS4B. El incumplimiento de esta obligación facultará a LOANS4B para exigir el pago íntegro del honorario de gestión (Pago 3) como si la operación hubiera sido obtenida con su intermediación.</p>'+
+
+    '<h3 style="font-size:11pt; color:#0a3d4a; margin:14px 0 4px;">CLÁUSULA SEXTA. OBLIGACIONES DEL PRESTADOR:</h3>'+
+    '<p>Son obligaciones de LOANS4B: (1) asesorar al Cliente en la recopilación, estructuración y presentación de la documentación; (2) actuar como intermediario estratégico entre El Cliente y la institución durante todo el proceso; (3) mantener informado al Cliente respecto del avance del proceso; (4) no comprometer la responsabilidad patrimonial del Cliente sin su consentimiento por escrito.</p>'+
+
+    '<h3 style="font-size:11pt; color:#0a3d4a; margin:14px 0 4px;">CLÁUSULA SÉPTIMA. OBLIGACIONES DEL CLIENTE:</h3>'+
+    '<p>El Cliente se compromete a: (1) proporcionar de manera oportuna, fidedigna y completa toda la información y documentación requerida; (2) cumplir con los pagos establecidos en la cláusula segunda; (3) firmar los contratos emitidos por la entidad aprobada en caso de aceptar la oferta de crédito; (4) no revocar el mandato otorgado en la Cláusula Cuarta una vez que el financiamiento haya sido formalmente aprobado.</p>'+
+
+    '<h3 style="font-size:11pt; color:#0a3d4a; margin:14px 0 4px;">CLÁUSULA OCTAVA. CONFIDENCIALIDAD:</h3>'+
+    '<p>Las Partes se obligan recíprocamente a guardar estricta confidencialidad respecto de toda información técnica, financiera, estratégica, contractual o comercial a la que tengan acceso como consecuencia del presente contrato. Esta obligación se mantendrá vigente durante la vigencia del contrato y por un plazo adicional de cinco (5) años contados desde su terminación, sea cual fuere la causa.</p>'+
+
+    '<h3 style="font-size:11pt; color:#0a3d4a; margin:14px 0 4px;">CLÁUSULA NOVENA. INCUMPLIMIENTO Y PENALIDADES:</h3>'+
+    '<p>El incumplimiento de las obligaciones establecidas hará responsable a la Parte infractora de los daños y perjuicios. En particular, si El Cliente viola la cláusula de no captación directa (Cláusula Quinta), deberá pagar a LOANS4B, a título de indemnización, una suma equivalente al '+totalFee.toFixed(1)+'% del monto del financiamiento objetivo señalado en la Cláusula Primera, con independencia de si la operación se concretó o no.</p>'+
+
+    '<h3 style="font-size:11pt; color:#0a3d4a; margin:14px 0 4px;">CLÁUSULA DÉCIMA. PLAZO DE VIGENCIA:</h3>'+
+    '<p>El presente contrato tendrá una vigencia de ciento ochenta (180) días corridos, contados desde la fecha de su firma. Este plazo podrá ser prorrogado por mutuo acuerdo expreso entre las partes, mediante documento escrito y firmado. No obstante, una vez que el financiamiento sea formalmente aprobado por la entidad financiera, las obligaciones de pago del Cliente (Pago 3) y el mandato otorgado a LOANS4B no podrán ser revocados, subsistiendo hasta el completo pago de los honorarios pactados.</p>'+
+
+    '<h3 style="font-size:11pt; color:#0a3d4a; margin:14px 0 4px;">CLÁUSULA UNDÉCIMA. LEY APLICABLE Y RESOLUCIÓN DE CONTROVERSIAS:</h3>'+
+    '<p>El presente contrato se rige por las leyes de la República de Chile. Cualquier dificultad o controversia será resuelta en única instancia por un árbitro arbitrador, designado de común acuerdo por las partes, y a falta de acuerdo, por el Centro de Arbitraje y Mediación de Santiago ("CAM Santiago"), de conformidad con su reglamento vigente. En contra de las resoluciones del árbitro no procederá recurso alguno, con excepción de los que sean irrenunciables en conformidad con la ley.</p>'+
+
+    '<h3 style="font-size:11pt; color:#0a3d4a; margin:14px 0 4px;">CLÁUSULA DUODÉCIMA. INTEGRIDAD CONTRACTUAL:</h3>'+
+    '<p>Este contrato representa el acuerdo íntegro entre las partes y reemplaza cualquier otro entendimiento verbal o escrito anterior relacionado con el objeto aquí estipulado. Cualquier modificación deberá constar por escrito y ser firmada por ambas partes.</p>'+
+
+    '<p style="margin-top:20px;">Y en prueba de conformidad, firman las partes el presente contrato en dos ejemplares de igual tenor, quedando un ejemplar en poder de cada una de ellas.</p>'+
+
+    '<div style="margin-top:40px; display:grid; grid-template-columns:1fr 1fr; gap:30px;">'+
+      '<div style="border-top:1px solid #1a2730; padding-top:6px; text-align:center;">'+
+        '<div style="font-size:10pt;">Firma: ____________________________</div>'+
+        '<div style="font-size:10pt; margin-top:6px;"><strong>Por: ASESORÍAS LOANS4B SpA</strong></div>'+
+        '<div style="font-size:10pt;">Roberto Pesce C. y Pablo Rivas M.</div>'+
+      '</div>'+
+      '<div style="border-top:1px solid #1a2730; padding-top:6px; text-align:center;">'+
+        '<div style="font-size:10pt;">Firma: ____________________________</div>'+
+        '<div style="font-size:10pt; margin-top:6px;"><strong>Por: '+escapeHTML(c.nombre||'[CLIENTE]')+'</strong></div>'+
+        '<div style="font-size:10pt;">RUT N° '+escapeHTML(c.rut||'[RUT]')+'</div>'+
+        (esPJ ? '<div style="font-size:10pt; margin-top:4px;">'+escapeHTML(c.representanteNombre||'')+'</div><div style="font-size:10pt;">RUT N° '+escapeHTML(c.representanteRut||'')+'</div>' : '')+
+      '</div>'+
+    '</div>'+
+
+    (cto.observacionesAdmin ? '<div style="margin-top:24px; padding:10px 12px; background:#fafcfd; border:1px solid #e5e7eb; border-radius:6px; font-size:9.5pt; color:#3a4a55;"><strong>Observaciones internas:</strong> '+escapeHTML(cto.observacionesAdmin)+'</div>' : '')+
+
+    '</div>';
 }
 
 function abrirTareaModal(clienteId){
