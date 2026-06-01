@@ -1698,14 +1698,6 @@ if(FIREBASE_OK){
         </div>
       </div>
 
-      <!-- 💡 CONCLUSIONES Y PRÓXIMOS PASOS -->
-      <div class="cd-card" style="margin-bottom:18px; border-left:4px solid var(--amber);">
-        <div class="cd-card-head"><h3>💡 Conclusiones y próximos pasos</h3></div>
-        <div class="cd-card-body" id="rp-conclusiones">
-          <div style="font-size:13px; color:var(--muted)">Cargando…</div>
-        </div>
-      </div>
-
       <!-- 📌 NOTAS del día -->
       <div class="cd-card" style="margin-bottom:18px">
         <div class="cd-card-head"><h3>📌 Notas del día</h3></div>
@@ -3230,6 +3222,10 @@ async function eliminarClienteCore(cliId){
       if(CLIENTE_SELECCIONADO_SIM[k] === cliId) CLIENTE_SELECCIONADO_SIM[k] = null;
     });
     poblarClientePickers();
+    // FORZAR REFRESH de TODAS las vistas que muestran clientes
+    try { renderClientes(); } catch(_){}
+    try { renderPipeline(); } catch(_){}
+    try { renderReporte(); } catch(_){}
     mostrarToastAutoCliente('✓ Cliente eliminado · '+c.nombre, 'creado');
     return true;
   } catch(e){
@@ -5316,6 +5312,7 @@ function generarConclusiones(k, asesoresStats){
 }
 
 function renderReporte(){
+  try {
   const { desde, hasta, rango } = getReporteRange();
   const asesorFiltro = (document.getElementById('rp-asesor')||{}).value || 'todos';
   const k = computeKPIs(desde, hasta, asesorFiltro);
@@ -5352,15 +5349,7 @@ function renderReporte(){
   const tasaCierre = prospectos ? Math.round((contratos/prospectos)*100) : 0;
   const pct = (a,b) => b > 0 ? Math.round((a/b)*100) : 0;
 
-  // === KPIs principales (4 cards): Prospectos · Sims · NV · Contratos ===
-  document.getElementById('kpi-prospectos').textContent = prospectos;
-  document.getElementById('kpi-prospectos-sub').textContent = rechazos>0 ? (rechazos+' rechazado'+(rechazos===1?'':'s')+' · Efectividad '+efec+'%') : 'leads totales del período';
-  document.getElementById('kpi-sims-funnel').textContent = simulados;
-  document.getElementById('kpi-sims-funnel-sub').textContent = prospectos>0 ? (pct(simulados,prospectos)+'% conversión desde prospectos') : '—';
-  document.getElementById('kpi-nv-funnel').textContent = notasVenta;
-  document.getElementById('kpi-nv-funnel-sub').textContent = prospectos>0 ? (pct(notasVenta,prospectos)+'% conversión · '+pct(notasVenta,simulados)+'% desde sims') : '—';
-  document.getElementById('kpi-contratos').textContent = contratos;
-  document.getElementById('kpi-contratos-sub').textContent = prospectos>0 ? (tasaCierre+'% tasa de cierre') : '—';
+  // === KPIs principales (esos IDs viejos ya no existen — los nuevos se actualizan más abajo) ===
 
   // === Embudo visual ===
   const embudoSteps = [
@@ -5643,16 +5632,7 @@ function renderReporte(){
   renderTablaResumenAsesores(rowsAsResumen);
   renderGraficoAsesoresSVG(rowsAsResumen);
 
-  // === Conclusiones automáticas ===
-  const conclEl = document.getElementById('rp-conclusiones');
-  if(conclEl){
-    const concls = generarConclusiones(kpisEjec, rowsAsResumen);
-    if(concls.length === 0){
-      conclEl.innerHTML = '<div style="font-size:13px; color:var(--muted)">Sin actividad suficiente para generar conclusiones.</div>';
-    } else {
-      conclEl.innerHTML = concls.map(c => '<div style="padding:9px 0; border-bottom:1px dashed var(--border-l); font-size:13px; line-height:1.6; display:flex; gap:10px;"><span style="font-size:18px; flex-shrink:0;">'+c.icon+'</span><span style="color:'+c.color+';">'+c.txt+'</span></div>').join('');
-    }
-  }
+  // (conclusiones automáticas removidas por preferencia de Lukas)
 
   const eventos = [];
   k.clientesNuevos.forEach(c => eventos.push({ t:'cliente', when: dateOf(c), nom: c.nombre, ases: asesorNombrePorId(c.asesorId), extra:'Cliente nuevo · '+(c.rut||'') }));
@@ -5673,6 +5653,15 @@ function renderReporte(){
       '<div class="tl-text">'+escapeHTML(e.nom)+' — <span style="color:var(--muted)">'+escapeHTML(e.extra)+'</span></div>' +
       '</div></div>';
   }).join('');
+  } catch(err){
+    console.error('renderReporte ERROR:', err);
+    // Mostrar mensaje en pantalla si renderReporte explota, en lugar de quedar en blanco
+    const errMsg = '<div style="padding:24px; background:#fee2e2; color:#991b1b; border-radius:8px; border:1px solid #fecaca; font-size:13px; line-height:1.5;"><strong>⚠ Error generando el reporte:</strong> '+(err.message||err)+'<br><span style="font-size:11px; color:#7f1d1d;">Revisa la consola del navegador (F12) para más detalles.</span></div>';
+    ['rp-resumen-ejec','rp-progreso-meta','rp-comparativa','rp-por-producto','rp-grafico-asesores','rp-tabla-resumen-wrap','rp-notas-dia'].forEach(id => {
+      const el = document.getElementById(id);
+      if(el && el.innerHTML.includes('Cargando')) el.innerHTML = errMsg;
+    });
+  }
 }
 
 /* === Modo del reporte (ejecutivo / detallado) === */
@@ -5879,15 +5868,8 @@ function descargarReporteEjecutivoPDF(){
       cardProdPDF('💼 Hipotecario', kpisEjecPDF.porProducto.hipotecario, '#1d7a5f')+
     '</div></div>';
 
-  // Conclusiones automáticas
-  const conclList = generarConclusiones(kpisEjecPDF, rowsAs);
+  // (conclusiones removidas)
   let conclHTMLpdf = '';
-  if(conclList.length){
-    conclHTMLpdf = '<div style="margin-bottom:12px; background:#fdf3e0; border-left:3px solid #a05c10; border-radius:6px; padding:9px 12px;">'+
-      '<div style="font-size:9.5px; color:#a05c10; text-transform:uppercase; letter-spacing:0.5px; font-weight:700; margin-bottom:5px;">💡 Conclusiones y próximos pasos</div>'+
-      conclList.map(c => '<div style="padding:3px 0; font-size:10pt; line-height:1.5; color:#1a2730;">'+c.icon+' <span style="color:'+c.color+';">'+c.txt+'</span></div>').join('')+
-    '</div>';
-  }
 
   // Embudo
   const embudoSteps = [
