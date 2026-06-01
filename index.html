@@ -491,8 +491,8 @@ if(FIREBASE_OK){
     <div class="nav-label" style="margin-top:14px">Simuladores</div>
     <button class="nav-item active" onclick="showView('sim-rapido-leaseback')"><span class="icon">⚡</span><span>Sim. rápida Leaseback</span></button>
     <button class="nav-item" onclick="showView('sim-rapido-hipotecario')"><span class="icon">⚡</span><span>Sim. rápida Hipotecario</span></button>
-    <button class="nav-item" onclick="showView('sim-leaseback')"><span class="icon">📋</span><span>Simulación Leaseback</span></button>
-    <button class="nav-item" onclick="showView('sim-hipotecario')"><span class="icon">📋</span><span>Simulación Hipotecario</span></button>
+    <button class="nav-item" id="nav-sim-leaseback" onclick="showView('sim-leaseback')"><span class="icon">📋</span><span>Simulación Leaseback</span></button>
+    <button class="nav-item" id="nav-sim-hipotecario" onclick="showView('sim-hipotecario')"><span class="icon">📋</span><span>Simulación Hipotecario</span></button>
     <div class="nav-label" style="margin-top:14px">Comercial</div>
     <button class="nav-item" onclick="showView('nota-venta')"><span class="icon">📝</span><span>Nota de Venta</span></button>
     <div class="nav-label" style="margin-top:14px">Herramientas</div>
@@ -1199,7 +1199,24 @@ if(FIREBASE_OK){
     </div>
   </div>
 
-  <!-- ===== MODAL LEAD RÁPIDO ===== -->
+  <!-- ===== MODAL DETALLE SIM/NV ===== -->
+  <div class="modal-overlay" id="modal-sim-detalle">
+    <div class="modal" style="max-width:640px">
+      <div class="modal-head">
+        <h3 id="msd-titulo">Detalle del documento</h3>
+        <button class="modal-close" onclick="cerrarSimDetalle()">×</button>
+      </div>
+      <div class="modal-body" id="msd-body">
+        <div style="font-size:13px; color:var(--muted)">Cargando…</div>
+      </div>
+      <div class="modal-foot">
+        <button class="btn ghost" onclick="cerrarSimDetalle()">Cerrar</button>
+        <button class="btn green" id="msd-btn-abrir" onclick="verSimEnSimulador()"><span>📥</span> Abrir en simulador</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== MODAL LEAD RÁPIDO =====
   <div class="modal-overlay" id="modal-lead-rapido">
     <div class="modal" style="max-width:500px">
       <div class="modal-head">
@@ -1778,6 +1795,7 @@ const ETAPAS = [
   { id:'simulacion', label:'Simulación',    color:'#a05c10', desc:'Producto asignado, simulación en curso' },
   { id:'notaventa',  label:'Nota de Venta', color:'#2aa07f', desc:'Nota de Venta emitida' },
   { id:'contrato',   label:'Contrato',      color:'#0a3d4a', desc:'Contrato enviado / firmado por el cliente' },
+  { id:'cerrado',    label:'Cerrado',       color:'#1d7a5f', desc:'Operación cerrada exitosamente' },
   { id:'rechazo',    label:'Rechazo',       color:'#b52a2a', desc:'Lead descartado / no avanzó' }
 ];
 function etapaInfo(id){ return ETAPAS.find(e=>e.id===id) || ETAPAS[0]; }
@@ -3029,6 +3047,10 @@ function mostrarApp(){
   rolEl.className = 'ur' + (p.rol==='admin'?' admin':'');
   document.getElementById('nav-equipo').style.display = (p.rol==='admin') ? 'flex' : 'none';
   const nlider = document.getElementById('nav-lider'); if(nlider) nlider.style.display = (p.rol==='admin') ? 'flex' : 'none';
+  // Simuladores COMPLETOS solo visibles para admin (los asesores simulan desde el pipeline al mover cliente)
+  ['nav-sim-leaseback','nav-sim-hipotecario'].forEach(id => {
+    const el = document.getElementById(id); if(el) el.style.display = (p.rol==='admin') ? 'flex' : 'none';
+  });
   // Ocultar dropdowns "mios / todos los asesores" para asesores (no admin):
   // cada uno ve solo sus propios datos, así que el filtro es redundante.
   const esAdminUI = (p.rol==='admin');
@@ -4408,6 +4430,26 @@ async function moverEtapaCliente(cliId, nuevaEtapa, desdePipeline){
   if(!c) return;
   const etapaPrev = c.etapa || 'contacto';
   if(etapaPrev === nuevaEtapa) return;     // sin cambio
+  // === REGLA NO-RETROCESO: asesores no pueden devolver clientes a etapas anteriores ===
+  // Admin puede mover libremente. Excepción: 'rechazo' siempre permitido (es vía de escape).
+  if(!esAdmin() && nuevaEtapa !== 'rechazo'){
+    const ordenProductivo = ['prospecto','contacto','simulacion','notaventa','contrato','cerrado'];
+    const idxPrev = ordenProductivo.indexOf(etapaPrev);
+    const idxNuevo = ordenProductivo.indexOf(nuevaEtapa);
+    // Si la actual está en orden y el nuevo es MENOR → retroceso bloqueado
+    if(idxPrev >= 0 && idxNuevo >= 0 && idxNuevo < idxPrev){
+      alert('No se puede devolver un cliente a una etapa anterior.\n\nUna vez que avanzas, el camino es solo hacia adelante (o a Rechazo). Esto es para evitar que se pierda información por error.\n\nSi necesitas mover un cliente hacia atrás, contacta al administrador.');
+      // Revertir cache (por si la actualización optimista ya cambió etapa)
+      renderPipeline();
+      return;
+    }
+    // Si actualmente está en 'rechazo', no se puede salir de ahí
+    if(etapaPrev === 'rechazo'){
+      alert('Los clientes en Rechazo no pueden ser movidos a otra etapa.\n\nSi necesitas reactivar un cliente rechazado, contacta al administrador.');
+      renderPipeline();
+      return;
+    }
+  }
   // === Gate 1: para entrar a Simulación se requiere producto asignado ===
   if(nuevaEtapa === 'simulacion' && !c.producto){
     abrirProductoModal(cliId,
@@ -4692,6 +4734,22 @@ async function cambiarEtapaCliente(){
   const c = CLIENTES_CACHE.find(x=>x.id===CD_ID); if(!c) return;
   const etapaPrev = c.etapa || 'contacto';
   if(etapaPrev === nuevaEtapa) return;
+  // === REGLA NO-RETROCESO desde la ficha (asesores) ===
+  if(!esAdmin() && nuevaEtapa !== 'rechazo'){
+    const ordenProductivo = ['prospecto','contacto','simulacion','notaventa','contrato','cerrado'];
+    const idxPrev = ordenProductivo.indexOf(etapaPrev);
+    const idxNuevo = ordenProductivo.indexOf(nuevaEtapa);
+    if(idxPrev >= 0 && idxNuevo >= 0 && idxNuevo < idxPrev){
+      alert('No se puede devolver un cliente a una etapa anterior. Si necesitas hacerlo, contacta al administrador.');
+      sel.value = etapaPrev; // revertir dropdown
+      return;
+    }
+    if(etapaPrev === 'rechazo'){
+      alert('Los clientes en Rechazo no pueden ser movidos a otra etapa. Si necesitas reactivar, contacta al administrador.');
+      sel.value = etapaPrev;
+      return;
+    }
+  }
   // === Gate: para entrar a Simulación se requiere producto asignado ===
   if(nuevaEtapa === 'simulacion' && !c.producto){
     abrirProductoModal(CD_ID,
@@ -4855,13 +4913,102 @@ function renderSimsCliente(clienteId){
     const tipoLabel = h._tipo==='simulacion' ? (h.producto==='hipotecario' ? 'Hipotecario' : 'Leaseback') : 'Nota de Venta';
     const m = getMontoUF(h);
     const monto = m ? fmtUF(m) : '—';
-    html += '<div style="border:1px solid var(--border); border-radius:8px; padding:10px 12px; font-size:12.5px">';
+    const idEsc = escapeHTML(h.id||'');
+    html += '<div onclick="abrirSimDetalle(\''+idEsc+'\')" style="border:1px solid var(--border); border-radius:8px; padding:10px 12px; font-size:12.5px; cursor:pointer; transition:all 0.15s;" onmouseover="this.style.background=\'#fafcfd\'; this.style.borderColor=\'var(--green)\'; this.style.transform=\'translateX(2px)\'" onmouseout="this.style.background=\'\'; this.style.borderColor=\'var(--border)\'; this.style.transform=\'\'">';
     html += '<div style="display:flex; justify-content:space-between; gap:10px"><strong>'+tipoLabel+'</strong><span style="color:var(--muted)">'+fmtTimestamp(h.createdAt||h.fechaCreacion)+'</span></div>';
     html += '<div style="color:var(--muted); margin-top:3px">'+escapeHTML(asesorNombrePorId(h.asesorId))+' · '+monto+'</div>';
+    html += '<div style="color:var(--green); margin-top:5px; font-size:11px;">→ click para ver detalle</div>';
     html += '</div>';
   });
   html += '</div>';
   cont.innerHTML = html;
+}
+
+/* === DETALLE DE SIM/NV — modal abierto al click en card de la ficha cliente === */
+let _SIM_DETALLE_CACHE = null;
+
+function abrirSimDetalle(simId){
+  const sim = HISTORIAL_CACHE.find(h => h.id === simId);
+  if(!sim){ alert('Documento no encontrado.'); return; }
+  _SIM_DETALLE_CACHE = sim;
+  const tipo = sim._tipo === 'simulacion'
+    ? (sim.producto === 'hipotecario' ? 'Simulación de Crédito Hipotecario' : 'Simulación de Leaseback')
+    : 'Nota de Venta';
+  document.getElementById('msd-titulo').textContent = tipo;
+
+  const fr = (lbl, val) => '<tr><td style="padding:6px 10px; color:var(--muted); font-size:11px; text-transform:uppercase; letter-spacing:0.4px; font-weight:600; width:40%; vertical-align:top;">'+escapeHTML(lbl)+'</td><td style="padding:6px 10px; font-size:13px; color:var(--text);">'+(val||'—')+'</td></tr>';
+
+  let body = '<div style="font-size:12px; color:var(--muted); margin-bottom:14px;">📅 Creado el '+fmtTimestamp(sim.createdAt || sim.fechaCreacion)+' por '+escapeHTML(asesorNombrePorId(sim.asesorId))+'</div>';
+  body += '<table style="width:100%; border-collapse:collapse; border:1px solid var(--border-l); border-radius:8px; overflow:hidden;">';
+  body += fr('Cliente', sim.clienteNombre || '—');
+  body += fr('RUT', sim.clienteRut || '—');
+
+  if(sim._tipo === 'simulacion'){
+    const inputs = sim.inputs || {};
+    const resultados = sim.resultados || {};
+    if(sim.producto === 'hipotecario'){
+      body += fr('Valor inmueble', inputs.valorUF ? fmtUF(inputs.valorUF) + ' · ' + fmtCLP(inputs.valorUF * UF_VALOR) : '—');
+      body += fr('Monto a financiar', inputs.financiarUF ? fmtUF(inputs.financiarUF) + ' · ' + fmtCLP(inputs.financiarUF * UF_VALOR) : '—');
+      body += fr('Pie', inputs.pieUF ? fmtUF(inputs.pieUF) : '—');
+      body += fr('Plazo', (inputs.plazoAnios || '—') + ' años');
+      body += fr('Tasa', inputs.tasaAnual ? fmtPct(inputs.tasaAnual, 2) + ' (' + (inputs.tipoTasa || 'fija') + ')' : '—');
+      body += fr('CAE estimado', resultados.cae ? fmtPct(resultados.cae, 2) : '—');
+      body += fr('Cuota mensual', resultados.cuotaUF ? fmtUF(resultados.cuotaUF) : '—');
+      body += fr('Honorarios L4B', resultados.honorariosUF ? fmtUF(resultados.honorariosUF) + ' · ' + fmtCLP(resultados.honorariosUF * UF_VALOR) : '—');
+    } else {
+      body += fr('Valor inmueble', inputs.valorUF ? fmtUF(inputs.valorUF) + ' · ' + fmtCLP(inputs.valorUF * UF_VALOR) : '—');
+      body += fr('% Compraventa', inputs.pctCV ? fmtPct(inputs.pctCV, 1) : '—');
+      body += fr('Compraventa', resultados.compraventaUF ? fmtUF(resultados.compraventaUF) + ' · ' + fmtCLP(resultados.compraventaUF * UF_VALOR) : '—');
+      body += fr('Plazo', (inputs.plazoMeses || '—') + ' meses');
+      body += fr('Tasa mensual', inputs.tasaMensual ? fmtPct(inputs.tasaMensual, 2) : '—');
+      body += fr('Capital entregado', resultados.dineroNetoUF ? fmtUF(resultados.dineroNetoUF) + ' · ' + fmtCLP(resultados.dineroNetoUF * UF_VALOR) : '—');
+      body += fr('Fee L4B', resultados.feeL4BUF ? fmtUF(resultados.feeL4BUF) + ' · ' + fmtCLP(resultados.feeL4BUF * UF_VALOR) : '—');
+    }
+    body += fr('Estado', sim.estado || 'borrador');
+  } else {
+    // Nota de venta
+    const campos = sim.campos || {};
+    body += fr('Producto', campos['nv-producto'] || '—');
+    body += fr('Monto operación', sim.montoUF ? fmtUF(sim.montoUF) + ' · ' + fmtCLP(sim.montoUF * UF_VALOR) : '—');
+    body += fr('Fee L4B', sim.feeUF ? fmtUF(sim.feeUF) + ' · ' + fmtCLP(sim.feeUF * UF_VALOR) : '—');
+    body += fr('Plazo', campos['nv-plazo'] || '—');
+    body += fr('Tasa', campos['nv-tasa'] || '—');
+    body += fr('Fecha estim. otorgamiento', campos['nv-fecha-otorga'] || '—');
+    body += fr('Estado contrato', campos['nv-contrato-estado'] || '—');
+  }
+  body += '</table>';
+  body += '<p style="font-size:11.5px; color:var(--muted); margin-top:12px; line-height:1.5;">💡 Para descargar el PDF de este documento, click en <strong>"Abrir en simulador"</strong> abajo. Se navegará al simulador con los datos cargados y podrás re-generar el PDF.</p>';
+  document.getElementById('msd-body').innerHTML = body;
+
+  // Si es NV, cambiar label del botón
+  const btn = document.getElementById('msd-btn-abrir');
+  if(btn){
+    btn.innerHTML = sim._tipo === 'nota_venta' ? '<span>📥</span> Abrir Nota de Venta' : '<span>📥</span> Abrir en simulador';
+  }
+  document.getElementById('modal-sim-detalle').classList.add('active');
+}
+
+function cerrarSimDetalle(){
+  document.getElementById('modal-sim-detalle').classList.remove('active');
+  _SIM_DETALLE_CACHE = null;
+}
+
+function verSimEnSimulador(){
+  const sim = _SIM_DETALLE_CACHE;
+  if(!sim) return;
+  cerrarSimDetalle();
+  if(sim._tipo === 'nota_venta'){
+    // Para nota de venta: navegar a la NV y precargarla con los datos del cliente
+    if(sim.clienteId) navegarANotaVenta(sim.clienteId);
+    else showView('nota-venta');
+    return;
+  }
+  // Para simulaciones: navegar al simulador correspondiente con el cliente seleccionado
+  if(sim.clienteId){
+    navegarASimulador(sim.clienteId, sim.producto);
+  } else {
+    showView(sim.producto === 'hipotecario' ? 'sim-hipotecario' : 'sim-leaseback');
+  }
 }
 
 function renderTareasCliente(clienteId){
@@ -5161,7 +5308,7 @@ function volumenSimCLP(s){
 
 /* Ciclo de ventas en días (createdAt → updatedAt para los clientes en 'contrato') */
 function calcularCicloDias(clientes){
-  const cerrados = clientes.filter(c => c.etapa === 'contrato');
+  const cerrados = clientes.filter(c => c.etapa === 'cerrado');
   if(cerrados.length === 0) return 0;
   const dias = cerrados.map(c => {
     const ini = tsToDate(c.createdAt);
@@ -5185,7 +5332,7 @@ function rangoAnterior(desde, hasta){
 
 /* Cálculo completo de KPIs para reportes (ejecutivo + detallado) */
 function calcularKPIsReporte(clientesPeriodo, sims){
-  const ordenEt = ['prospecto','contacto','simulacion','notaventa','contrato'];
+  const ordenEt = ['prospecto','contacto','simulacion','notaventa','contrato','cerrado'];
   const enEtapa = (idMin) => {
     const idx = ordenEt.indexOf(idMin);
     return clientesPeriodo.filter(c => {
@@ -5199,10 +5346,11 @@ function calcularKPIsReporte(clientesPeriodo, sims){
   const simulados = enEtapa('simulacion');
   const notasV = enEtapa('notaventa');
   const contratos = enEtapa('contrato');
+  const cerrados = enEtapa('cerrado');
   const rechazos = clientesPeriodo.filter(c => c.etapa === 'rechazo').length;
-  // Sims asociadas a clientes cerrados
-  const idsContrato = new Set(clientesPeriodo.filter(c => c.etapa === 'contrato').map(c => c.id));
-  const simsCerradas = sims.filter(s => idsContrato.has(s.clienteId));
+  // Sims asociadas a clientes en etapa 'cerrado' (operación concretada)
+  const idsCerrado = new Set(clientesPeriodo.filter(c => c.etapa === 'cerrado').map(c => c.id));
+  const simsCerradas = sims.filter(s => idsCerrado.has(s.clienteId));
   // Tomar SOLO la última sim por cliente (no contar duplicados)
   const lastByCliente = {};
   simsCerradas.forEach(s => {
@@ -5214,8 +5362,8 @@ function calcularKPIsReporte(clientesPeriodo, sims){
   const simsUnicas = Object.values(lastByCliente);
   const ingreso = simsUnicas.reduce((sum, s) => sum + ingresoSimCLP(s), 0);
   const volumen = simsUnicas.reduce((sum, s) => sum + volumenSimCLP(s), 0);
-  const ticketProm = contratos > 0 ? ingreso / contratos : 0;
-  const tasaCierre = prospectos > 0 ? (contratos / prospectos) : 0;
+  const ticketProm = cerrados > 0 ? ingreso / cerrados : 0;
+  const tasaCierre = prospectos > 0 ? (cerrados / prospectos) : 0;
   const ciclo = calcularCicloDias(clientesPeriodo);
   // Por producto
   const porProducto = { leaseback: { ops:0, ingreso:0, volumen:0 }, hipotecario: { ops:0, ingreso:0, volumen:0 } };
@@ -5227,7 +5375,7 @@ function calcularKPIsReporte(clientesPeriodo, sims){
       porProducto[p].volumen += volumenSimCLP(s);
     }
   });
-  return { prospectos, contactados, simulados, notasV, contratos, rechazos,
+  return { prospectos, contactados, simulados, notasV, contratos, cerrados, rechazos,
            ingreso, volumen, ticketProm, tasaCierre, ciclo, porProducto,
            simsUnicas };
 }
@@ -5329,7 +5477,7 @@ function renderReporte(){
   // === Embudo: clientes por etapa MÁS AVANZADA alcanzada ===
   // Para que el embudo sea monotónicamente decreciente, un cliente cuenta solo en su etapa actual
   // (los que pasaron por etapas anteriores ya quedaron representados en su avance final)
-  const ordenEtapas = ['prospecto','contacto','simulacion','notaventa','contrato'];
+  const ordenEtapas = ['prospecto','contacto','simulacion','notaventa','contrato','cerrado'];
   const prospectos = clientesPeriodo.length; // total
   const rechazos   = clientesPeriodo.filter(c => c.etapa === 'rechazo').length;
   // Etapas alcanzadas: clientes que están EN o PASARON esa etapa (asumimos que su etapa actual es la más avanzada)
@@ -5352,12 +5500,14 @@ function renderReporte(){
   // === KPIs principales (esos IDs viejos ya no existen — los nuevos se actualizan más abajo) ===
 
   // === Embudo visual ===
+  const cerrados = enEtapaOMas('cerrado');
   const embudoSteps = [
     { lbl:'Prospecto',  val:prospectos,  color:'#94a4af', pct:null },
     { lbl:'Contacto',   val:contactados, color:'#1a6aa0', pct:pct(contactados,prospectos) },
     { lbl:'Simulación', val:simulados,   color:'#a05c10', pct:pct(simulados,prospectos) },
     { lbl:'Nota Venta', val:notasVenta,  color:'#2aa07f', pct:pct(notasVenta,prospectos) },
-    { lbl:'Contrato',   val:contratos,   color:'#0a3d4a', pct:pct(contratos,prospectos) }
+    { lbl:'Contrato',   val:contratos,   color:'#0a3d4a', pct:pct(contratos,prospectos) },
+    { lbl:'Cerrado',    val:cerrados,    color:'#1d7a5f', pct:pct(cerrados,prospectos) }
   ];
   const embudoEl = document.getElementById('rp-embudo');
   if(embudoEl){
@@ -5790,7 +5940,7 @@ function descargarReporteEjecutivoPDF(){
     return inRange(ts);
   });
 
-  const ordenEt = ['prospecto','contacto','simulacion','notaventa','contrato'];
+  const ordenEt = ['prospecto','contacto','simulacion','notaventa','contrato','cerrado'];
   const enEtapaOMasEjec = (etapaId) => {
     const idxObj = ordenEt.indexOf(etapaId);
     return clientesPeriodo.filter(c => {
@@ -5872,12 +6022,14 @@ function descargarReporteEjecutivoPDF(){
   let conclHTMLpdf = '';
 
   // Embudo
+  const cerradosEjec = enEtapaOMasEjec('cerrado');
   const embudoSteps = [
     { lbl:'Prospecto',  val:prospectos,  color:'#94a4af', pct:null },
     { lbl:'Contacto',   val:contactados, color:'#1a6aa0', pct:pctP(contactados,prospectos) },
     { lbl:'Simulación', val:simulados,   color:'#a05c10', pct:pctP(simulados,prospectos) },
     { lbl:'Nota Venta', val:notasV,      color:'#2aa07f', pct:pctP(notasV,prospectos) },
-    { lbl:'Contrato',   val:contratos,   color:'#0a3d4a', pct:pctP(contratos,prospectos) }
+    { lbl:'Contrato',   val:contratos,   color:'#0a3d4a', pct:pctP(contratos,prospectos) },
+    { lbl:'Cerrado',    val:cerradosEjec,color:'#1d7a5f', pct:pctP(cerradosEjec,prospectos) }
   ];
   let embudoHTML = '<div style="margin-bottom:14px;"><div style="font-size:9.5px; color:#6c757d; text-transform:uppercase; letter-spacing:0.5px; font-weight:600; margin-bottom:6px;">📊 Embudo de conversión</div><div style="display:flex; gap:4px; align-items:stretch;">';
   embudoSteps.forEach((s,i) => {
@@ -6027,7 +6179,7 @@ function descargarReportePDF(){
   const cierre = totalAct ? Math.round((contratos/totalAct)*100) : 0;
 
   // === Recalcular el embudo para el PDF (mismo cálculo que renderReporte) ===
-  const ordenEt = ['prospecto','contacto','simulacion','notaventa','contrato'];
+  const ordenEt = ['prospecto','contacto','simulacion','notaventa','contrato','cerrado'];
   const enEtapaOMasPDF = (etapaId) => {
     const idxObj = ordenEt.indexOf(etapaId);
     return clientesPeriodo.filter(c => {
