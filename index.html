@@ -4962,7 +4962,7 @@ function renderSimsCliente(clienteId){
     } else {
       estadoBadge = '📄'; estadoColor = 'var(--muted)'; estadoTexto = cto.estado||'';
     }
-    const monto = cto.montoNumeralUF ? fmtUF(cto.montoNumeralUF) : '—';
+    const monto = cto.montoNumeralCLP ? fmtCLP(cto.montoNumeralCLP) : (cto.montoNumeralUF ? fmtUF(cto.montoNumeralUF) : '—');
     html += '<div onclick="abrirContratoModal(\''+idEsc+'\')" style="border:2px solid '+estadoColor+'40; background:'+estadoColor+'08; border-radius:8px; padding:10px 12px; font-size:12.5px; cursor:pointer; transition:all 0.15s;" onmouseover="this.style.background=\''+estadoColor+'15\'; this.style.transform=\'translateX(2px)\'" onmouseout="this.style.background=\''+estadoColor+'08\'; this.style.transform=\'\'">';
     html += '<div style="display:flex; justify-content:space-between; gap:10px"><strong style="color:'+estadoColor+'">📄 Contrato Leaseback</strong><span style="color:var(--muted)">'+fmtTimestamp(cto.createdAt)+'</span></div>';
     html += '<div style="color:'+estadoColor+'; margin-top:3px; font-weight:600;">'+estadoBadge+' '+estadoTexto+' · '+monto+'</div>';
@@ -5195,6 +5195,15 @@ async function crearContratoDesdeNV(clienteId){
     },
     fechaContrato: fmtFechaLiteral(new Date()),
     montoNumeralUF: parseFloat(campos['nv-monto-uf']) || nv.montoUF || 0,
+    // CLP fijado al momento de la NV — NO se recalcula con UF actual.
+    // Si la NV tiene nv-monto-clp guardado, parseamos ese valor. Sino, calculamos con UF_VALOR actual.
+    montoNumeralCLP: (function(){
+      const rawClp = campos['nv-monto-clp'] || '';
+      const numFromCLP = parseFloat((rawClp+'').replace(/[$.\s]/g,'').replace(',','.')) || 0;
+      if(numFromCLP > 0) return numFromCLP;
+      const ufBase = parseFloat(campos['nv-monto-uf']) || nv.montoUF || 0;
+      return ufBase * UF_VALOR;
+    })(),
     montoLiteral: '',
     honorariosPreEvalUF: parseFloat(campos['nv-honorarios-uf']) || (esPJ ? 20 : 10),
     gastosOperacionalesUF: 0,
@@ -5274,8 +5283,8 @@ function abrirContratoModal(contratoId){
 
   body += '<h4 style="font-size:13px; color:var(--teal); margin:18px 0 8px; text-transform:uppercase; letter-spacing:0.4px;">Cláusula primera — objeto</h4>';
   body += '<div class="form-grid" style="gap:10px;">'+
-    '<div class="form-group"><label>Monto numeral (UF)</label><input type="number" step="0.01" id="mct-monto-uf" value="'+(cto.montoNumeralUF||0)+'"'+dis+' style="'+editStyle+'"></div>'+
-    '<div class="form-group"><label>Monto literal '+(editable?'<span class="req">*</span>':'')+'</label><input type="text" id="mct-monto-literal" value="'+escapeHTML(cto.montoLiteral||'')+'" placeholder="Ej: mil ochocientos treinta y dos unidades de fomento"'+dis+' style="'+editStyle+'"></div>'+
+    '<div class="form-group"><label>Monto numeral (CLP) <span style="font-size:10px; color:var(--muted); font-weight:400;">— fijado al momento de la NV</span></label><input type="number" step="1" id="mct-monto-clp" value="'+(cto.montoNumeralCLP||0)+'"'+dis+' style="'+editStyle+'"><span class="hint" style="font-size:10px; color:var(--muted);">Equivalente referencial: <strong id="mct-monto-uf-ref">'+((cto.montoNumeralUF||0).toFixed(2))+'</strong> UF (al valor UF actual)</span></div>'+
+    '<div class="form-group"><label>Monto literal '+(editable?'<span class="req">*</span>':'')+'<span style="font-size:10px; color:var(--muted); font-weight:400;"> — en palabras (CLP)</span></label><input type="text" id="mct-monto-literal" value="'+escapeHTML(cto.montoLiteral||'')+'" placeholder="Ej: cincuenta y seis millones ciento setenta mil setecientos sesenta y ocho pesos"'+dis+' style="'+editStyle+'"></div>'+
   '</div>';
 
   body += '<h4 style="font-size:13px; color:var(--teal); margin:18px 0 8px; text-transform:uppercase; letter-spacing:0.4px;">Cláusula segunda — honorarios y pagos</h4>';
@@ -5331,7 +5340,9 @@ async function aprobarContrato(){
     aprobadoAt: nowTs(),
     aprobadoNombre: CURRENT_PROFILE ? CURRENT_PROFILE.nombre : '',
     updatedAt: nowTs(),
-    montoNumeralUF: parseFloat(document.getElementById('mct-monto-uf').value) || 0,
+    montoNumeralCLP: parseFloat(document.getElementById('mct-monto-clp').value) || 0,
+    // Recalculamos UF referencia desde el CLP fijado (solo informativo)
+    montoNumeralUF: UF_VALOR > 0 ? (parseFloat(document.getElementById('mct-monto-clp').value) || 0) / UF_VALOR : (cto.montoNumeralUF||0),
     montoLiteral: montoLiteral.trim(),
     honorariosPreEvalUF: parseFloat(document.getElementById('mct-honorarios').value) || 0,
     gastosOperacionalesUF: parseFloat(document.getElementById('mct-gastos-op').value) || 0,
@@ -5396,8 +5407,11 @@ function generarHTMLContrato(cto){
   const labelEntidad = esPJ ? 'sociedad' : 'persona natural';
   const labelDocumento = esPJ ? 'RUT N°' : 'RUT N°';
 
-  const monto = (cto.montoNumeralUF||0).toFixed(2).replace(/\.?0+$/,'');
-  const montoCLP = fmtCLP((cto.montoNumeralUF||0) * UF_VALOR);
+  // CLP es el monto principal (fijado al momento de la NV — no cambia con UF actual)
+  const montoCLP_num = cto.montoNumeralCLP || ((cto.montoNumeralUF||0) * UF_VALOR);
+  const montoCLP = fmtCLP(montoCLP_num);
+  // UF equivalente referencial al valor UF actual
+  const montoUFEquiv = UF_VALOR > 0 ? (montoCLP_num / UF_VALOR).toFixed(2).replace(/\.?0+$/,'') : '0';
 
   const repBlock = esPJ
     ? ', debidamente representada por <strong>'+escapeHTML(c.representanteNombre||'[NOMBRE REPRESENTANTE]')+'</strong>, cédula de identidad N° <strong>'+escapeHTML(c.representanteRut||'[RUT REPRESENTANTE]')+'</strong>'
@@ -5426,7 +5440,7 @@ function generarHTMLContrato(cto){
     '<p>Ambas partes, en adelante conjuntamente referidas como "las Partes", han convenido en celebrar el presente Contrato de Prestación de Servicios de Gestión de Leaseback y/o Levantamiento de Capital, en adelante "el Contrato", el cual se regirá por las siguientes cláusulas:</p>'+
 
     '<h3 style="font-size:11pt; color:#0a3d4a; margin:14px 0 4px;">CLÁUSULA PRIMERA. OBJETO DEL CONTRATO:</h3>'+
-    '<p>LOANS4B se obliga, por cuenta del Cliente, a prestar servicios de asesoría y gestión especializada con el objeto de identificar, estructurar, postular y facilitar la obtención de un Leaseback y/o Levantamiento de Capital, otorgado por una entidad especializada, cuyo monto meta objetivo ascienda la suma aproximada de <strong>'+monto+' UF ('+escapeHTML(cto.montoLiteral||'[MONTO LITERAL]')+')</strong>, equivalente a <strong>'+montoCLP+'</strong> al valor UF actual.</p>'+
+    '<p>LOANS4B se obliga, por cuenta del Cliente, a prestar servicios de asesoría y gestión especializada con el objeto de identificar, estructurar, postular y facilitar la obtención de un Leaseback y/o Levantamiento de Capital, otorgado por una entidad especializada, cuyo monto meta objetivo ascienda la suma aproximada de <strong>'+montoCLP+' ('+escapeHTML(cto.montoLiteral||'[MONTO LITERAL]')+' pesos chilenos)</strong>, equivalente referencial a <strong>'+montoUFEquiv+' UF</strong> al valor UF actual.</p>'+
     '<p>El presente contrato no constituye una obligación de resultado, sino un compromiso profesional de medios y diligencia calificada conforme al estándar de la industria financiera.</p>'+
 
     '<h3 style="font-size:11pt; color:#0a3d4a; margin:14px 0 4px;">CLÁUSULA SEGUNDA. HONORARIOS Y FORMA DE PAGO:</h3>'+
