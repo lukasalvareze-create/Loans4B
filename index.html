@@ -598,7 +598,7 @@ if(FIREBASE_OK){
           <div class="form-group" style="margin-bottom:14px"><label>Valor de la propiedad (UF) <span class="req">*</span></label><input type="number" id="qh-valor" placeholder="Ej: 5.000" step="1" oninput="runSimHipotecarioRapido()"></div>
           <div class="form-group" style="margin-bottom:14px"><label>Pie disponible (UF)</label><input type="number" id="qh-pie" placeholder="Ej: 1.000 (0 si financia el 100%)" step="1" oninput="runSimHipotecarioRapido()"><span class="hint">Si lo dejas en blanco se asume 20%. Acepta <strong>0</strong> si la operación es sin pie.</span></div>
           <div class="form-grid">
-            <div class="form-group"><label>Plazo (años)</label><select id="qh-plazo" onchange="runSimHipotecarioRapido()"><option value="30">30</option><option value="25">25</option><option value="20" selected>20</option><option value="15">15</option><option value="10">10</option><option value="8">8</option><option value="5">5</option></select></div>
+            <div class="form-group"><label>Plazo (años)</label><input type="number" id="qh-plazo" min="1" max="40" step="1" value="20" oninput="runSimHipotecarioRapido()"><span class="hint">Rango típico: 5–30 años. Acepta cualquier valor entero.</span></div>
             <div class="form-group"><label>Tasa nominal anual (%)</label><input type="number" id="qh-tasa" step="0.05" value="4.9" oninput="runSimHipotecarioRapido()"></div>
           </div>
         </div>
@@ -772,7 +772,7 @@ if(FIREBASE_OK){
           </div>
           <div class="alert" style="margin-top:0; margin-bottom:14px; font-size:11.5px"><span>💡</span><div>El <strong>valor del inmueble</strong> es referencial. El cliente puede pedir un financiamiento <strong>menor</strong> al valor del inmueble sin aportar pie; el resto simplemente no se financia.</div></div>
           <div class="form-grid-3">
-            <div class="form-group"><label>Plazo (años) <span class="req">*</span></label><select id="h-plazo"><option value="30">30</option><option value="25">25</option><option value="20" selected>20</option><option value="15">15</option><option value="10">10</option><option value="8">8</option><option value="5">5</option></select></div>
+            <div class="form-group"><label>Plazo (años) <span class="req">*</span></label><input type="number" id="h-plazo" min="1" max="40" step="1" value="20"><span class="hint">Rango típico: 5–30 años. Acepta cualquier valor entero.</span></div>
             <div class="form-group"><label>Tasa nominal anual (%) <span class="req">*</span></label><input type="number" id="h-tasa" step="0.05" value="4.9" required><span class="hint">El CAE se calcula automáticamente.</span></div>
             <div class="form-group"><label>Tipo de tasa</label><select id="h-tipo-tasa"><option value="fija">Fija</option><option value="variable">Variable</option><option value="mixta">Mixta</option></select></div>
           </div>
