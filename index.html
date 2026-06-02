@@ -1229,6 +1229,7 @@ if(FIREBASE_OK){
       <div class="modal-foot">
         <button class="btn ghost" id="mct-btn-cerrar" onclick="cerrarContratoModal()">Cerrar</button>
         <button class="btn green" id="mct-btn-aprobar" style="display:none" onclick="aprobarContrato()"><span>✅</span> Aprobar y guardar</button>
+        <button class="btn ghost" id="mct-btn-guardar" style="display:none" onclick="guardarCambiosContrato()"><span>💾</span> Guardar cambios</button>
         <button class="btn green" id="mct-btn-descargar" style="display:none" onclick="descargarContratoPDF()"><span>📥</span> Descargar PDF</button>
       </div>
     </div>
@@ -5259,7 +5260,7 @@ function abrirContratoModal(contratoId){
   const cto = CONTRATOS_CACHE.find(c => c.id === contratoId);
   if(!cto){ alert('Contrato no encontrado.'); return; }
   _CONTRATO_ACTIVO = cto;
-  const editable = esAdmin() && cto.estado === 'pendiente_aprobacion';
+  const editable = esAdmin(); // Admin puede editar en cualquier estado (pendiente/aprobado/descargado)
   const titulo = cto.estado === 'pendiente_aprobacion'
     ? '🟡 Contrato pendiente de aprobación'
     : (cto.estado === 'aprobado' ? '✅ Contrato aprobado' : '📥 Contrato descargado');
@@ -5277,9 +5278,11 @@ function abrirContratoModal(contratoId){
       (esAdmin() ? '🔑 <strong>Modo administrador:</strong> revisa los datos, completa los faltantes (monto literal, gastos operacionales) y aprueba con el botón abajo. Una vez aprobado, el asesor podrá descargar el PDF.' : '⏳ Este contrato está esperando aprobación del administrador. Una vez aprobado podrás descargar el PDF.')+
     '</div>';
   } else if(cto.estado === 'aprobado'){
-    body += '<div style="background:#dcfce7; border:1px solid #86efac; border-radius:6px; padding:10px 12px; margin-bottom:14px; font-size:12px; color:#166534; line-height:1.5;">✅ <strong>Aprobado</strong> por '+escapeHTML(cto.aprobadoNombre || 'administrador')+' el '+fmtTimestamp(cto.aprobadoAt)+'. Click en <strong>Descargar PDF</strong> abajo.</div>';
+    const adminHint = esAdmin() ? ' <strong>(Como admin puedes editar y guardar cambios.)</strong>' : '';
+    body += '<div style="background:#dcfce7; border:1px solid #86efac; border-radius:6px; padding:10px 12px; margin-bottom:14px; font-size:12px; color:#166534; line-height:1.5;">✅ <strong>Aprobado</strong> por '+escapeHTML(cto.aprobadoNombre || 'administrador')+' el '+fmtTimestamp(cto.aprobadoAt)+'. Click en <strong>Descargar PDF</strong> abajo.'+adminHint+'</div>';
   } else if(cto.estado === 'descargado'){
-    body += '<div style="background:#dbeafe; border:1px solid #93c5fd; border-radius:6px; padding:10px 12px; margin-bottom:14px; font-size:12px; color:#1e40af; line-height:1.5;">📥 <strong>Descargado</strong> el '+fmtTimestamp(cto.descargadoAt)+'. Puedes descargarlo de nuevo si necesitas.</div>';
+    const adminHint2 = esAdmin() ? ' <strong>(Como admin puedes editar y guardar cambios.)</strong>' : '';
+    body += '<div style="background:#dbeafe; border:1px solid #93c5fd; border-radius:6px; padding:10px 12px; margin-bottom:14px; font-size:12px; color:#1e40af; line-height:1.5;">📥 <strong>Descargado</strong> el '+fmtTimestamp(cto.descargadoAt)+'. Puedes descargarlo de nuevo si necesitas.'+adminHint2+'</div>';
   }
 
   body += '<h4 style="font-size:13px; color:var(--teal); margin:14px 0 8px; text-transform:uppercase; letter-spacing:0.4px;">Datos del cliente (auto-llenados desde NV)</h4>';
@@ -5331,6 +5334,9 @@ function abrirContratoModal(contratoId){
   const btnCerrar = document.getElementById('mct-btn-cerrar');
 
   if(btnAprobar) btnAprobar.style.display = (esAdmin() && cto.estado === 'pendiente_aprobacion') ? 'inline-flex' : 'none';
+  // Botón 'Guardar cambios' solo para admin si el contrato YA está aprobado o descargado
+  const btnGuardar = document.getElementById('mct-btn-guardar');
+  if(btnGuardar) btnGuardar.style.display = (esAdmin() && (cto.estado === 'aprobado' || cto.estado === 'descargado')) ? 'inline-flex' : 'none';
   if(btnDescargar) btnDescargar.style.display = (cto.estado === 'aprobado' || cto.estado === 'descargado') ? 'inline-flex' : 'none';
   if(btnCerrar) btnCerrar.style.display = 'inline-flex';
 
@@ -5394,6 +5400,47 @@ async function aprobarContrato(){
   } catch(e){
     console.error('aprobarContrato:', e);
     alert('Error aprobando contrato: '+(e.message||e));
+  }
+}
+
+async function guardarCambiosContrato(){
+  if(!_CONTRATO_ACTIVO) return;
+  if(!esAdmin()){ alert('Solo el administrador puede editar contratos.'); return; }
+  const cto = _CONTRATO_ACTIVO;
+  // Capturar todos los campos editables (igual que aprobarContrato pero SIN cambiar estado)
+  const patch = {
+    updatedAt: nowTs(),
+    montoNumeralCLP: parseFloat(document.getElementById('mct-monto-clp').value) || 0,
+    // UF se recalcula desde el CLP usando UF_VALOR actual (solo referencial)
+    montoNumeralUF: UF_VALOR > 0 ? (parseFloat(document.getElementById('mct-monto-clp').value) || 0) / UF_VALOR : (cto.montoNumeralUF||0),
+    montoLiteral: (document.getElementById('mct-monto-literal')||{}).value || '',
+    honorariosPreEvalUF: parseFloat(document.getElementById('mct-honorarios').value) || 0,
+    gastosOperacionalesUF: parseFloat(document.getElementById('mct-gastos-op').value) || 0,
+    gastosNotarialesUF: parseFloat(document.getElementById('mct-gastos-not').value) || 0,
+    pago3Pct: parseFloat(document.getElementById('mct-pago3').value) || 1.5,
+    pago4Pct: parseFloat(document.getElementById('mct-pago4').value) || 1.5,
+    observacionesAdmin: (document.getElementById('mct-obs')||{}).value || '',
+    cliente: {
+      ...cto.cliente,
+      nombre: (document.getElementById('mct-nombre')||{}).value || cto.cliente.nombre,
+      rut: (document.getElementById('mct-rut')||{}).value || cto.cliente.rut,
+      email: (document.getElementById('mct-email')||{}).value || cto.cliente.email,
+      direccion: (document.getElementById('mct-direccion')||{}).value || cto.cliente.direccion,
+      comuna: (document.getElementById('mct-comuna')||{}).value || cto.cliente.comuna,
+      region: (document.getElementById('mct-region')||{}).value || cto.cliente.region,
+      representanteNombre: (document.getElementById('mct-rep-nombre')||{}).value || cto.cliente.representanteNombre,
+      representanteRut: (document.getElementById('mct-rep-rut')||{}).value || cto.cliente.representanteRut
+    }
+  };
+  try {
+    await fbDb.collection('contratos').doc(cto.id).update(patch);
+    Object.assign(cto, patch);
+    mostrarToastAutoCliente('✓ Cambios guardados · el contrato sigue '+(cto.estado === 'descargado' ? 'marcado como descargado' : 'aprobado'), 'creado');
+    cerrarContratoModal();
+    if(CD_ID === cto.clienteId) renderSimsCliente(cto.clienteId);
+  } catch(e){
+    console.error('guardarCambiosContrato:', e);
+    alert('Error guardando cambios: '+(e.message||e));
   }
 }
 
