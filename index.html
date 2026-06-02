@@ -2242,27 +2242,21 @@ function calcularHipotecarioCompleto(){
     ['Pie aportado ('+fmtPct(pctPie,1)+' del valor)', pie, pie*UF_VALOR],
     ['Monto financiado ('+fmtPct(pctFin,1)+' del valor)', fin, fin*UF_VALOR],
   ];
-  if(saldoLibre>0.01){
+  // Solo mostrar Saldo no requerido si el porcentaje al redondear NO da 0,0% (evita filas con 1 UF residual)
+  if(saldoLibre>=1 && pctSaldo>=0.05){
     rows.push(['Saldo no requerido ('+fmtPct(pctSaldo,1)+' — no se financia)', saldoLibre, saldoLibre*UF_VALOR]);
   }
   rows.push(['', null, null]);
   rows.push(['Cuota capital + interés (tasa '+tipoLabel.toLowerCase()+' '+fmtPct(tasa,2)+')', cuotaBase, cuotaBase*UF_VALOR]);
-  rows.push(['(+) Seguro desgravamen'+(tipo==='juridica'?' — no aplica':''), segDesg, segDesg*UF_VALOR]);
-  rows.push(['(+) Seguro incendio y sismo', segIncendio, segIncendio*UF_VALOR]);
-  rows.push(['(+) Seguro cesantía'+(tipo==='juridica'?' — no aplica':''), segCesantia, segCesantia*UF_VALOR]);
+  // (Desglose de seguros ocultado por solicitud del cliente — total incluye desg + incendio + cesantía)
   let html='';
   rows.forEach(r=>{ if(r[1]===null){ html+=`<tr><td colspan="3" style="background:var(--bg); padding:6px 18px"></td></tr>`; return; } html+=`<tr><td>${r[0]}</td><td class="num">${fmtNum(r[1])}</td><td class="num">${fmtCLP(r[2])}</td></tr>`; });
   html+=`<tr class="total"><td>Cuota mensual total al cliente</td><td class="num">${fmtNum(cuotaTotal)}</td><td class="num">${fmtCLP(cuotaTotal*UF_VALOR)}</td></tr>`;
   html+=`<tr><td style="padding-top:14px; color:var(--teal); font-weight:600">CAE estimado <span style="color:var(--muted); font-weight:400">(tasa anual derivada — incluye intereses + seguros)</span></td><td class="num" colspan="2" style="color:var(--teal); font-weight:700">${fmtPct(cae,2)}</td></tr>`;
   html+=`<tr><td style="padding-top:14px">Total a pagar en ${plazo} años (sin seguros)</td><td class="num">${fmtNum(totalPago)}</td><td class="num">${fmtCLP(totalPago*UF_VALOR)}</td></tr>`;
   html+=`<tr><td>Costo financiero (intereses)</td><td class="num">${fmtNum(interes)}</td><td class="num">${fmtCLP(interes*UF_VALOR)}</td></tr>`;
-  html+=`<tr><td style="padding-top:14px"><strong>Honorarios Loans4B</strong> (${fmtPct(honorariosPct,1)} del financiamiento, al otorgamiento)</td><td class="num"><strong>${fmtNum(honorariosUF)}</strong></td><td class="num"><strong>${fmtCLP(honorariosUF*UF_VALOR)}</strong></td></tr>`;
-  // Split honorarios L4B en 3 cuotas iguales (1% + 1% + 1% del financiamiento si pct=3%)
-  const honTercio = honorariosUF/3;
-  const honTercioPct = honorariosPct/3;
-  html+=`<tr><td style="padding-left:32px; color:#3a4a55; font-style:italic; font-size:12px">${fmtPct(honTercioPct,2)} Honorarios L4B · al inicio</td><td class="num" style="color:#3a4a55; font-style:italic">${fmtNum(honTercio)}</td><td class="num" style="color:#3a4a55; font-style:italic">${fmtCLP(honTercio*UF_VALOR)}</td></tr>`;
-  html+=`<tr><td style="padding-left:32px; color:#3a4a55; font-style:italic; font-size:12px">${fmtPct(honTercioPct,2)} Honorarios L4B · contra aprobación</td><td class="num" style="color:#3a4a55; font-style:italic">${fmtNum(honTercio)}</td><td class="num" style="color:#3a4a55; font-style:italic">${fmtCLP(honTercio*UF_VALOR)}</td></tr>`;
-  html+=`<tr><td style="padding-left:32px; color:#3a4a55; font-style:italic; font-size:12px">${fmtPct(honTercioPct,2)} Honorarios L4B · al desembolso</td><td class="num" style="color:#3a4a55; font-style:italic">${fmtNum(honTercio)}</td><td class="num" style="color:#3a4a55; font-style:italic">${fmtCLP(honTercio*UF_VALOR)}</td></tr>`;
+  html+=`<tr><td style="padding-top:14px"><strong>Honorarios Loans4B</strong></td><td class="num"><strong>${fmtNum(honorariosUF)}</strong></td><td class="num"><strong>${fmtCLP(honorariosUF*UF_VALOR)}</strong></td></tr>`;
+  // (Desglose de honorarios en 3 cuotas ocultado por solicitud del cliente)
   html+=`<tr><td>Pre-evaluación crediticia (al inicio)</td><td class="num">${fmtNum(preeval)}</td><td class="num">${fmtCLP(preeval*UF_VALOR)}</td></tr>`;
   html+=`<tr><td style="padding-top:14px; color:var(--muted)">Ingreso líquido mínimo sugerido (cuota ≤ 25%)</td><td class="num" colspan="2" style="color:var(--muted)">${fmtCLP(ingresoMin)}</td></tr>`;
   tbody.innerHTML=html;
@@ -2435,27 +2429,16 @@ function descargarPDFHipotecario(){
       '<tr><td style="' + tdL + '">Valor del inmueble (referencial)</td><td style="' + tdN + '">' + fmtNum(d.valor) + '</td><td style="' + tdN + '">' + fmtCLP(d.valor*UF_VALOR) + '</td></tr>' +
       '<tr><td style="' + tdL + '">Pie aportado (' + fmtPct(d.pctPie,1) + ' del valor)</td><td style="' + tdN + '">' + fmtNum(d.pie) + '</td><td style="' + tdN + '">' + fmtCLP(d.pie*UF_VALOR) + '</td></tr>' +
       '<tr><td style="' + tdL + '">Monto financiado (' + fmtPct(d.pctFin,1) + ' del valor)</td><td style="' + tdN + '">' + fmtNum(d.fin) + '</td><td style="' + tdN + '">' + fmtCLP(d.fin*UF_VALOR) + '</td></tr>' +
-      (d.saldoLibre>0.01 ? '<tr><td style="' + tdL + ' color:#6a7a85; font-style:italic;">Saldo no requerido (' + fmtPct(d.pctSaldo,1) + ' — no se financia)</td><td style="' + tdN + ' color:#6a7a85;">' + fmtNum(d.saldoLibre) + '</td><td style="' + tdN + ' color:#6a7a85;">' + fmtCLP(d.saldoLibre*UF_VALOR) + '</td></tr>' : '') +
+      (d.saldoLibre>=1 && d.pctSaldo>=0.05 ? '<tr><td style="' + tdL + ' color:#6a7a85; font-style:italic;">Saldo no requerido (' + fmtPct(d.pctSaldo,1) + ' — no se financia)</td><td style="' + tdN + ' color:#6a7a85;">' + fmtNum(d.saldoLibre) + '</td><td style="' + tdN + ' color:#6a7a85;">' + fmtCLP(d.saldoLibre*UF_VALOR) + '</td></tr>' : '') +
       '<tr><td colspan="3" style="padding:4px 0; background:#f3f6f8;"></td></tr>' +
       '<tr><td style="' + tdL + '">Cuota capital + interés (tasa ' + d.tipoTasa + ' ' + fmtPct(d.tasa,2) + ')</td><td style="' + tdN + '">' + fmtNum(d.cuotaBase) + '</td><td style="' + tdN + '">' + fmtCLP(d.cuotaBase*UF_VALOR) + '</td></tr>' +
-      '<tr><td style="' + tdL + '">(+) ' + segDesgTxt + '</td><td style="' + tdN + '">' + fmtNum(d.segDesg) + '</td><td style="' + tdN + '">' + fmtCLP(d.segDesg*UF_VALOR) + '</td></tr>' +
-      '<tr><td style="' + tdL + '">(+) Seguro incendio y sismo</td><td style="' + tdN + '">' + fmtNum(d.segIncendio) + '</td><td style="' + tdN + '">' + fmtCLP(d.segIncendio*UF_VALOR) + '</td></tr>' +
-      '<tr><td style="' + tdL + '">(+) ' + segCesTxt + '</td><td style="' + tdN + '">' + fmtNum(d.segCesantia) + '</td><td style="' + tdN + '">' + fmtCLP(d.segCesantia*UF_VALOR) + '</td></tr>' +
+      /* (Desglose de seguros ocultado — total incluye desg + incendio + cesantía) */
       '<tr style="background:#eaf6f2;"><td style="padding:9px 12px; font-weight:700; color:#0a3d4a;">Cuota mensual total al cliente</td><td style="padding:9px 12px; text-align:right; font-weight:700; color:#0a3d4a; font-variant-numeric:tabular-nums;">' + fmtNum(d.cuotaTotal) + '</td><td style="padding:9px 12px; text-align:right; font-weight:700; color:#0a3d4a; font-variant-numeric:tabular-nums;">' + fmtCLP(d.cuotaTotal*UF_VALOR) + '</td></tr>' +
       '<tr><td style="' + tdL + ' font-weight:600; color:#0a3d4a;">CAE estimado <span style="color:#6a7a85; font-weight:400;">(incluye intereses + seguros)</span></td><td colspan="2" style="' + tdN + ' font-weight:700; color:#0a3d4a;">' + fmtPct(d.cae,2) + '</td></tr>' +
       '<tr><td style="' + tdL + '">Total a pagar en ' + d.plazo + ' años (sin seguros)</td><td style="' + tdN + '">' + fmtNum(d.totalPago) + '</td><td style="' + tdN + '">' + fmtCLP(d.totalPago*UF_VALOR) + '</td></tr>' +
       '<tr><td style="' + tdL + '">Costo financiero (intereses)</td><td style="' + tdN + '">' + fmtNum(d.interes) + '</td><td style="' + tdN + '">' + fmtCLP(d.interes*UF_VALOR) + '</td></tr>' +
-      '<tr><td style="' + tdL + '"><strong>Honorarios Loans4B</strong> (' + fmtPct(d.honorariosPct,1) + ' del financiamiento, al otorgamiento)</td><td style="' + tdN + '"><strong>' + fmtNum(d.honorariosUF) + '</strong></td><td style="' + tdN + '"><strong>' + fmtCLP(d.honorariosUF*UF_VALOR) + '</strong></td></tr>' +
-      // Split honorarios L4B en 3 cuotas iguales (1% + 1% + 1% del financiamiento si pct=3%)
-      (function(){
-        const honTercio = (d.honorariosUF||0)/3;
-        const honTercioPct = (d.honorariosPct||0)/3;
-        const splitTdL = 'padding:5px 12px 5px 32px; border-bottom:1px solid #e8eef1; color:#3a4a55; font-style:italic; font-size:10px;';
-        const splitTdN = 'padding:5px 12px; border-bottom:1px solid #e8eef1; text-align:right; color:#3a4a55; font-style:italic; font-variant-numeric:tabular-nums;';
-        return '<tr><td style="'+splitTdL+'">'+fmtPct(honTercioPct,2)+' Honorarios L4B · al inicio</td><td style="'+splitTdN+'">'+fmtNum(honTercio)+'</td><td style="'+splitTdN+'">'+fmtCLP(honTercio*UF_VALOR)+'</td></tr>' +
-               '<tr><td style="'+splitTdL+'">'+fmtPct(honTercioPct,2)+' Honorarios L4B · contra aprobación</td><td style="'+splitTdN+'">'+fmtNum(honTercio)+'</td><td style="'+splitTdN+'">'+fmtCLP(honTercio*UF_VALOR)+'</td></tr>' +
-               '<tr><td style="'+splitTdL+'">'+fmtPct(honTercioPct,2)+' Honorarios L4B · al desembolso</td><td style="'+splitTdN+'">'+fmtNum(honTercio)+'</td><td style="'+splitTdN+'">'+fmtCLP(honTercio*UF_VALOR)+'</td></tr>';
-      })() +
+      '<tr><td style="' + tdL + '"><strong>Honorarios Loans4B</strong></td><td style="' + tdN + '"><strong>' + fmtNum(d.honorariosUF) + '</strong></td><td style="' + tdN + '"><strong>' + fmtCLP(d.honorariosUF*UF_VALOR) + '</strong></td></tr>' +
+      /* (Desglose de honorarios en 3 cuotas ocultado por solicitud del cliente) */
       '<tr><td style="' + tdL + '">Pre-evaluación crediticia (al inicio)</td><td style="' + tdN + '">' + fmtNum(d.preeval) + '</td><td style="' + tdN + '">' + fmtCLP(d.preeval*UF_VALOR) + '</td></tr>' +
       '<tr><td style="padding:7px 12px; color:#6a7a85;">Ingreso líquido mínimo sugerido (cuota ≤ 25%)</td><td colspan="2" style="padding:7px 12px; text-align:right; color:#6a7a85; font-variant-numeric:tabular-nums;">' + fmtCLP(d.ingresoMin) + '</td></tr>' +
       '</tbody></table>';
@@ -2465,7 +2448,7 @@ function descargarPDFHipotecario(){
     '<h1 style="font-family:\'Playfair Display\',serif; font-size:22px; color:#0a3d4a; margin:20px 0 6px;">Simulación de Crédito Hipotecario</h1>' +
     '<div style="font-size:11px; color:#6a7a85; margin-bottom:16px; font-style:italic;">Financiamiento simple, rápido y confiable.</div>' +
     '<p style="font-size:11.5px; line-height:1.6; text-align:justify; margin-bottom:14px;">' +
-    'Estimado/a <strong>' + d.nombre + '</strong>' + (d.rut ? ' / RUT ' + d.rut : '') + ', le presentamos la simulación referencial gestionada por <strong>' + (cfg.empresa||'Asesorías Loans4B SpA') + '</strong> sobre un inmueble valorado en <strong>' + fmtUF(d.valor) + '</strong> (' + fmtCLP(d.valor*UF_VALOR) + '). Como <strong>' + tipoTxt + '</strong>, solicita un financiamiento de <strong>' + fmtUF(d.fin) + '</strong> (' + fmtCLP(d.fin*UF_VALOR) + ', equivalente al ' + fmtPct(d.pctFin,1) + ' del valor del inmueble)' + (d.pie>0 ? ', con un pie de <strong>' + fmtUF(d.pie) + '</strong> (' + fmtPct(d.pctPie,1) + ')' : ', sin pie') + (d.saldoLibre>0.01 ? '. El saldo de <strong>' + fmtUF(d.saldoLibre) + '</strong> (' + fmtPct(d.pctSaldo,1) + ') no se financia ni se aporta como pie' : '') + '. El financiamiento se estructura a <strong>' + d.plazo + ' años</strong> con tasa ' + tipoTasaTxt.toLowerCase() + ' del <strong>' + fmtPct(d.tasa,2) + '</strong> (CAE ' + fmtPct(d.cae,2) + ').</p>' +
+    'Estimado/a <strong>' + d.nombre + '</strong>' + (d.rut ? ' / RUT ' + d.rut : '') + ', le presentamos la simulación referencial gestionada por <strong>' + (cfg.empresa||'Asesorías Loans4B SpA') + '</strong> sobre un inmueble valorado en <strong>' + fmtUF(d.valor) + '</strong> (' + fmtCLP(d.valor*UF_VALOR) + '). Como <strong>' + tipoTxt + '</strong>, solicita un financiamiento de <strong>' + fmtUF(d.fin) + '</strong> (' + fmtCLP(d.fin*UF_VALOR) + ', equivalente al ' + fmtPct(d.pctFin,1) + ' del valor del inmueble)' + (d.pie>0 ? ', con un pie de <strong>' + fmtUF(d.pie) + '</strong> (' + fmtPct(d.pctPie,1) + ')' : ', sin pie') + (d.saldoLibre>=1 && d.pctSaldo>=0.05 ? '. El saldo de <strong>' + fmtUF(d.saldoLibre) + '</strong> (' + fmtPct(d.pctSaldo,1) + ') no se financia ni se aporta como pie' : '') + '. El financiamiento se estructura a <strong>' + d.plazo + ' años</strong> con tasa ' + tipoTasaTxt.toLowerCase() + ' del <strong>' + fmtPct(d.tasa,2) + '</strong> (CAE ' + fmtPct(d.cae,2) + ').</p>' +
     '<div style="display:flex; gap:14px; margin:14px 0 18px;">' +
       '<div style="flex:1; background:linear-gradient(135deg,#0a3d4a,#14525f); color:#fff; padding:16px 20px; border-radius:10px;">' +
         '<div style="font-size:10px; opacity:0.7; text-transform:uppercase; letter-spacing:1px; font-weight:500;">Cuota mensual estimada</div>' +
