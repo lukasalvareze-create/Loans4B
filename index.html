@@ -1234,7 +1234,7 @@ if(FIREBASE_OK){
     </div>
   </div>
 
-  <!-- ===== MODAL LEAD RÁPIDO =====
+  <!-- ===== MODAL LEAD RÁPIDO ===== -->
   <div class="modal-overlay" id="modal-lead-rapido">
     <div class="modal" style="max-width:500px">
       <div class="modal-head">
@@ -4452,20 +4452,24 @@ async function moverEtapaCliente(cliId, nuevaEtapa, desdePipeline){
   if(etapaPrev === nuevaEtapa) return;     // sin cambio
   // === REGLA NO-RETROCESO: asesores no pueden devolver clientes a etapas anteriores ===
   // Admin puede mover libremente. Excepción: 'rechazo' siempre permitido (es vía de escape).
-  if(!esAdmin() && nuevaEtapa !== 'rechazo'){
+  const rolActual = (CURRENT_PROFILE && CURRENT_PROFILE.rol) || '(sin perfil)';
+  const soyAdmin = rolActual === 'admin';
+  if(!soyAdmin && nuevaEtapa !== 'rechazo'){
     const ordenProductivo = ['prospecto','contacto','simulacion','notaventa','contrato','cerrado'];
     const idxPrev = ordenProductivo.indexOf(etapaPrev);
     const idxNuevo = ordenProductivo.indexOf(nuevaEtapa);
     // Si la actual está en orden y el nuevo es MENOR → retroceso bloqueado
     if(idxPrev >= 0 && idxNuevo >= 0 && idxNuevo < idxPrev){
-      alert('No se puede devolver un cliente a una etapa anterior.\n\nUna vez que avanzas, el camino es solo hacia adelante (o a Rechazo). Esto es para evitar que se pierda información por error.\n\nSi necesitas mover un cliente hacia atrás, contacta al administrador.');
+      console.warn('[no-retroceso] Bloqueo de retroceso. Rol detectado:', rolActual, '· De:', etapaPrev, '→', nuevaEtapa);
+      alert('No se puede devolver un cliente a una etapa anterior.\n\nRol detectado: "'+rolActual+'" (solo admin puede retroceder).\n\nSi necesitas mover un cliente hacia atrás, contacta al administrador.');
       // Revertir cache (por si la actualización optimista ya cambió etapa)
       renderPipeline();
       return;
     }
     // Si actualmente está en 'rechazo', no se puede salir de ahí
     if(etapaPrev === 'rechazo'){
-      alert('Los clientes en Rechazo no pueden ser movidos a otra etapa.\n\nSi necesitas reactivar un cliente rechazado, contacta al administrador.');
+      console.warn('[no-retroceso] Salida de rechazo bloqueada. Rol:', rolActual);
+      alert('Los clientes en Rechazo no pueden ser movidos a otra etapa.\n\nRol detectado: "'+rolActual+'" (solo admin puede reactivar).\n\nSi necesitas reactivar, contacta al administrador.');
       renderPipeline();
       return;
     }
@@ -4766,17 +4770,21 @@ async function cambiarEtapaCliente(){
   const etapaPrev = c.etapa || 'contacto';
   if(etapaPrev === nuevaEtapa) return;
   // === REGLA NO-RETROCESO desde la ficha (asesores) ===
-  if(!esAdmin() && nuevaEtapa !== 'rechazo'){
+  const rolActualF = (CURRENT_PROFILE && CURRENT_PROFILE.rol) || '(sin perfil)';
+  const soyAdminF = rolActualF === 'admin';
+  if(!soyAdminF && nuevaEtapa !== 'rechazo'){
     const ordenProductivo = ['prospecto','contacto','simulacion','notaventa','contrato','cerrado'];
     const idxPrev = ordenProductivo.indexOf(etapaPrev);
     const idxNuevo = ordenProductivo.indexOf(nuevaEtapa);
     if(idxPrev >= 0 && idxNuevo >= 0 && idxNuevo < idxPrev){
-      alert('No se puede devolver un cliente a una etapa anterior. Si necesitas hacerlo, contacta al administrador.');
+      console.warn('[no-retroceso ficha] Bloqueo. Rol detectado:', rolActualF, '· De:', etapaPrev, '→', nuevaEtapa);
+      alert('No se puede devolver un cliente a una etapa anterior.\n\nRol detectado: "'+rolActualF+'" (solo admin puede retroceder).');
       sel.value = etapaPrev; // revertir dropdown
       return;
     }
     if(etapaPrev === 'rechazo'){
-      alert('Los clientes en Rechazo no pueden ser movidos a otra etapa. Si necesitas reactivar, contacta al administrador.');
+      console.warn('[no-retroceso ficha] Salida de rechazo bloqueada. Rol:', rolActualF);
+      alert('Los clientes en Rechazo no pueden ser movidos a otra etapa.\n\nRol detectado: "'+rolActualF+'".');
       sel.value = etapaPrev;
       return;
     }
@@ -6395,6 +6403,21 @@ function descargarReporteEjecutivoPDF(){
   const efec = prospectos ? Math.round(((prospectos - rechazos)/prospectos)*100) : 0;
   const cierre = pctP(contratos, prospectos);
 
+  // KPIs avanzados (mismo cálculo que la vista)
+  const kpisEjecPDF = calcularKPIsReporte(clientesPeriodo, k.sims);
+  const antPDF = rangoAnterior(desde, hasta);
+  const clientesAntPDF = CLIENTES_CACHE.filter(c => {
+    if(!matchAs(c.asesorId)) return false;
+    const ts = dateOf(c) || tsToDate(c.updatedAt);
+    return ts && ts >= antPDF.desde && ts <= antPDF.hasta;
+  });
+  const simsAntPDF = HISTORIAL_CACHE.filter(h => h._tipo==='simulacion' && matchAs(h.asesorId) && h.fechaSort && h.fechaSort >= antPDF.desde && h.fechaSort <= antPDF.hasta);
+  const kpisAntPDF = calcularKPIsReporte(clientesAntPDF, simsAntPDF);
+  const metaIndPDF = getMetaIndividual();
+  const metaGruPDF = getMetaGrupal();
+  const metaAplPDF = asesorFiltro === 'todos' ? metaGruPDF : metaIndPDF;
+  const tipoMetaPDF = asesorFiltro === 'todos' ? 'grupal' : 'individual';
+
   // KPI principal: 4 cards (Ingresos, Ticket, Tasa cierre, Ciclo)
   const pctMetaPDF = metaAplPDF > 0 ? Math.round(kpisEjecPDF.ingreso/metaAplPDF*100) : 0;
   const kpiHTML = '<div style="display:grid; grid-template-columns:repeat(4,1fr); gap:8px; margin:10px 0 14px;">' +
@@ -6477,21 +6500,6 @@ function descargarReporteEjecutivoPDF(){
     embudoHTML += '</div>';
   });
   embudoHTML += '</div></div>';
-
-  // KPIs avanzados (mismo cálculo que la vista)
-  const kpisEjecPDF = calcularKPIsReporte(clientesPeriodo, k.sims);
-  const antPDF = rangoAnterior(desde, hasta);
-  const clientesAntPDF = CLIENTES_CACHE.filter(c => {
-    if(!matchAs(c.asesorId)) return false;
-    const ts = dateOf(c) || tsToDate(c.updatedAt);
-    return ts && ts >= antPDF.desde && ts <= antPDF.hasta;
-  });
-  const simsAntPDF = HISTORIAL_CACHE.filter(h => h._tipo==='simulacion' && matchAs(h.asesorId) && h.fechaSort && h.fechaSort >= antPDF.desde && h.fechaSort <= antPDF.hasta);
-  const kpisAntPDF = calcularKPIsReporte(clientesAntPDF, simsAntPDF);
-  const metaIndPDF = getMetaIndividual();
-  const metaGruPDF = getMetaGrupal();
-  const metaAplPDF = asesorFiltro === 'todos' ? metaGruPDF : metaIndPDF;
-  const tipoMetaPDF = asesorFiltro === 'todos' ? 'grupal' : 'individual';
 
   // Tabla resumen + Gráfico SVG por asesor (con ingresos)
   const byAsesor = {};
