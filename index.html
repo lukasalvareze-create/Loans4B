@@ -2675,6 +2675,8 @@ function precargarUltimaSimulacion(){
 
 function precargarNotaDesdeSimulacion(origen){
   const cfg = cargarConfig() || {};
+  // Fijamos el UF al valor actual (la sim acaba de ejecutarse)
+  _NV_UF_FIJO = UF_VALOR;
   let datos=null;
   if(origen==='hipotecario' && H_DATA){
     datos={
@@ -2733,6 +2735,7 @@ function precargarNotaDesdeSimulacion(origen){
 
 function limpiarNotaVenta(){
   if(!confirm('¿Borrar todos los campos del formulario?')) return;
+  _NV_UF_FIJO = null; // resetear UF fijo al limpiar form
   document.querySelectorAll('#form-nv input, #form-nv select, #form-nv textarea').forEach(el=>{
     if(el.tagName==='SELECT') el.selectedIndex=0;
     else el.value='';
@@ -2750,16 +2753,26 @@ function limpiarNotaVenta(){
   document.getElementById('nv-fuente').style.display='none';
 }
 
+/* === UF fijo de la NV ===
+   Cuando la NV se autocarga desde una simulación, los CLPs deben usar el UF_VALOR
+   al momento de esa simulación (no el UF actual). Esto evita que el monto cambie
+   si la UF varía entre la simulación y la firma del contrato. */
+let _NV_UF_FIJO = null;
+function getNVUFActivo(){
+  return (_NV_UF_FIJO && _NV_UF_FIJO > 0) ? _NV_UF_FIJO : UF_VALOR;
+}
+
 function nvOnInputUF(){
+  const UF_USE = getNVUFActivo();
   // Valor inmueble UF → CLP
   const valor = parseFloat(document.getElementById('nv-valor-uf').value)||0;
-  document.getElementById('nv-valor-clp').value = valor>0 ? fmtCLP(valor*UF_VALOR) : '';
+  document.getElementById('nv-valor-clp').value = valor>0 ? fmtCLP(valor*UF_USE) : '';
   // Monto a financiar UF → CLP
   const monto = parseFloat(document.getElementById('nv-monto-uf').value)||0;
-  document.getElementById('nv-monto-clp').value = monto>0 ? fmtCLP(monto*UF_VALOR) : '';
+  document.getElementById('nv-monto-clp').value = monto>0 ? fmtCLP(monto*UF_USE) : '';
   // Honorarios pre-eval UF → CLP
   const hon = parseFloat(document.getElementById('nv-honorarios-uf').value)||0;
-  document.getElementById('nv-honorarios-clp').value = hon>0 ? fmtCLP(hon*UF_VALOR) : '';
+  document.getElementById('nv-honorarios-clp').value = hon>0 ? fmtCLP(hon*UF_USE) : '';
   // Fee L4B: si hay monto y %, recalcular fee UF; sino dejar como está (override manual)
   const pct = parseFloat(document.getElementById('nv-fee-pct').value)||0;
   if(monto>0 && pct>0){
@@ -2767,7 +2780,7 @@ function nvOnInputUF(){
     document.getElementById('nv-fee-uf').value = Math.round(feeUFCalc*100)/100;
   }
   const fee = parseFloat(document.getElementById('nv-fee-uf').value)||0;
-  document.getElementById('nv-fee-clp').value = fee>0 ? fmtCLP(fee*UF_VALOR) : '';
+  document.getElementById('nv-fee-clp').value = fee>0 ? fmtCLP(fee*UF_USE) : '';
   // Gastos notariales UF → CLP
   const gn = parseFloat(document.getElementById('nv-gastos-notariales-uf').value)||0;
   // (gastos notariales CLP no tiene campo visible, lo calculamos solo para los pagos)
@@ -2795,7 +2808,7 @@ function nvOnInputUFFee(){
     const pctCalc = (fee / monto) * 100;
     document.getElementById('nv-fee-pct').value = Math.round(pctCalc*100)/100;
   }
-  document.getElementById('nv-fee-clp').value = fee>0 ? fmtCLP(fee*UF_VALOR) : '';
+  document.getElementById('nv-fee-clp').value = fee>0 ? fmtCLP(fee*getNVUFActivo()) : '';
   // Pagos 3 y 4 = fee/2 cada uno (si no han sido editados manualmente)
   const p3 = document.getElementById('nv-pago3-uf');
   if(p3 && !p3.dataset.touched) p3.value = fee>0 ? Math.round((fee/2)*100)/100 : '';
@@ -2815,18 +2828,19 @@ function nvOnPagoChange(){
 
 /* Recalcula los CLP de cada pago + el total */
 function nvActualizarPagosCLP(){
+  const UF_USE = getNVUFActivo();
   let totalUF = 0;
   ['nv-pago1','nv-pago2','nv-pago3','nv-pago4'].forEach(p => {
     const ufEl = document.getElementById(p+'-uf');
     const clpEl = document.getElementById(p+'-clp');
     const uf = parseFloat(ufEl ? ufEl.value : 0) || 0;
-    if(clpEl) clpEl.value = uf>0 ? fmtCLP(uf*UF_VALOR) : '';
+    if(clpEl) clpEl.value = uf>0 ? fmtCLP(uf*UF_USE) : '';
     totalUF += uf;
   });
   const totUF = document.getElementById('nv-total-uf');
   const totCLP = document.getElementById('nv-total-clp');
   if(totUF) totUF.textContent = totalUF>0 ? fmtUF(totalUF) : '—';
-  if(totCLP) totCLP.textContent = totalUF>0 ? fmtCLP(totalUF*UF_VALOR) : '—';
+  if(totCLP) totCLP.textContent = totalUF>0 ? fmtCLP(totalUF*UF_USE) : '—';
 }
 
 /* Cuando cambia el tipo de persona:
@@ -4007,6 +4021,9 @@ async function guardarSimulacionActual(producto){
     clienteNombre: cli ? cli.nombre : (data.nombre||''),
     clienteRut: cli ? cli.rut : (data.rut||''),
     inputs, resultados, estado: 'borrador',
+    // Guardamos el UF_VALOR al momento de la simulación. Así los CLPs derivados
+    // en NV / Contrato quedan fijados aunque la UF cambie con los días.
+    ufValor: UF_VALOR,
     fechaCreacion: nowTs(), fechaActualizacion: nowTs()
   };
   try{
@@ -4594,6 +4611,9 @@ function navegarANotaVenta(cliId){
     }
 
     // 3. Pre-llenar campos de la operación desde la sim del historial
+    // FIJAR UF: usamos el UF_VALOR del momento de la sim (no el actual)
+    _NV_UF_FIJO = ultimaSim.ufValor || UF_VALOR;
+    const UF_BASE = _NV_UF_FIJO;
     const inputs = ultimaSim.inputs || {};
     const resultados = ultimaSim.resultados || {};
 
@@ -4611,12 +4631,12 @@ function navegarANotaVenta(cliId){
       document.getElementById('nv-tipo-propiedad').value = 'casa';
       document.getElementById('nv-tipo-persona').value = tipoPersona;
       document.getElementById('nv-valor-uf').value = valorUF || '';
-      document.getElementById('nv-valor-clp').value = valorUF ? fmtCLP(valorUF*UF_VALOR) : '';
+      document.getElementById('nv-valor-clp').value = valorUF ? fmtCLP(valorUF*UF_BASE) : '';
       document.getElementById('nv-monto-uf').value = finUF ? Math.round(finUF*100)/100 : '';
       document.getElementById('nv-plazo').value = (inputs.plazoAnios?inputs.plazoAnios+' años':'');
       document.getElementById('nv-tasa').value = tasaAnual ? (fmtPct(tasaAnual,2)+' '+tipoTasa+(cae?' (CAE '+fmtPct(cae,2)+')':'')) : '';
       document.getElementById('nv-fee-uf').value = honorariosUF ? Math.round(honorariosUF*100)/100 : '';
-      document.getElementById('nv-fee-clp').value = honorariosUF ? fmtCLP(honorariosUF*UF_VALOR) : '';
+      document.getElementById('nv-fee-clp').value = honorariosUF ? fmtCLP(honorariosUF*UF_BASE) : '';
       document.getElementById('nv-fee-pct').value = honorariosPct ? fmtPct(honorariosPct,1) : '';
     } else {
       // leaseback
@@ -4632,12 +4652,12 @@ function navegarANotaVenta(cliId){
       document.getElementById('nv-tipo-propiedad').value = 'casa';
       document.getElementById('nv-tipo-persona').value = tipoPersona;
       document.getElementById('nv-valor-uf').value = valorUF || '';
-      document.getElementById('nv-valor-clp').value = valorUF ? fmtCLP(valorUF*UF_VALOR) : '';
+      document.getElementById('nv-valor-clp').value = valorUF ? fmtCLP(valorUF*UF_BASE) : '';
       document.getElementById('nv-monto-uf').value = compraventaUF ? Math.round(compraventaUF*100)/100 : '';
       document.getElementById('nv-plazo').value = (inputs.plazoMeses?inputs.plazoMeses+' meses':'');
       document.getElementById('nv-tasa').value = tasaMensual ? (fmtPct(tasaMensual,2)+' mensual ('+fmtPct(tasaMensual*12,2)+' anual)') : '';
       document.getElementById('nv-fee-uf').value = feeL4BUF ? Math.round(feeL4BUF*100)/100 : '';
-      document.getElementById('nv-fee-clp').value = feeL4BUF ? fmtCLP(feeL4BUF*UF_VALOR) : '';
+      document.getElementById('nv-fee-clp').value = feeL4BUF ? fmtCLP(feeL4BUF*UF_BASE) : '';
       document.getElementById('nv-fee-pct').value = feeL4B ? fmtPct(feeL4B,1) : '';
     }
 
@@ -4649,9 +4669,11 @@ function navegarANotaVenta(cliId){
     nvOnInputUF();
     document.getElementById('nv-aviso-vacio').style.display='none';
     document.getElementById('nv-fuente').style.display='flex';
-    document.getElementById('nv-fuente-tipo').textContent = (ultimaSim.producto==='hipotecario' ? 'Crédito Hipotecario' : 'Leaseback Inmobiliario') + ' · cargado desde historial';
+    const fmtFechaSim = ultimaSim.fechaCreacion ? fmtTimestamp(ultimaSim.fechaCreacion) : '';
+    const ufLbl = _NV_UF_FIJO ? ' · UF fijada: $'+fmtNum(_NV_UF_FIJO,0)+' (del '+fmtFechaSim+')' : '';
+    document.getElementById('nv-fuente-tipo').textContent = (ultimaSim.producto==='hipotecario' ? 'Crédito Hipotecario' : 'Leaseback Inmobiliario') + ' · cargado desde historial' + ufLbl;
 
-    mostrarToastAutoCliente('✓ Nota de Venta pre-llenada con datos de '+(cliente.nombre||'cliente')+' y su última simulación', 'creado');
+    mostrarToastAutoCliente('✓ Nota de Venta pre-llenada · CLPs fijados al UF de la simulación', 'creado');
   }, 200);
 }
 
