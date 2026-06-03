@@ -2997,7 +2997,7 @@ function tsToDate(ts){ if(!ts) return null; if(ts.toDate) return ts.toDate(); if
 function fmtTimestamp(ts){ const d=tsToDate(ts); if(!d) return '—'; return d.toLocaleDateString('es-CL',{day:'2-digit',month:'2-digit',year:'numeric'})+' '+d.toLocaleTimeString('es-CL',{hour:'2-digit',minute:'2-digit'}); }
 function initialsOf(name){ if(!name) return '?'; const p=name.trim().split(/\s+/); return ((p[0]||'')[0]||'')+(((p[1]||'')[0])||''); }
 function escapeHTML(s){ if(s==null) return ''; return String(s).replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m])); }
-function asesorNombrePorId(uid){ if(!uid) return '—'; if(CURRENT_USER && CURRENT_USER.uid===uid && CURRENT_PROFILE) return CURRENT_PROFILE.nombre + ' (yo)'; const u = USERS_CACHE.find(x=>x.id===uid); return u ? u.nombre : '—'; }
+function asesorNombrePorId(uid){ if(!uid) return '—'; if(CURRENT_USER && CURRENT_USER.uid===uid && CURRENT_PROFILE) return CURRENT_PROFILE.nombre; const u = USERS_CACHE.find(x=>x.id===uid); return u ? u.nombre : '—'; }
 function getMontoUF(h){
   if(!h) return 0;
   if(h.montoUF) return Number(h.montoUF)||0;
@@ -6657,7 +6657,7 @@ function descargarReporteEjecutivoPDF(){
     conclHTMLpdf +
     notasHTML +
     '<div style="font-size:8.5pt; color:#6c757d; margin-top:12px; padding:7px 10px; background:#fafcfd; border:1px solid #e5e7eb; border-radius:6px; line-height:1.4;"><strong>Cómo se calculan:</strong> Ingresos L4B = fee del 3% sobre monto financiado de las operaciones con etapa Contrato. Ticket promedio = Ingresos / contratos. Tasa de cierre = Contratos / Prospectos del período. Ciclo de ventas = días promedio desde createdAt hasta updatedAt de los clientes en Contrato. Comparativa: período inmediatamente anterior con misma duración.</div>' +
-    pdfFooter(cfg);
+    ''; // Sin disclaimer en reportes — solo aparece en PDFs de simulación
 
   generarPDF(cuerpo, 'Reporte_Ejecutivo_'+(rango==='dia'?fmtFecha(desde).replace(/\//g,'-'):'periodo'));
 }
@@ -6821,7 +6821,7 @@ function descargarReportePDF(){
     bloquesHTML +
     (notasHTML ? '<h2 style="font-family:Inter,sans-serif; font-size:13px; color:#0a3d4a; margin:18px 0 6px; font-weight:700;">📌 Notas del día</h2>' + notasHTML : '') +
     '<div style="font-size:9.5px; color:#6c757d; margin-top:18px; padding:10px 12px; background:#fafcfd; border:1px solid #e5e7eb; border-radius:6px; line-height:1.5;"><strong>Cómo se calculan los indicadores:</strong> Efectividad = (Actividades − Rechazos) / Total Actividades. Tasa de Cierre = Contratos enviados / Total Actividades. UF simulado considera el monto financiado de las simulaciones del período.</div>' +
-    pdfFooter(cfg);
+    ''; // Sin disclaimer en reportes — solo aparece en PDFs de simulación
 
   generarPDF(cuerpo, 'Reporte_Equipo_'+(rango==='dia'?fmtFecha(desde).replace(/\//g,'-'):'periodo'));
 }
@@ -7095,7 +7095,7 @@ function descargarPDFLider(){
     sectionH('Pipeline') + funnelHTML +
     sectionH('Performance por asesor') + tablaHTML +
     insightsHTML +
-    pdfFooter(cfg);
+    ''; // Sin disclaimer en reportes — solo aparece en PDFs de simulación
 
   generarPDF(cuerpo, 'Reporte_Lider_'+(asesorFiltro==='todos'?'equipo':asesorLbl)+'_'+fmtFecha(new Date()).replace(/\//g,'-'));
 }
