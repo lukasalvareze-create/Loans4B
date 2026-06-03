@@ -5853,12 +5853,19 @@ function calcularKPIsReporte(clientesPeriodo, sims){
   const contratos = enEtapa('contrato');
   const cerrados = enEtapa('cerrado');
   const rechazos = clientesPeriodo.filter(c => c.etapa === 'rechazo').length;
-  // Sims asociadas a clientes en etapa 'cerrado' (operación concretada)
-  const idsCerrado = new Set(clientesPeriodo.filter(c => c.etapa === 'cerrado').map(c => c.id));
-  const simsCerradas = sims.filter(s => idsCerrado.has(s.clienteId));
+  // Sims asociadas a clientes en etapa 'contrato' o superior (contrato firmado, incluye cerrados).
+  // Esto alinea las métricas con el disclaimer: "Ingresos L4B = sobre operaciones con etapa Contrato".
+  const idxContrato = ordenEt.indexOf('contrato');
+  const idsContratoOSup = new Set(
+    clientesPeriodo.filter(c => {
+      if(c.etapa === 'rechazo') return false;
+      return ordenEt.indexOf(c.etapa || 'prospecto') >= idxContrato;
+    }).map(c => c.id)
+  );
+  const simsConContrato = sims.filter(s => idsContratoOSup.has(s.clienteId));
   // Tomar SOLO la última sim por cliente (no contar duplicados)
   const lastByCliente = {};
-  simsCerradas.forEach(s => {
+  simsConContrato.forEach(s => {
     const cid = s.clienteId;
     if(!lastByCliente[cid] || (s.fechaSort && lastByCliente[cid].fechaSort && s.fechaSort > lastByCliente[cid].fechaSort)){
       lastByCliente[cid] = s;
@@ -5867,8 +5874,10 @@ function calcularKPIsReporte(clientesPeriodo, sims){
   const simsUnicas = Object.values(lastByCliente);
   const ingreso = simsUnicas.reduce((sum, s) => sum + ingresoSimCLP(s), 0);
   const volumen = simsUnicas.reduce((sum, s) => sum + volumenSimCLP(s), 0);
-  const ticketProm = cerrados > 0 ? ingreso / cerrados : 0;
-  const tasaCierre = prospectos > 0 ? (cerrados / prospectos) : 0;
+  // Tasa de cierre = Contratos (firmados, incluye cerrados) / Prospectos del período
+  // Ticket promedio = Ingresos / Contratos
+  const ticketProm = contratos > 0 ? ingreso / contratos : 0;
+  const tasaCierre = prospectos > 0 ? (contratos / prospectos) : 0;
   const ciclo = calcularCicloDias(clientesPeriodo);
   // Por producto
   const porProducto = { leaseback: { ops:0, ingreso:0, volumen:0 }, hipotecario: { ops:0, ingreso:0, volumen:0 } };
