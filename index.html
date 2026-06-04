@@ -2651,6 +2651,7 @@ function precargarNotaDesdeSimulacion(origen){
 function limpiarNotaVenta(){
   if(!confirm('¿Borrar todos los campos del formulario?')) return;
   _NV_UF_FIJO = null; // resetear UF fijo al limpiar form
+  _NV_EDITANDO_ID = null; // resetear flag de edición — próximo save creará doc nuevo
   document.querySelectorAll('#form-nv input, #form-nv select, #form-nv textarea').forEach(el=>{
     if(el.tagName==='SELECT') el.selectedIndex=0;
     else el.value='';
@@ -2673,6 +2674,11 @@ function limpiarNotaVenta(){
    al momento de esa simulación (no el UF actual). Esto evita que el monto cambie
    si la UF varía entre la simulación y la firma del contrato. */
 let _NV_UF_FIJO = null;
+// Si está seteado, el save hace UPDATE en lugar de ADD (evita duplicados al re-guardar).
+// Se setea al cargar un doc existente (cargarNVEnFormulario / cargarSimEnSimulador)
+// o tras el primer save de un doc nuevo. Se resetea en limpiar/navegar a flujo nuevo.
+let _NV_EDITANDO_ID = null;
+let _SIM_EDITANDO_ID = null;
 function getNVUFActivo(){
   return (_NV_UF_FIJO && _NV_UF_FIJO > 0) ? _NV_UF_FIJO : UF_VALOR;
 }
@@ -3925,8 +3931,8 @@ async function guardarSimulacionActual(producto){
   const nz = v => (v===undefined || v===null || (typeof v==='number' && isNaN(v))) ? 0 : v;
   const sz = v => (v===undefined || v===null) ? '' : v;
   const inputs = producto==='hipotecario'
-    ? { valorUF:nz(data.valor), pieUF:nz(data.pie), financiarUF:nz(data.fin), plazoAnios:nz(data.plazo), tasaAnual:nz(data.tasa), tipoTasa:sz(data.tipoTasa), tipoPersona:sz(data.tipo), preEvalUF:nz(data.preEval), comisionPct:nz(data.honorariosPct) }
-    : { valorUF:nz(data.valor), deudaUF:nz(data.deuda), plazoMeses:nz(data.plazo), pctCV:nz(data.pctCV), tasaMensual:nz(data.tasaMensual), feeL4B:nz(data.feeL4B), feeFondo:nz(data.feeFondo), gastosOp:nz(data.gastosOp), notariaCLP:nz(data.notariaCLP), dineroNetoUF:nz(data.dineroNeto) };
+    ? { valorUF:nz(data.valor), pieUF:nz(data.pie), financiarUF:nz(data.fin), plazoAnios:nz(data.plazo), tasaAnual:nz(data.tasa), tipoTasa:sz(data.tipoTasa), tipoPersona:sz(data.tipo), preEvalUF:nz(data.preeval), comisionPct:nz(data.honorariosPct) }
+    : { valorUF:nz(data.valor), deudaUF:nz(data.deuda), plazoMeses:nz(data.plazo), pctCV:nz(data.pctCV), tasaMensual:nz(data.tasaMensual), feeL4B:nz(data.feeL4B), feeFondo:nz(data.feeFondo), gastosOp:nz(data.gastosOp), notariaCLP:nz(data.notariaCLP), operacionInicialUF:nz(data.operacionInicialUF), dineroNetoUF:nz(data.dineroNeto), tipoPersona:sz(data.tipo) };
   const resultados = producto==='hipotecario'
     ? { cuotaUF:nz(data.cuotaTotal), cuotaSinSegUF:nz(data.cuotaSinSeg), cae:nz(data.cae), totalPagar:nz(data.totalPagar), intereses:nz(data.intereses), honorariosUF:nz(data.honorariosUF) }
     : { cuotaUF:nz(data.cuota), dineroNetoUF:nz(data.dineroNeto), compraventaUF:nz(data.compraventa), totalPago:nz(data.totalPago), feeL4BUF:nz(data.feeL4BUF) };
@@ -3942,9 +3948,17 @@ async function guardarSimulacionActual(producto){
     fechaCreacion: nowTs(), fechaActualizacion: nowTs()
   };
   try{
-    await fbDb.collection('simulaciones').add(doc);
+    // FIX: si estamos editando una sim existente, hacer UPDATE en vez de ADD (evita duplicados)
+    if(_SIM_EDITANDO_ID){
+      const updateDoc = Object.assign({}, doc, { fechaActualizacion: nowTs() });
+      delete updateDoc.fechaCreacion; // no sobrescribir fecha de creación original
+      await fbDb.collection('simulaciones').doc(_SIM_EDITANDO_ID).update(updateDoc);
+    } else {
+      const ref = await fbDb.collection('simulaciones').add(doc);
+      _SIM_EDITANDO_ID = ref.id; // queda en modo edición para siguientes saves
+    }
     const banner = document.getElementById('save-banner-'+producto);
-    if(banner){ banner.querySelector('.sb-status').textContent='✓ Guardada en historial'; }
+    if(banner){ banner.querySelector('.sb-status').textContent = _SIM_EDITANDO_ID ? '✓ Actualizada en historial' : '✓ Guardada en historial'; }
     if(cliId){
       try{
         await fbDb.collection('clientes').doc(cliId).collection('notas').add({
@@ -3978,14 +3992,25 @@ async function guardarNotaActual(){
     montoUF: parseFloat(get('nv-monto-uf'))||0,
     feeUF: parseFloat(get('nv-fee-uf'))||0,
     producto: get('nv-producto'),
+    // Guardamos el UF activo al momento de esta NV para que al re-abrir los CLPs no cambien
+    ufValor: getNVUFActivo(),
     campos, estado: 'borrador',
     createdAt: nowTs(), updatedAt: nowTs()
   };
   const btn = document.getElementById('btn-guardar-nv');
   if(btn){ btn.disabled=true; btn.innerHTML='<span>⏳</span> Guardando…'; }
   try{
-    await fbDb.collection('notasVenta').add(doc);
-    if(btn){ btn.innerHTML='<span>✓</span> Guardada en historial'; setTimeout(()=>{ btn.disabled=false; btn.innerHTML='<span>💾</span> Guardar nota en historial'; },2500); }
+    // FIX: si estamos editando una NV existente, hacer UPDATE en vez de ADD (evita duplicados)
+    if(_NV_EDITANDO_ID){
+      const updateDoc = Object.assign({}, doc, { updatedAt: nowTs() });
+      delete updateDoc.createdAt; // no sobrescribir fecha de creación
+      await fbDb.collection('notasVenta').doc(_NV_EDITANDO_ID).update(updateDoc);
+      if(btn){ btn.innerHTML='<span>✓</span> Actualizada en historial'; setTimeout(()=>{ btn.disabled=false; btn.innerHTML='<span>💾</span> Guardar nota en historial'; },2500); }
+    } else {
+      const ref = await fbDb.collection('notasVenta').add(doc);
+      _NV_EDITANDO_ID = ref.id; // queda en modo edición para siguientes saves
+      if(btn){ btn.innerHTML='<span>✓</span> Guardada en historial'; setTimeout(()=>{ btn.disabled=false; btn.innerHTML='<span>💾</span> Guardar nota en historial'; },2500); }
+    }
     if(cliId){
       try{
         await fbDb.collection('clientes').doc(cliId).collection('notas').add({
@@ -4471,6 +4496,7 @@ async function moverEtapaCliente(cliId, nuevaEtapa, desdePipeline){
 
 /* === Navegar al simulador correcto con cliente pre-seleccionado === */
 function navegarASimulador(cliId, producto){
+  _SIM_EDITANDO_ID = null; // navegación normal crea SIEMPRE una sim nueva
   const viewName = producto === 'leaseback' ? 'sim-leaseback' : 'sim-hipotecario';
   showView(viewName);
   setTimeout(() => {
@@ -4488,6 +4514,7 @@ function navegarASimulador(cliId, producto){
    Pre-llena: datos cliente (via picker) + datos operacionales de la última sim guardada en
    Firestore. Si el cliente no tiene sim previa, solo pre-llena datos del cliente y avisa. */
 function navegarANotaVenta(cliId){
+  _NV_EDITANDO_ID = null; // flujo Sim→NV crea SIEMPRE una NV nueva
   showView('nota-venta');
   setTimeout(() => {
     const cliente = CLIENTES_CACHE.find(c => c.id === cliId);
@@ -4995,18 +5022,120 @@ function verSimEnSimulador(){
   const sim = _SIM_DETALLE_CACHE;
   if(!sim) return;
   cerrarSimDetalle();
+  // FIX: pasar el doc completo para rehidratar TODOS los campos guardados
+  // (antes solo pasaba el clienteId y reconstruía desde la "última sim del cliente")
   if(sim._tipo === 'nota_venta'){
-    // Para nota de venta: navegar a la NV y precargarla con los datos del cliente
-    if(sim.clienteId) navegarANotaVenta(sim.clienteId);
-    else showView('nota-venta');
+    cargarNVEnFormulario(sim);
     return;
   }
-  // Para simulaciones: navegar al simulador correspondiente con el cliente seleccionado
-  if(sim.clienteId){
-    navegarASimulador(sim.clienteId, sim.producto);
-  } else {
-    showView(sim.producto === 'hipotecario' ? 'sim-hipotecario' : 'sim-leaseback');
-  }
+  cargarSimEnSimulador(sim);
+}
+
+/* === Cargar una NV existente en el formulario (rehidrata TODOS los campos guardados) ===
+   Diferencia con navegarANotaVenta: no reconstruye desde "última sim" sino desde el doc.
+   Setea _NV_EDITANDO_ID para que el próximo save haga UPDATE en lugar de duplicar. */
+function cargarNVEnFormulario(nv){
+  if(!nv){ return; }
+  showView('nota-venta');
+  setTimeout(() => {
+    // Estado de edición
+    _NV_EDITANDO_ID = nv.id;
+    _NV_UF_FIJO = nv.ufValor || UF_VALOR; // restaurar UF al que se guardó
+
+    // Setear picker SIN disparar onClientePickerChange (evita pisar nombre/RUT/email del header)
+    if(nv.clienteId){
+      const picker = document.getElementById('cp-nv');
+      if(picker) picker.value = nv.clienteId;
+    }
+
+    // Rehidratar TODOS los campos guardados desde nv.campos (mapeo 1-a-1 con IDs del DOM)
+    const campos = nv.campos || {};
+    Object.keys(campos).forEach(k => {
+      const el = document.getElementById(k);
+      if(el && campos[k] != null) el.value = campos[k];
+    });
+
+    // Actualizar visibilidad de bloques PJ según tipo persona guardado
+    try { nvOnTipoPersonaChange(); } catch(e){}
+
+    // Banner de edición
+    document.getElementById('nv-aviso-vacio').style.display = 'none';
+    document.getElementById('nv-fuente').style.display = 'flex';
+    const ufLbl = _NV_UF_FIJO ? ' · UF fijada: $'+fmtNum(_NV_UF_FIJO,0) : '';
+    const fechaCre = nv.createdAt ? ' · creada '+fmtTimestamp(nv.createdAt) : '';
+    document.getElementById('nv-fuente-tipo').textContent = '✏️ Editando NV existente · cambios actualizarán el documento original' + ufLbl + fechaCre;
+
+    mostrarToastAutoCliente('✓ NV cargada · al guardar se actualiza el documento original (sin duplicar)', 'creado');
+  }, 200);
+}
+
+/* === Cargar una simulación existente en el simulador (rehidrata todos los inputs) ===
+   Setea _SIM_EDITANDO_ID para que el próximo save haga UPDATE en lugar de duplicar. */
+function cargarSimEnSimulador(sim){
+  if(!sim){ return; }
+  const producto = sim.producto;
+  const viewName = producto === 'leaseback' ? 'sim-leaseback' : 'sim-hipotecario';
+  showView(viewName);
+  setTimeout(() => {
+    _SIM_EDITANDO_ID = sim.id;
+    const inputs = sim.inputs || {};
+
+    // Picker — setea pero NO dispara onClientePickerChange para evitar pisar datos guardados
+    if(sim.clienteId){
+      const picker = document.getElementById('cp-' + producto);
+      if(picker) picker.value = sim.clienteId;
+      // Sí llamamos a onClientePickerChange porque los datos del cliente (nombre/rut/etc.)
+      // no se guardan en sim.inputs y se necesitan en el form. Si el cliente fue editado
+      // después, eso refleja el estado actual (que es lo esperado para una sim "viva").
+      try { onClientePickerChange(producto, document.getElementById('cp-' + producto)); } catch(e){}
+    }
+
+    const setVal = (id, v) => {
+      if(v == null || v === '') return;
+      const el = document.getElementById(id);
+      if(el) el.value = v;
+    };
+
+    if(producto === 'hipotecario'){
+      setVal('h-valor-uf', inputs.valorUF);
+      setVal('h-pie', inputs.pieUF);
+      setVal('h-financiar', inputs.financiarUF);
+      setVal('h-plazo', inputs.plazoAnios);
+      setVal('h-tasa', inputs.tasaAnual);
+      setVal('h-tipo-tasa', inputs.tipoTasa);
+      setVal('h-preeval', inputs.preEvalUF);
+      setVal('h-honorarios', inputs.comisionPct);
+      // Radio tipo persona
+      if(inputs.tipoPersona){
+        const radio = document.querySelector('input[name="h-tipo"][value="'+inputs.tipoPersona+'"]');
+        if(radio){ radio.checked = true; try { updateHTipo(); } catch(e){} }
+      }
+      // Regenerar resultados
+      try { calcularHipotecarioCompleto(); } catch(e){ console.warn('cargarSim hipotecario calcular:', e); }
+    } else {
+      setVal('lb-valor-uf', inputs.valorUF);
+      setVal('lb-deuda', inputs.deudaUF);
+      setVal('lb-plazo', inputs.plazoMeses);
+      setVal('lb-pct-cv', inputs.pctCV);
+      setVal('lb-tasa', inputs.tasaMensual);
+      setVal('lb-fee-l4b', inputs.feeL4B);
+      setVal('lb-fee-fondo', inputs.feeFondo);
+      setVal('lb-gastos-op', inputs.gastosOp);
+      // Operación inicial — usar el campo nuevo o derivar del notariaCLP viejo
+      const opIni = inputs.operacionInicialUF != null && inputs.operacionInicialUF > 0
+        ? inputs.operacionInicialUF
+        : (inputs.notariaCLP ? Math.round(inputs.notariaCLP / (sim.ufValor || UF_VALOR)) : 100);
+      setVal('lb-notaria', opIni);
+      // Radio tipo persona
+      if(inputs.tipoPersona){
+        const radio = document.querySelector('input[name="lb-tipo"][value="'+inputs.tipoPersona+'"]');
+        if(radio){ radio.checked = true; try { updateLBTipo(); } catch(e){} }
+      }
+      // Regenerar resultados
+      try { calcularLeasebackCompleto(); } catch(e){ console.warn('cargarSim leaseback calcular:', e); }
+    }
+    mostrarToastAutoCliente('✓ Simulación cargada · al guardar se actualiza el documento original', 'creado');
+  }, 250);
 }
 
 function renderTareasCliente(clienteId){
@@ -5866,21 +5995,50 @@ function reporteDetalleDeCliente(c, sims){
 /* === HELPERS REPORTE EJECUTIVO ===
    Métricas avanzadas: ingresos, ticket, ciclo, comparativa, etc. */
 
-/* Ingreso L4B en CLP de una simulación (fee del 3% del monto financiado) */
-function ingresoSimCLP(s){
-  if(!s || !s.resultados) return 0;
-  const feeUF = s.resultados.honorariosUF || s.resultados.feeL4BUF || 0;
-  return feeUF * UF_VALOR;
+/* Ingreso L4B en CLP de un documento (NV o sim) — prefiere CLP literal guardado en NV */
+function ingresoCLPDe(doc){
+  if(!doc) return 0;
+  // NV: usar el CLP literal que se guardó en el form (refleja UF al momento del deal)
+  if(doc._tipo === 'nota_venta'){
+    const clpStr = (doc.campos && doc.campos['nv-fee-clp']) || '';
+    const clpNum = parseFloat(String(clpStr).replace(/[^\d]/g,'')) || 0;
+    if(clpNum > 0) return clpNum;
+    // Fallback: feeUF * UF fijada (o actual si no se guardó)
+    const uf = doc.ufValor || UF_VALOR;
+    return (doc.feeUF || 0) * uf;
+  }
+  // Sim: usar feeL4BUF o honorariosUF * UF (fijada si existe)
+  if(doc.resultados){
+    const feeUF = doc.resultados.honorariosUF || doc.resultados.feeL4BUF || 0;
+    const uf = doc.ufValor || UF_VALOR;
+    return feeUF * uf;
+  }
+  return 0;
 }
 
-/* Volumen financiado bruto en CLP de una simulación */
-function volumenSimCLP(s){
-  if(!s || !s.inputs) return 0;
-  const v = s.producto === 'hipotecario'
-    ? (s.inputs.financiarUF || 0)
-    : ((s.inputs.valorUF || 0) * (s.inputs.pctCV || 0) / 100);
-  return v * UF_VALOR;
+/* Volumen financiado bruto en CLP de un documento — prefiere CLP literal guardado en NV */
+function volumenCLPDe(doc){
+  if(!doc) return 0;
+  if(doc._tipo === 'nota_venta'){
+    const clpStr = (doc.campos && doc.campos['nv-monto-clp']) || '';
+    const clpNum = parseFloat(String(clpStr).replace(/[^\d]/g,'')) || 0;
+    if(clpNum > 0) return clpNum;
+    const uf = doc.ufValor || UF_VALOR;
+    return (doc.montoUF || 0) * uf;
+  }
+  if(doc.inputs){
+    const v = doc.producto === 'hipotecario'
+      ? (doc.inputs.financiarUF || 0)
+      : ((doc.inputs.valorUF || 0) * (doc.inputs.pctCV || 0) / 100);
+    const uf = doc.ufValor || UF_VALOR;
+    return v * uf;
+  }
+  return 0;
 }
+
+/* Legacy: mantener nombres antiguos por compatibilidad */
+function ingresoSimCLP(s){ return ingresoCLPDe(s); }
+function volumenSimCLP(s){ return volumenCLPDe(s); }
 
 /* Ciclo de ventas en días (createdAt → updatedAt para los clientes en 'contrato') */
 function calcularCicloDias(clientes){
@@ -5906,8 +6064,11 @@ function rangoAnterior(desde, hasta){
   return { desde: antDesde, hasta: antHasta };
 }
 
-/* Cálculo completo de KPIs para reportes (ejecutivo + detallado) */
-function calcularKPIsReporte(clientesPeriodo, sims){
+/* Cálculo completo de KPIs para reportes (ejecutivo + detallado).
+   notas (NVs del período) es opcional pero recomendado — si está, las métricas
+   de ingreso/volumen/porProducto usan la NV cuando existe (preferida sobre sim). */
+function calcularKPIsReporte(clientesPeriodo, sims, notas){
+  notas = notas || [];
   const ordenEt = ['prospecto','contacto','simulacion','notaventa','contrato','cerrado'];
   const enEtapa = (idMin) => {
     const idx = ordenEt.indexOf(idMin);
@@ -5934,30 +6095,47 @@ function calcularKPIsReporte(clientesPeriodo, sims){
     }).map(c => c.id)
   );
   const simsConContrato = sims.filter(s => idsContratoOSup.has(s.clienteId));
-  // Tomar SOLO la última sim por cliente (no contar duplicados)
-  const lastByCliente = {};
+  const nvsConContrato = notas.filter(n => idsContratoOSup.has(n.clienteId));
+  // Tomar SOLO el último doc por cliente (no contar duplicados)
+  const lastSimByCliente = {};
   simsConContrato.forEach(s => {
     const cid = s.clienteId;
-    if(!lastByCliente[cid] || (s.fechaSort && lastByCliente[cid].fechaSort && s.fechaSort > lastByCliente[cid].fechaSort)){
-      lastByCliente[cid] = s;
+    if(!lastSimByCliente[cid] || (s.fechaSort && lastSimByCliente[cid].fechaSort && s.fechaSort > lastSimByCliente[cid].fechaSort)){
+      lastSimByCliente[cid] = s;
     }
   });
-  const simsUnicas = Object.values(lastByCliente);
-  const ingreso = simsUnicas.reduce((sum, s) => sum + ingresoSimCLP(s), 0);
-  const volumen = simsUnicas.reduce((sum, s) => sum + volumenSimCLP(s), 0);
+  const lastNVByCliente = {};
+  nvsConContrato.forEach(n => {
+    const cid = n.clienteId;
+    if(!lastNVByCliente[cid] || (n.fechaSort && lastNVByCliente[cid].fechaSort && n.fechaSort > lastNVByCliente[cid].fechaSort)){
+      lastNVByCliente[cid] = n;
+    }
+  });
+  // PREFERIR NV sobre sim: la NV es el documento "oficial" del deal negociado.
+  // Si la NV editó manualmente el monto, esa es la cifra correcta — NO la sim original.
+  const docsUnicos = [];
+  Array.from(idsContratoOSup).forEach(cid => {
+    const doc = lastNVByCliente[cid] || lastSimByCliente[cid];
+    if(doc) docsUnicos.push(doc);
+  });
+  // Mantener simsUnicas como alias por compatibilidad con código que la espere
+  const simsUnicas = docsUnicos;
+  const ingreso = docsUnicos.reduce((sum, d) => sum + ingresoCLPDe(d), 0);
+  const volumen = docsUnicos.reduce((sum, d) => sum + volumenCLPDe(d), 0);
   // Tasa de cierre = Contratos (firmados, incluye cerrados) / Prospectos del período
   // Ticket promedio = Ingresos / Contratos
   const ticketProm = contratos > 0 ? ingreso / contratos : 0;
   const tasaCierre = prospectos > 0 ? (contratos / prospectos) : 0;
   const ciclo = calcularCicloDias(clientesPeriodo);
-  // Por producto
+  // Por producto (usa el mismo docsUnicos: NV preferida sobre sim)
   const porProducto = { leaseback: { ops:0, ingreso:0, volumen:0 }, hipotecario: { ops:0, ingreso:0, volumen:0 } };
-  simsUnicas.forEach(s => {
-    const p = s.producto;
+  docsUnicos.forEach(d => {
+    // Producto: NV tiene d.producto; sim también
+    const p = d.producto || (d.campos && d.campos['nv-producto']) || 'leaseback';
     if(porProducto[p]){
       porProducto[p].ops++;
-      porProducto[p].ingreso += ingresoSimCLP(s);
-      porProducto[p].volumen += volumenSimCLP(s);
+      porProducto[p].ingreso += ingresoCLPDe(d);
+      porProducto[p].volumen += volumenCLPDe(d);
     }
   });
   return { prospectos, contactados, simulados, notasV, contratos, cerrados, rechazos,
@@ -6227,7 +6405,7 @@ function renderReporte(){
   }
 
   // === Cálculo de KPIs avanzados para Reporte Ejecutivo ===
-  const kpisEjec = calcularKPIsReporte(clientesPeriodo, k.sims);
+  const kpisEjec = calcularKPIsReporte(clientesPeriodo, k.sims, k.notas);
   // Período anterior para comparativa
   const ant = rangoAnterior(desde, hasta);
   const clientesAnt = CLIENTES_CACHE.filter(c => {
@@ -6236,7 +6414,8 @@ function renderReporte(){
     return ts && ts >= ant.desde && ts <= ant.hasta;
   });
   const simsAnt = HISTORIAL_CACHE.filter(h => h._tipo==='simulacion' && matchAs(h.asesorId) && h.fechaSort && h.fechaSort >= ant.desde && h.fechaSort <= ant.hasta);
-  const kpisAnt = calcularKPIsReporte(clientesAnt, simsAnt);
+  const notasAnt = HISTORIAL_CACHE.filter(h => h._tipo === 'nota_venta' && matchAs(h.asesorId) && h.fechaSort && h.fechaSort >= ant.desde && h.fechaSort <= ant.hasta);
+  const kpisAnt = calcularKPIsReporte(clientesAnt, simsAnt, notasAnt);
 
   // === Meta (individual vs grupal según filtro) ===
   const metaInd = getMetaIndividual();
@@ -6338,17 +6517,30 @@ function renderReporte(){
 
   // === NUEVO: Tabla resumen + Gráfico SVG (con ingresos y avance vs meta) ===
   const rowsAsResumen = asesores.map(([uid, a]) => {
-    // Ingreso del asesor: sims únicas por cliente cerrado
-    const idsContrAs = new Set(a.clientes.filter(c => c.etapa === 'contrato').map(c => c.id));
+    // Ingreso del asesor: prefiere NV sobre sim por cliente (NV = doc oficial del deal)
+    // También considera etapa 'cerrado' (no solo 'contrato') para alinear con el embudo
+    const idsContrAs = new Set(a.clientes.filter(c => c.etapa === 'contrato' || c.etapa === 'cerrado').map(c => c.id));
     const simsAsCerradas = k.sims.filter(s => s.asesorId === uid && idsContrAs.has(s.clienteId));
-    const lastByCli = {};
+    const nvsAsCerradas = k.notas.filter(n => n.asesorId === uid && idsContrAs.has(n.clienteId));
+    const lastSimByCli = {};
     simsAsCerradas.forEach(s => {
       const cid = s.clienteId;
-      if(!lastByCli[cid] || (s.fechaSort && lastByCli[cid].fechaSort && s.fechaSort > lastByCli[cid].fechaSort)){
-        lastByCli[cid] = s;
+      if(!lastSimByCli[cid] || (s.fechaSort && lastSimByCli[cid].fechaSort && s.fechaSort > lastSimByCli[cid].fechaSort)){
+        lastSimByCli[cid] = s;
       }
     });
-    const ingresoAs = Object.values(lastByCli).reduce((sum, s) => sum + ingresoSimCLP(s), 0);
+    const lastNVByCli = {};
+    nvsAsCerradas.forEach(n => {
+      const cid = n.clienteId;
+      if(!lastNVByCli[cid] || (n.fechaSort && lastNVByCli[cid].fechaSort && n.fechaSort > lastNVByCli[cid].fechaSort)){
+        lastNVByCli[cid] = n;
+      }
+    });
+    let ingresoAs = 0;
+    Array.from(idsContrAs).forEach(cid => {
+      const doc = lastNVByCli[cid] || lastSimByCli[cid];
+      if(doc) ingresoAs += ingresoCLPDe(doc);
+    });
     return {
       uid,
       nombre: a.nombre,
@@ -6545,7 +6737,7 @@ function descargarReporteEjecutivoPDF(){
   const cierre = pctP(contratos, prospectos);
 
   // KPIs avanzados (mismo cálculo que la vista)
-  const kpisEjecPDF = calcularKPIsReporte(clientesPeriodo, k.sims);
+  const kpisEjecPDF = calcularKPIsReporte(clientesPeriodo, k.sims, k.notas);
   const antPDF = rangoAnterior(desde, hasta);
   const clientesAntPDF = CLIENTES_CACHE.filter(c => {
     if(!matchAs(c.asesorId)) return false;
@@ -6553,7 +6745,8 @@ function descargarReporteEjecutivoPDF(){
     return ts && ts >= antPDF.desde && ts <= antPDF.hasta;
   });
   const simsAntPDF = HISTORIAL_CACHE.filter(h => h._tipo==='simulacion' && matchAs(h.asesorId) && h.fechaSort && h.fechaSort >= antPDF.desde && h.fechaSort <= antPDF.hasta);
-  const kpisAntPDF = calcularKPIsReporte(clientesAntPDF, simsAntPDF);
+  const notasAntPDF = HISTORIAL_CACHE.filter(h => h._tipo === 'nota_venta' && matchAs(h.asesorId) && h.fechaSort && h.fechaSort >= antPDF.desde && h.fechaSort <= antPDF.hasta);
+  const kpisAntPDF = calcularKPIsReporte(clientesAntPDF, simsAntPDF, notasAntPDF);
   const metaIndPDF = getMetaIndividual();
   const metaGruPDF = getMetaGrupal();
   const metaAplPDF = asesorFiltro === 'todos' ? metaGruPDF : metaIndPDF;
@@ -6658,18 +6851,30 @@ function descargarReporteEjecutivoPDF(){
     if(c.etapa === 'rechazo') byAsesor[uid].rechazos++;
   });
   k.sims.forEach(s => { const uid = s.asesorId || ''; if(byAsesor[uid]) byAsesor[uid].ufSim += getMontoUF(s); });
-  // Calcular ingreso por asesor (sims únicas por cliente cerrado)
+  // Calcular ingreso por asesor: preferir NV sobre sim (NV = doc oficial del deal)
   Object.values(byAsesor).forEach(a => {
     const ids = new Set(a.clientesContrato);
     const sims = k.sims.filter(s => s.asesorId === a.uid && ids.has(s.clienteId));
-    const lastByCli = {};
+    const nvs = k.notas.filter(n => n.asesorId === a.uid && ids.has(n.clienteId));
+    const lastSimByCli = {};
     sims.forEach(s => {
       const cid = s.clienteId;
-      if(!lastByCli[cid] || (s.fechaSort && lastByCli[cid].fechaSort && s.fechaSort > lastByCli[cid].fechaSort)){
-        lastByCli[cid] = s;
+      if(!lastSimByCli[cid] || (s.fechaSort && lastSimByCli[cid].fechaSort && s.fechaSort > lastSimByCli[cid].fechaSort)){
+        lastSimByCli[cid] = s;
       }
     });
-    a.ingreso = Object.values(lastByCli).reduce((sum, s) => sum + ingresoSimCLP(s), 0);
+    const lastNVByCli = {};
+    nvs.forEach(n => {
+      const cid = n.clienteId;
+      if(!lastNVByCli[cid] || (n.fechaSort && lastNVByCli[cid].fechaSort && n.fechaSort > lastNVByCli[cid].fechaSort)){
+        lastNVByCli[cid] = n;
+      }
+    });
+    a.ingreso = 0;
+    Array.from(ids).forEach(cid => {
+      const doc = lastNVByCli[cid] || lastSimByCli[cid];
+      if(doc) a.ingreso += ingresoCLPDe(doc);
+    });
     a.pctMeta = metaIndPDF > 0 ? Math.round(a.ingreso/metaIndPDF*100) : 0;
   });
   const rowsAs = Object.values(byAsesor).map(a => ({...a, efec: a.prospectos ? Math.round(((a.prospectos - a.rechazos)/a.prospectos)*100) : 0})).sort((a,b)=>b.ingreso-a.ingreso);
