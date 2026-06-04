@@ -1233,77 +1233,9 @@ if(FIREBASE_OK){
     </div>
   </div>
 
-  <!-- ===== MODAL LEAD RÁPIDO ===== -->
-  <div class="modal-overlay" id="modal-lead-rapido">
-    <div class="modal" style="max-width:500px">
-      <div class="modal-head">
-        <h3>＋ Nuevo lead · captura rápida</h3>
-        <button class="modal-close" onclick="cerrarLeadRapido()">×</button>
-      </div>
-      <div class="modal-body">
-        <p style="font-size:12.5px; color:var(--text-2); margin-bottom:18px; line-height:1.5;">
-          Para capturar leads durante una llamada en segundos. El lead queda en etapa <strong>Contacto</strong>. Los campos no obligatorios los completas después desde la ficha del cliente.
-        </p>
+  <!-- (modal-lead-rapido eliminado en Etapa B — reemplazado por modal-cliente vía botón "+Lead") -->
 
-        <div class="form-group" style="margin-bottom:14px">
-          <label>Tipo de persona <span class="req">*</span></label>
-          <div class="radio-group">
-            <label class="radio-pill active" id="lr-rp-natural" onclick="lrSetTipo('natural')"><input type="radio" name="lr-tipo" value="natural" checked> P. Natural</label>
-            <label class="radio-pill" id="lr-rp-juridica" onclick="lrSetTipo('juridica')"><input type="radio" name="lr-tipo" value="juridica"> P. Jurídica</label>
-          </div>
-        </div>
-
-        <div class="form-group" style="margin-bottom:14px">
-          <label id="lr-nombre-label">Nombre completo <span class="req">*</span></label>
-          <input type="text" id="lr-nombre" placeholder="Ej: María Pérez González" autocomplete="off">
-        </div>
-
-        <div class="form-grid" style="margin-bottom:14px">
-          <div class="form-group">
-            <label>RUT <span style="color:var(--muted); font-weight:400">(opcional)</span></label>
-            <input type="text" id="lr-rut" placeholder="12.345.678-9" oninput="formatRUT(this)" autocomplete="off">
-          </div>
-          <div class="form-group">
-            <label>Teléfono <span class="req">*</span></label>
-            <input type="text" id="lr-telefono" placeholder="+56 9 1234 5678" autocomplete="off">
-          </div>
-        </div>
-
-        <div class="form-grid" style="margin-bottom:14px">
-          <div class="form-group">
-            <label>Email <span style="color:var(--muted); font-weight:400">(opcional)</span></label>
-            <input type="email" id="lr-email" placeholder="cliente@email.com" autocomplete="off">
-          </div>
-          <div class="form-group">
-            <label>Origen del lead</label>
-            <select id="lr-origen">
-              <option value="referido">Referido</option>
-              <option value="web">Sitio web</option>
-              <option value="rrss">Redes sociales</option>
-              <option value="kommo">CRM Kommo</option>
-              <option value="cartera">Cartera propia</option>
-              <option value="llamada">Llamada en frío</option>
-              <option value="otro">Otro</option>
-            </select>
-          </div>
-        </div>
-
-        <div class="form-group" style="margin-bottom:6px">
-          <label>Notas rápidas <span style="color:var(--muted); font-weight:400">(opcional)</span></label>
-          <textarea id="lr-notas" rows="2" placeholder="Ej: Pidió simulación para casa en Las Condes · Vence avalúo el viernes." style="background:#fafcfd; border:1px solid var(--border); border-radius:8px; padding:10px 13px; font-size:13px; font-family:inherit; resize:vertical; width:100%"></textarea>
-        </div>
-      </div>
-      <div class="modal-foot" style="display:flex; gap:8px; justify-content:space-between; flex-wrap:wrap">
-        <button class="btn ghost" onclick="cerrarLeadRapido()">Cancelar</button>
-        <div style="display:flex; gap:8px; flex-wrap:wrap">
-          <button class="btn ghost" onclick="guardarLeadRapido(true)" title="Guarda el lead y abre la ficha para completar más datos"><span>📂</span> Guardar y abrir ficha</button>
-          <button class="btn green" id="lr-btn-crear" onclick="guardarLeadRapido(false)"><span>＋</span> Crear lead</button>
-        </div>
-      </div>
-    </div>
-  </div>
-
-  <!-- ===== MODAL KOMMO CSV IMPORT ===== -->
+<!-- ===== MODAL KOMMO CSV IMPORT ===== -->
   <div class="modal-overlay" id="modal-kommo">
     <div class="modal" style="max-width:820px; max-height:90vh; display:flex; flex-direction:column">
       <div class="modal-head">
@@ -1429,8 +1361,7 @@ if(FIREBASE_OK){
         <option value="mios" selected>Solo mis clientes</option>
         <option value="todos">Todos los asesores</option>
       </select>
-      <button class="btn green" onclick="abrirLeadRapido()"><span>＋</span> Nuevo lead</button>
-      <button class="btn ghost" onclick="abrirClienteModal()" title="Crear cliente con todos los campos completos" style="font-size:11.5px">＋ Form completo</button>
+      <button class="btn green" onclick="abrirClienteModal()" title="Crear lead con todos los campos"><span>＋</span> Lead</button>
       <button class="btn ghost" onclick="abrirKommoImport()" title="Importar leads masivamente desde un CSV exportado de Kommo" style="font-size:11.5px">🔄 Importar Kommo CSV</button>
     </div>
     <div class="kanban-board" id="pl-board"></div>
@@ -6963,7 +6894,6 @@ function descargarReportePDF(){
   const cuerpo =
     pdfHeader(cfg, 'Reporte Diario · '+tituloRango, idCot) +
     '<h1 style="font-family:Inter,sans-serif; font-size:18px; color:#0a3d4a; margin:14px 0 4px; font-weight:700;">'+escapeHTML(tituloDoc)+'</h1>' +
-    '<div style="font-size:10.5px; color:#6c757d; margin-bottom:6px;">'+escapeHTML(subtituloDoc)+'</div>' +
     '<div style="font-size:10.5px; color:#6c757d; margin-bottom:6px;">Período: <strong style="color:#0a3d4a">'+escapeHTML(tituloRango)+'</strong> · Filtro asesor: <strong>'+escapeHTML(asesNomFiltro)+'</strong> · Generado el '+fmtTimestamp(new Date())+'</div>' +
     kpiHTML +
     embudoHTMLpdf +
