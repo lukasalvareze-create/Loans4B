@@ -1621,7 +1621,7 @@ if(FIREBASE_OK){
       <!-- 4 KPI CARDS principales -->
       <div class="kpi-row">
         <div class="kpi-card"><div class="lbl">Ingresos L4B</div><div class="val" id="kpi-ingresos">$0</div><div class="sub" id="kpi-ingresos-sub">— del período</div></div>
-        <div class="kpi-card green"><div class="lbl">Ticket promedio</div><div class="val" id="kpi-ticket">$0</div><div class="sub" id="kpi-ticket-sub">por contrato cerrado</div></div>
+        <div class="kpi-card green"><div class="lbl">Ticket promedio</div><div class="val" id="kpi-ticket">$0</div><div class="sub" id="kpi-ticket-sub">por operación cerrada</div></div>
         <div class="kpi-card blue"><div class="lbl">Tasa de cierre</div><div class="val" id="kpi-tasa-cierre">0%</div><div class="sub" id="kpi-tasa-cierre-sub">prospecto → contrato</div></div>
         <div class="kpi-card amber"><div class="lbl">Ciclo de ventas</div><div class="val" id="kpi-ciclo">0 d</div><div class="sub" id="kpi-ciclo-sub">días promedio</div></div>
       </div>
@@ -6118,17 +6118,13 @@ function calcularKPIsReporte(clientesPeriodo, sims, notas){
   const contratos = enEtapa('contrato');
   const cerrados = enEtapa('cerrado');
   const rechazos = clientesPeriodo.filter(c => c.etapa === 'rechazo').length;
-  // Sims asociadas a clientes en etapa 'contrato' o superior (contrato firmado, incluye cerrados).
-  // Esto alinea las métricas con el disclaimer: "Ingresos L4B = sobre operaciones con etapa Contrato".
-  const idxContrato = ordenEt.indexOf('contrato');
-  const idsContratoOSup = new Set(
-    clientesPeriodo.filter(c => {
-      if(c.etapa === 'rechazo') return false;
-      return ordenEt.indexOf(c.etapa || 'prospecto') >= idxContrato;
-    }).map(c => c.id)
+  // INGRESOS basados en etapa CERRADO (operación efectivamente desembolsada).
+  // Solo cuenta cuando la operación está realmente cerrada — no contratos firmados pendientes.
+  const idsCerrados = new Set(
+    clientesPeriodo.filter(c => c.etapa === 'cerrado').map(c => c.id)
   );
-  const simsConContrato = sims.filter(s => idsContratoOSup.has(s.clienteId));
-  const nvsConContrato = notas.filter(n => idsContratoOSup.has(n.clienteId));
+  const simsConContrato = sims.filter(s => idsCerrados.has(s.clienteId));
+  const nvsConContrato = notas.filter(n => idsCerrados.has(n.clienteId));
   // Tomar SOLO el último doc por cliente (no contar duplicados)
   const lastSimByCliente = {};
   simsConContrato.forEach(s => {
@@ -6147,7 +6143,7 @@ function calcularKPIsReporte(clientesPeriodo, sims, notas){
   // PREFERIR NV sobre sim: la NV es el documento "oficial" del deal negociado.
   // Si la NV editó manualmente el monto, esa es la cifra correcta — NO la sim original.
   const docsUnicos = [];
-  Array.from(idsContratoOSup).forEach(cid => {
+  Array.from(idsCerrados).forEach(cid => {
     const doc = lastNVByCliente[cid] || lastSimByCliente[cid];
     if(doc) docsUnicos.push(doc);
   });
@@ -6155,9 +6151,9 @@ function calcularKPIsReporte(clientesPeriodo, sims, notas){
   const simsUnicas = docsUnicos;
   const ingreso = docsUnicos.reduce((sum, d) => sum + ingresoCLPDe(d), 0);
   const volumen = docsUnicos.reduce((sum, d) => sum + volumenCLPDe(d), 0);
-  // Tasa de cierre = Contratos (firmados, incluye cerrados) / Prospectos del período
-  // Ticket promedio = Ingresos / Contratos
-  const ticketProm = contratos > 0 ? ingreso / contratos : 0;
+  // Tasa de cierre = Contratos firmados (etapa Contrato+) / Prospectos del período
+  // Ticket promedio = Ingresos / Operaciones cerradas (etapa Cerrado) — alineado con ingresos
+  const ticketProm = cerrados > 0 ? ingreso / cerrados : 0;
   const tasaCierre = prospectos > 0 ? (contratos / prospectos) : 0;
   const ciclo = calcularCicloDias(clientesPeriodo);
   // Por producto (usa el mismo docsUnicos: NV preferida sobre sim)
@@ -6193,7 +6189,7 @@ function generarResumenEjec(k, kAnt, meta){
   const pctMeta = meta > 0 ? (k.ingreso / meta * 100) : 0;
   const metaIcon = pctMeta >= 100 ? '✅' : (pctMeta >= 75 ? '🟢' : (pctMeta >= 50 ? '🟡' : '🔴'));
   lines.push(metaIcon+' Ingresos del período: <strong style="color:var(--teal)">'+fmtCLP(k.ingreso)+'</strong> ('+pctMeta.toFixed(1)+'% de la meta de '+fmtCLP(meta)+')');
-  lines.push('📦 <strong>'+k.contratos+'</strong> contrato'+(k.contratos===1?'':'s')+' cerrado'+(k.contratos===1?'':'s')+' · Ticket promedio: <strong>'+fmtCLP(k.ticketProm)+'</strong>');
+  lines.push('📦 <strong>'+k.cerrados+'</strong> operaci'+(k.cerrados===1?'ón':'ones')+' cerrada'+(k.cerrados===1?'':'s')+' · <strong>'+k.contratos+'</strong> contrato'+(k.contratos===1?'':'s')+' firmado'+(k.contratos===1?'':'s')+' · Ticket promedio: <strong>'+fmtCLP(k.ticketProm)+'</strong>');
   lines.push('📈 Tasa de cierre: <strong>'+(k.tasaCierre*100).toFixed(1)+'%</strong> · Ciclo de ventas promedio: <strong>'+k.ciclo.toFixed(1)+' días</strong>');
   if(kAnt && kAnt.prospectos > 0){
     const deltaIng = kAnt.ingreso > 0 ? ((k.ingreso - kAnt.ingreso)/kAnt.ingreso*100) : 0;
@@ -6466,7 +6462,7 @@ function renderReporte(){
   const elIng = document.getElementById('kpi-ingresos'); if(elIng) elIng.textContent = fmtCLP(kpisEjec.ingreso);
   const elIngS = document.getElementById('kpi-ingresos-sub'); if(elIngS) elIngS.textContent = (metaAplicada > 0 ? Math.round(kpisEjec.ingreso/metaAplicada*100)+'% de meta '+tipoMetaLbl : '— del período');
   const elTic = document.getElementById('kpi-ticket'); if(elTic) elTic.textContent = fmtCLP(kpisEjec.ticketProm);
-  const elTicS = document.getElementById('kpi-ticket-sub'); if(elTicS) elTicS.textContent = kpisEjec.contratos>0 ? 'sobre '+kpisEjec.contratos+' contrato'+(kpisEjec.contratos===1?'':'s') : 'sin contratos aún';
+  const elTicS = document.getElementById('kpi-ticket-sub'); if(elTicS) elTicS.textContent = kpisEjec.cerrados>0 ? 'sobre '+kpisEjec.cerrados+' op. cerrada'+(kpisEjec.cerrados===1?'':'s') : 'sin operaciones cerradas';
   const elTC = document.getElementById('kpi-tasa-cierre'); if(elTC) elTC.textContent = (kpisEjec.tasaCierre*100).toFixed(1)+'%';
   const elTCS = document.getElementById('kpi-tasa-cierre-sub'); if(elTCS) elTCS.textContent = kpisEjec.contratos+' / '+kpisEjec.prospectos+' prospectos cerrados';
   const elCic = document.getElementById('kpi-ciclo'); if(elCic) elCic.textContent = kpisEjec.ciclo>0 ? kpisEjec.ciclo.toFixed(1)+' d' : '—';
@@ -6552,9 +6548,9 @@ function renderReporte(){
 
   // === NUEVO: Tabla resumen + Gráfico SVG (con ingresos y avance vs meta) ===
   const rowsAsResumen = asesores.map(([uid, a]) => {
-    // Ingreso del asesor: prefiere NV sobre sim por cliente (NV = doc oficial del deal)
-    // También considera etapa 'cerrado' (no solo 'contrato') para alinear con el embudo
-    const idsContrAs = new Set(a.clientes.filter(c => c.etapa === 'contrato' || c.etapa === 'cerrado').map(c => c.id));
+    // Ingreso del asesor: SOLO de operaciones cerradas (etapa Cerrado)
+    // Prefiere NV sobre sim por cliente (NV = doc oficial del deal)
+    const idsContrAs = new Set(a.clientes.filter(c => c.etapa === 'cerrado').map(c => c.id));
     const simsAsCerradas = k.sims.filter(s => s.asesorId === uid && idsContrAs.has(s.clienteId));
     const nvsAsCerradas = k.notas.filter(n => n.asesorId === uid && idsContrAs.has(n.clienteId));
     const lastSimByCli = {};
@@ -6883,7 +6879,8 @@ function descargarReporteEjecutivoPDF(){
       if(idxC >= ordenEt.indexOf('contacto'))    byAsesor[uid].contactados++;
       if(idxC >= ordenEt.indexOf('simulacion'))  byAsesor[uid].simulados++;
       if(idxC >= ordenEt.indexOf('notaventa'))   byAsesor[uid].notasV++;
-      if(idxC >= ordenEt.indexOf('contrato'))   { byAsesor[uid].contratos++; byAsesor[uid].clientesContrato.push(c.id); }
+      if(idxC >= ordenEt.indexOf('contrato'))   { byAsesor[uid].contratos++; }
+      if(c.etapa === 'cerrado')                  { byAsesor[uid].clientesContrato.push(c.id); }
     }
     if(c.etapa === 'rechazo') byAsesor[uid].rechazos++;
   });
@@ -6978,7 +6975,7 @@ function descargarReporteEjecutivoPDF(){
     tablaResHTML +
     conclHTMLpdf +
     notasHTML +
-    '<div style="font-size:8.5pt; color:#6c757d; margin-top:12px; padding:7px 10px; background:#fafcfd; border:1px solid #e5e7eb; border-radius:6px; line-height:1.4;"><strong>Cómo se calculan:</strong> Ingresos L4B = fee del 3% sobre monto financiado de las operaciones con etapa Contrato. Ticket promedio = Ingresos / contratos. Tasa de cierre = Contratos / Prospectos del período. Ciclo de ventas = días promedio desde createdAt hasta updatedAt de los clientes en Contrato. Comparativa: período inmediatamente anterior con misma duración.</div>' +
+    '<div style="font-size:8.5pt; color:#6c757d; margin-top:12px; padding:7px 10px; background:#fafcfd; border:1px solid #e5e7eb; border-radius:6px; line-height:1.4;"><strong>Cómo se calculan:</strong> Ingresos L4B = fee del 3% sobre monto financiado de las operaciones con etapa <strong>Cerrado</strong> (desembolso efectivo). Ticket promedio = Ingresos / operaciones cerradas. Tasa de cierre = Contratos firmados / Prospectos del período. Ciclo de ventas = días promedio desde createdAt hasta updatedAt de los clientes en Contrato. Comparativa: período inmediatamente anterior con misma duración.</div>' +
     ''; // Sin disclaimer en reportes — solo aparece en PDFs de simulación
 
   generarPDF(cuerpo, 'Reporte_Ejecutivo_'+(rango==='dia'?fmtFecha(desde).replace(/\//g,'-'):'periodo'));
