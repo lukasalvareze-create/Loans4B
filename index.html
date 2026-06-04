@@ -894,12 +894,12 @@ if(FIREBASE_OK){
           </div>
           <div class="form-grid-3" style="margin-top:14px">
             <div class="form-group"><label>Valor inmueble (UF)</label><input type="number" id="nv-valor-uf" step="1" oninput="nvOnInputUF()"></div>
-            <div class="form-group"><label>Valor inmueble (CLP)</label><input type="text" id="nv-valor-clp" readonly style="background:var(--green-bg); color:var(--teal); font-weight:600;"></div>
+            <div class="form-group"><label>Valor inmueble (CLP)</label><input type="text" id="nv-valor-clp" oninput="nvOnInputCLP('valor')" placeholder="Ej: $160.000.000" style="font-weight:600;"></div>
             <div class="form-group"><label>Plazo</label><input type="text" id="nv-plazo" placeholder="Ej: 20 años / 12 meses"></div>
           </div>
           <div class="form-grid-3" style="margin-top:14px">
             <div class="form-group"><label>Monto a financiar (UF) <span class="req">*</span></label><input type="number" id="nv-monto-uf" step="0.01" oninput="nvOnInputUF()"><span class="hint">Va a la cláusula 1ra del contrato.</span></div>
-            <div class="form-group"><label>Monto a financiar (CLP)</label><input type="text" id="nv-monto-clp" readonly style="background:var(--green-bg); color:var(--teal); font-weight:600;"></div>
+            <div class="form-group"><label>Monto a financiar (CLP)</label><input type="text" id="nv-monto-clp" oninput="nvOnInputCLP('monto')" placeholder="Ej: $56.000.000" style="font-weight:600;"></div>
             <div class="form-group"><label>Tasa pactada</label><input type="text" id="nv-tasa" placeholder="Ej: 4,9% anual"></div>
           </div>
           <div class="form-grid" style="margin-top:14px">
@@ -2681,6 +2681,27 @@ let _NV_EDITANDO_ID = null;
 let _SIM_EDITANDO_ID = null;
 function getNVUFActivo(){
   return (_NV_UF_FIJO && _NV_UF_FIJO > 0) ? _NV_UF_FIJO : UF_VALOR;
+}
+
+function nvOnInputCLP(campo){
+  // Cuando el usuario edita CLP directamente, calculamos el UF correspondiente
+  // usando el UF fijado de la NV (o el actual si no está fijado).
+  const UF_USE = getNVUFActivo();
+  if(UF_USE <= 0) return;
+  const idCLP = campo === 'valor' ? 'nv-valor-clp' : 'nv-monto-clp';
+  const idUF  = campo === 'valor' ? 'nv-valor-uf'  : 'nv-monto-uf';
+  const raw = (document.getElementById(idCLP).value || '').replace(/[^\d]/g,'');
+  const clpNum = parseFloat(raw) || 0;
+  const ufNum = clpNum > 0 ? clpNum / UF_USE : 0;
+  // Re-formatear el CLP con miles
+  document.getElementById(idCLP).value = clpNum > 0 ? fmtCLP(clpNum) : '';
+  // Setear UF (sin gatillar el oninput de UF para no entrar en loop)
+  const el = document.getElementById(idUF);
+  if(el){
+    el.value = ufNum > 0 ? (Math.round(ufNum*100)/100) : '';
+  }
+  // Recalcular fee y pagos en base al nuevo monto
+  try { nvOnInputUF(); } catch(e){}
 }
 
 function nvOnInputUF(){
