@@ -977,7 +977,7 @@ if(FIREBASE_OK){
           </div>
           <div class="form-grid-3" style="margin-top:14px">
             <div class="form-group"><label>Contrato a enviar</label><input type="text" id="nv-contrato" placeholder="Ej: Contrato Leaseback"></div>
-            <div class="form-group"><label>Estado del contrato</label><select id="nv-contrato-estado"><option value="pendiente">Pendiente de envío</option><option value="enviado">Enviado al cliente</option><option value="firmado">Firmado por el cliente</option><option value="protocolizado">Protocolizado en notaría</option></select></div>
+            <div class="form-group"><label>Estado del contrato</label><select id="nv-contrato-estado"><option value="pendiente">Pendiente de envío</option><option value="enviado">Enviado al cliente</option><option value="firmado">Aceptado/firmado por el cliente</option><option value="protocolizado">Protocolizado en notaría</option></select></div>
             <div class="form-group"><label>Fecha envío</label><input type="date" id="nv-contrato-fecha"></div>
           </div>
           <div class="form-group" style="margin-top:14px"><label>Anexos / documentos adjuntos</label><input type="text" id="nv-anexos" placeholder="Ej: Pre-evaluación, simulación, mandato"></div>
@@ -1742,8 +1742,8 @@ const ETAPAS = [
   { id:'contacto',   label:'Contacto',      color:'#1a6aa0', desc:'Primer contacto realizado' },
   { id:'simulacion', label:'Simulación',    color:'#a05c10', desc:'Producto asignado, simulación en curso' },
   { id:'notaventa',  label:'Nota de Venta', color:'#2aa07f', desc:'Nota de Venta emitida' },
-  { id:'contrato',   label:'Contrato',      color:'#0a3d4a', desc:'Contrato enviado / firmado por el cliente' },
-  { id:'cerrado',    label:'Cerrado',       color:'#1d7a5f', desc:'Operación cerrada exitosamente' },
+  { id:'contrato',   label:'Contrato',      color:'#0a3d4a', desc:'Contrato enviado al cliente · pendiente de firma' },
+  { id:'cerrado',    label:'Cerrado',       color:'#1d7a5f', desc:'Cliente firmó · operación cerrada y desembolsada' },
   { id:'rechazo',    label:'Rechazo',       color:'#b52a2a', desc:'Lead descartado / no avanzó' }
 ];
 function etapaInfo(id){ return ETAPAS.find(e=>e.id===id) || ETAPAS[0]; }
@@ -6119,7 +6119,7 @@ function calcularKPIsReporte(clientesPeriodo, sims, notas){
   const cerrados = enEtapa('cerrado');
   const rechazos = clientesPeriodo.filter(c => c.etapa === 'rechazo').length;
   // INGRESOS basados en etapa CERRADO (operación efectivamente desembolsada).
-  // Solo cuenta cuando la operación está realmente cerrada — no contratos firmados pendientes.
+  // Solo cuenta cuando la operación está realmente cerrada (cliente firmó) — no contratos enviados pendientes de firma.
   const idsCerrados = new Set(
     clientesPeriodo.filter(c => c.etapa === 'cerrado').map(c => c.id)
   );
@@ -6151,10 +6151,10 @@ function calcularKPIsReporte(clientesPeriodo, sims, notas){
   const simsUnicas = docsUnicos;
   const ingreso = docsUnicos.reduce((sum, d) => sum + ingresoCLPDe(d), 0);
   const volumen = docsUnicos.reduce((sum, d) => sum + volumenCLPDe(d), 0);
-  // Tasa de cierre = Contratos firmados (etapa Contrato+) / Prospectos del período
-  // Ticket promedio = Ingresos / Operaciones cerradas (etapa Cerrado) — alineado con ingresos
+  // Tasa de cierre = Operaciones CERRADAS efectivamente (etapa Cerrado) / Prospectos del período
+  // Ticket promedio = Ingresos / Operaciones cerradas — alineado con ingresos
   const ticketProm = cerrados > 0 ? ingreso / cerrados : 0;
-  const tasaCierre = prospectos > 0 ? (contratos / prospectos) : 0;
+  const tasaCierre = prospectos > 0 ? (cerrados / prospectos) : 0;
   const ciclo = calcularCicloDias(clientesPeriodo);
   // Por producto (usa el mismo docsUnicos: NV preferida sobre sim)
   const porProducto = { leaseback: { ops:0, ingreso:0, volumen:0 }, hipotecario: { ops:0, ingreso:0, volumen:0 } };
@@ -6189,7 +6189,7 @@ function generarResumenEjec(k, kAnt, meta){
   const pctMeta = meta > 0 ? (k.ingreso / meta * 100) : 0;
   const metaIcon = pctMeta >= 100 ? '✅' : (pctMeta >= 75 ? '🟢' : (pctMeta >= 50 ? '🟡' : '🔴'));
   lines.push(metaIcon+' Ingresos del período: <strong style="color:var(--teal)">'+fmtCLP(k.ingreso)+'</strong> ('+pctMeta.toFixed(1)+'% de la meta de '+fmtCLP(meta)+')');
-  lines.push('📦 <strong>'+k.cerrados+'</strong> operaci'+(k.cerrados===1?'ón':'ones')+' cerrada'+(k.cerrados===1?'':'s')+' · <strong>'+k.contratos+'</strong> contrato'+(k.contratos===1?'':'s')+' firmado'+(k.contratos===1?'':'s')+' · Ticket promedio: <strong>'+fmtCLP(k.ticketProm)+'</strong>');
+  lines.push('📦 <strong>'+k.cerrados+'</strong> operaci'+(k.cerrados===1?'ón':'ones')+' cerrada'+(k.cerrados===1?'':'s')+' · <strong>'+k.contratos+'</strong> contrato'+(k.contratos===1?'':'s')+' enviado'+(k.contratos===1?'':'s')+' · Ticket promedio: <strong>'+fmtCLP(k.ticketProm)+'</strong>');
   lines.push('📈 Tasa de cierre: <strong>'+(k.tasaCierre*100).toFixed(1)+'%</strong> · Ciclo de ventas promedio: <strong>'+k.ciclo.toFixed(1)+' días</strong>');
   if(kAnt && kAnt.prospectos > 0){
     const deltaIng = kAnt.ingreso > 0 ? ((k.ingreso - kAnt.ingreso)/kAnt.ingreso*100) : 0;
@@ -6464,7 +6464,7 @@ function renderReporte(){
   const elTic = document.getElementById('kpi-ticket'); if(elTic) elTic.textContent = fmtCLP(kpisEjec.ticketProm);
   const elTicS = document.getElementById('kpi-ticket-sub'); if(elTicS) elTicS.textContent = kpisEjec.cerrados>0 ? 'sobre '+kpisEjec.cerrados+' op. cerrada'+(kpisEjec.cerrados===1?'':'s') : 'sin operaciones cerradas';
   const elTC = document.getElementById('kpi-tasa-cierre'); if(elTC) elTC.textContent = (kpisEjec.tasaCierre*100).toFixed(1)+'%';
-  const elTCS = document.getElementById('kpi-tasa-cierre-sub'); if(elTCS) elTCS.textContent = kpisEjec.contratos+' / '+kpisEjec.prospectos+' prospectos cerrados';
+  const elTCS = document.getElementById('kpi-tasa-cierre-sub'); if(elTCS) elTCS.textContent = kpisEjec.cerrados+' op. cerrada'+(kpisEjec.cerrados===1?'':'s')+' / '+kpisEjec.prospectos+' prospecto'+(kpisEjec.prospectos===1?'':'s');
   const elCic = document.getElementById('kpi-ciclo'); if(elCic) elCic.textContent = kpisEjec.ciclo>0 ? kpisEjec.ciclo.toFixed(1)+' d' : '—';
   const elCicS = document.getElementById('kpi-ciclo-sub'); if(elCicS) elCicS.textContent = kpisEjec.ciclo>0 ? 'días promedio · createdAt → contrato' : 'sin datos suficientes';
 
@@ -6975,7 +6975,7 @@ function descargarReporteEjecutivoPDF(){
     tablaResHTML +
     conclHTMLpdf +
     notasHTML +
-    '<div style="font-size:8.5pt; color:#6c757d; margin-top:12px; padding:7px 10px; background:#fafcfd; border:1px solid #e5e7eb; border-radius:6px; line-height:1.4;"><strong>Cómo se calculan:</strong> Ingresos L4B = fee del 3% sobre monto financiado de las operaciones con etapa <strong>Cerrado</strong> (desembolso efectivo). Ticket promedio = Ingresos / operaciones cerradas. Tasa de cierre = Contratos firmados / Prospectos del período. Ciclo de ventas = días promedio desde createdAt hasta updatedAt de los clientes en Contrato. Comparativa: período inmediatamente anterior con misma duración.</div>' +
+    '<div style="font-size:8.5pt; color:#6c757d; margin-top:12px; padding:7px 10px; background:#fafcfd; border:1px solid #e5e7eb; border-radius:6px; line-height:1.4;"><strong>Cómo se calculan:</strong> Ingresos L4B = fee del 3% sobre monto financiado de las operaciones con etapa <strong>Cerrado</strong> (desembolso efectivo). Ticket promedio = Ingresos / operaciones cerradas. Tasa de cierre = Operaciones <strong>cerradas</strong> (etapa Cerrado) / Prospectos del período. Ciclo de ventas = días promedio desde createdAt hasta updatedAt de los clientes en Contrato. Comparativa: período inmediatamente anterior con misma duración.</div>' +
     ''; // Sin disclaimer en reportes — solo aparece en PDFs de simulación
 
   generarPDF(cuerpo, 'Reporte_Ejecutivo_'+(rango==='dia'?fmtFecha(desde).replace(/\//g,'-'):'periodo'));
