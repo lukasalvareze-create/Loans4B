@@ -4470,10 +4470,12 @@ async function moverEtapaCliente(cliId, nuevaEtapa, desdePipeline){
   // Actualización optimista del cache para feedback instantáneo
   c.etapa = nuevaEtapa;
   c.updatedAt = nowTs();
+  c.etapaMovedAt = nowTs();
+  c.etapaPrev = etapaPrev;
   if(nuevaEtapa === 'rechazo') c.razonRechazo = razonRechazo;
   renderPipeline();
   try{
-    const patch = { etapa: nuevaEtapa, updatedAt: nowTs() };
+    const patch = { etapa: nuevaEtapa, updatedAt: nowTs(), etapaMovedAt: nowTs(), etapaPrev: etapaPrev };
     if(nuevaEtapa === 'rechazo') patch.razonRechazo = razonRechazo;
     await fbDb.collection('clientes').doc(cliId).update(patch);
     try{
@@ -5960,6 +5962,16 @@ function dateOf(it){
   return d || null;
 }
 
+/* Fecha de actividad de pipeline: prioriza el último movimiento de etapa.
+   - etapaMovedAt: timestamp exacto del último cambio de etapa (campo nuevo)
+   - updatedAt: cualquier modificación del cliente (fallback para data antigua)
+   - createdAt: último recurso
+   Esto hace que el reporte refleje MOVIMIENTOS del pipeline, no solo creaciones. */
+function dateOfMove(c){
+  const d = tsToDate(c.etapaMovedAt) || tsToDate(c.updatedAt) || tsToDate(c.createdAt) || tsToDate(c.fechaCreacion);
+  return d || null;
+}
+
 function computeKPIs(desde, hasta, asesorFiltro){
   const inRange = d => d && d>=desde && d<=hasta;
   const matchAs = uid => asesorFiltro==='todos' || uid===asesorFiltro;
@@ -6254,7 +6266,9 @@ function renderReporte(){
   const matchAs = uid => asesorFiltro==='todos' || uid===asesorFiltro;
   const clientesPeriodo = CLIENTES_CACHE.filter(c => {
     if(!matchAs(c.asesorId)) return false;
-    const ts = dateOf(c) || tsToDate(c.updatedAt);
+    // FIX: usar dateOfMove (etapaMovedAt || updatedAt || createdAt) para
+    // que clientes movidos en el período aparezcan, no solo los creados.
+    const ts = dateOfMove(c);
     return inRange(ts);
   });
 
@@ -6734,7 +6748,9 @@ function descargarReporteEjecutivoPDF(){
   const matchAs = uid => asesorFiltro==='todos' || uid===asesorFiltro;
   const clientesPeriodo = CLIENTES_CACHE.filter(c => {
     if(!matchAs(c.asesorId)) return false;
-    const ts = dateOf(c) || tsToDate(c.updatedAt);
+    // FIX: usar dateOfMove (etapaMovedAt || updatedAt || createdAt) para
+    // que clientes movidos en el período aparezcan, no solo los creados.
+    const ts = dateOfMove(c);
     return inRange(ts);
   });
 
@@ -6980,7 +6996,9 @@ function descargarReportePDF(){
   const matchAs = uid => asesorFiltro==='todos' || uid===asesorFiltro;
   const clientesPeriodo = CLIENTES_CACHE.filter(c => {
     if(!matchAs(c.asesorId)) return false;
-    const ts = dateOf(c) || tsToDate(c.updatedAt);
+    // FIX: usar dateOfMove (etapaMovedAt || updatedAt || createdAt) para
+    // que clientes movidos en el período aparezcan, no solo los creados.
+    const ts = dateOfMove(c);
     return inRange(ts);
   });
   const totalAct  = clientesPeriodo.length;
